@@ -15,6 +15,8 @@ import { Route as AuthedEventTypesRouteImport } from './routes/_authed/event-typ
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthSignupRouteImport } from './routes/auth/signup'
+import { Route as AuthedAvailabilityIndexRouteImport } from './routes/_authed/availability/index'
+import { Route as AuthedAvailabilityScheduleIdRouteImport } from './routes/_authed/availability/$scheduleId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const IndexRoute = IndexRouteImport.update({
@@ -46,6 +48,17 @@ const AuthSignupRoute = AuthSignupRouteImport.update({
   path: '/auth/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthedAvailabilityIndexRoute = AuthedAvailabilityIndexRouteImport.update({
+  id: '/availability/',
+  path: '/availability/',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedAvailabilityScheduleIdRoute =
+  AuthedAvailabilityScheduleIdRouteImport.update({
+    id: '/availability/$scheduleId',
+    path: '/availability/$scheduleId',
+    getParentRoute: () => AuthedRoute,
+  } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -58,7 +71,9 @@ export interface FileRoutesByFullPath {
   '/api/health': typeof ApiHealthRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/availability/$scheduleId': typeof AuthedAvailabilityScheduleIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/availability/': typeof AuthedAvailabilityIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -66,7 +81,9 @@ export interface FileRoutesByTo {
   '/api/health': typeof ApiHealthRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/availability/$scheduleId': typeof AuthedAvailabilityScheduleIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/availability': typeof AuthedAvailabilityIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -76,7 +93,9 @@ export interface FileRoutesById {
   '/api/health': typeof ApiHealthRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/_authed/availability/$scheduleId': typeof AuthedAvailabilityScheduleIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/_authed/availability/': typeof AuthedAvailabilityIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -86,7 +105,9 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/auth/login'
     | '/auth/signup'
+    | '/availability/$scheduleId'
     | '/api/auth/$'
+    | '/availability/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -94,7 +115,9 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/auth/login'
     | '/auth/signup'
+    | '/availability/$scheduleId'
     | '/api/auth/$'
+    | '/availability'
   id:
     | '__root__'
     | '/'
@@ -103,7 +126,9 @@ export interface FileRouteTypes {
     | '/api/health'
     | '/auth/login'
     | '/auth/signup'
+    | '/_authed/availability/$scheduleId'
     | '/api/auth/$'
+    | '/_authed/availability/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -159,6 +184,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthSignupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authed/availability/': {
+      id: '/_authed/availability/'
+      path: '/availability'
+      fullPath: '/availability/'
+      preLoaderRoute: typeof AuthedAvailabilityIndexRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/availability/$scheduleId': {
+      id: '/_authed/availability/$scheduleId'
+      path: '/availability/$scheduleId'
+      fullPath: '/availability/$scheduleId'
+      preLoaderRoute: typeof AuthedAvailabilityScheduleIdRouteImport
+      parentRoute: typeof AuthedRoute
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -171,10 +210,14 @@ declare module '@tanstack/react-router' {
 
 interface AuthedRouteChildren {
   AuthedEventTypesRoute: typeof AuthedEventTypesRoute
+  AuthedAvailabilityScheduleIdRoute: typeof AuthedAvailabilityScheduleIdRoute
+  AuthedAvailabilityIndexRoute: typeof AuthedAvailabilityIndexRoute
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedEventTypesRoute: AuthedEventTypesRoute,
+  AuthedAvailabilityScheduleIdRoute: AuthedAvailabilityScheduleIdRoute,
+  AuthedAvailabilityIndexRoute: AuthedAvailabilityIndexRoute,
 }
 
 const AuthedRouteWithChildren =
@@ -193,10 +236,11 @@ export const routeTree = rootRouteImport
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
+import type { startInstance } from './start.ts'
 declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
     router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }

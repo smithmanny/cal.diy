@@ -12,6 +12,7 @@ import type { ComponentType, ReactNode } from "react";
 import { authClient } from "~/lib/auth-client";
 import { useT } from "~/lib/i18n";
 import type { SessionUser } from "~/server/auth/session";
+import { HydratedFieldset } from "./HydratedFieldset";
 
 type NavItem = { to: string; labelKey: string; icon: ComponentType<{ className?: string }> };
 
@@ -69,13 +70,15 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
           <Link to="/event-types" className="px-2 font-heading text-xl">
             Cal.diy
           </Link>
-          <button
-            type="button"
-            onClick={signOut}
-            aria-label={t("sign_out")}
-            className="rounded-md p-2 text-muted-foreground hover:bg-accent md:hidden">
-            <LogOutIcon className="size-4" />
-          </button>
+          <HydratedFieldset>
+            <button
+              type="button"
+              onClick={signOut}
+              aria-label={t("sign_out")}
+              className="rounded-md p-2 text-muted-foreground hover:bg-accent md:hidden">
+              <LogOutIcon className="size-4" />
+            </button>
+          </HydratedFieldset>
         </div>
         {nav}
         <div className="mt-auto hidden flex-col gap-1 md:flex">
@@ -83,10 +86,12 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
             <div className="truncate font-medium">{user.name ?? user.username}</div>
             <div className="truncate text-muted-foreground text-xs">{user.email}</div>
           </div>
-          <button type="button" onClick={signOut} className={navLinkClass}>
-            <LogOutIcon className="size-4" />
-            {t("sign_out")}
-          </button>
+          <HydratedFieldset>
+            <button type="button" onClick={signOut} className={navLinkClass}>
+              <LogOutIcon className="size-4" />
+              {t("sign_out")}
+            </button>
+          </HydratedFieldset>
         </div>
       </aside>
       <main className="mx-auto w-full max-w-5xl flex-1 p-4 md:p-8">{children}</main>

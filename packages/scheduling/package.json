@@ -1,0 +1,24 @@
+{
+  "name": "@calcom/scheduling",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "ORM- and framework-agnostic availability and slot computation",
+  "exports": {
+    "./date-ranges": "./src/date-ranges.ts",
+    "./slots": "./src/slots.ts",
+    "./types": "./src/types.ts"
+  },
+  "scripts": {
+    "test": "TZ=UTC vitest run",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@calcom/dayjs": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "20.19.43",
+    "typescript": "5.9.3",
+    "vitest": "4.1.8"
+  }
+}

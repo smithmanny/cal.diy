@@ -17,6 +17,19 @@ export class UserRepository {
     return new Set(rows.flatMap((row) => (row.username ? [row.username] : [])));
   }
 
+  async findDefaultScheduleId(userId: number): Promise<number | null> {
+    const [found] = await this.db
+      .select({ defaultScheduleId: user.defaultScheduleId })
+      .from(user)
+      .where(eq(user.id, userId))
+      .limit(1);
+    return found?.defaultScheduleId ?? null;
+  }
+
+  async updateDefaultScheduleId(userId: number, scheduleId: number | null): Promise<void> {
+    await this.db.update(user).set({ defaultScheduleId: scheduleId }).where(eq(user.id, userId));
+  }
+
   async findByEmail(email: string) {
     const [found] = await this.db
       .select({ id: user.id, email: user.email, username: user.username })

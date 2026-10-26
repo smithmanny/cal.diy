@@ -22,6 +22,8 @@ export default defineConfig(({ command, mode }) => {
 
   return {
     resolve: {
+      // Workspace packages (e.g. @coss/ui) would otherwise resolve the repo root's React 18.
+      dedupe: ["react", "react-dom"],
       alias: {
         "#runtime": fileURLToPath(new URL(`./src/server/runtime/${target}.ts`, import.meta.url)),
         "~": fileURLToPath(new URL("./src", import.meta.url)),

@@ -7,6 +7,9 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
+import { pickMessages } from "../catalog";
+import { ScheduleRepository } from "../schedules/ScheduleRepository";
+import { ScheduleService } from "../schedules/ScheduleService";
 import { UserRepository } from "../users/UserRepository";
 import { findAvailableUsername, normalizeUsername, usernameFromEmail } from "./username";
 
@@ -39,6 +42,7 @@ export const AUTH_ERROR_CODES = {
 
 export function createAuth({ db, baseURL, secret, google }: AuthConfig) {
   const users = new UserRepository(db);
+  const schedules = new ScheduleService({ scheduleRepo: new ScheduleRepository(db), userRepo: users });
 
   return betterAuth({
     appName: "Cal.diy",
@@ -105,6 +109,16 @@ export function createAuth({ db, baseURL, secret, google }: AuthConfig) {
                 username: await findAvailableUsername(users, usernameFromEmail(newUser.email)),
               },
             };
+          },
+          // Every user needs a schedule before any event type can offer slots.
+          after: async (createdUser) => {
+            const name =
+              (await pickMessages("en", ["default_schedule_name"])).default_schedule_name ?? "Working hours";
+            await schedules.createDefault(
+              Number(createdUser.id),
+              validTimeZone(createdUser.timeZone) ?? DEFAULT_TIME_ZONE,
+              name
+            );
           },
         },
       },

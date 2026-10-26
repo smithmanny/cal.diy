@@ -1,23 +1,17 @@
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import type { Database } from "@calcom/db/database";
-import { createLibsqlDatabase, migrateLibsqlDatabase } from "@calcom/db/drivers/libsql";
-import { account, user } from "@calcom/db/schema";
+import { account, schedule, user } from "@calcom/db/schema";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
+import { createTestDb } from "../../test/testDb";
 import { AUTH_ERROR_CODES, createAuth } from "./createAuth";
 
-const migrationsFolder = fileURLToPath(new URL("../../../../../packages/db/migrations", import.meta.url));
 const VALID_PASSWORD = "Secret123";
 
 let db: Database;
 let auth: ReturnType<typeof createAuth>;
 
 beforeEach(async () => {
-  const options = { url: `file:${join(tmpdir(), `cal-auth-test-${crypto.randomUUID()}.db`)}` };
-  await migrateLibsqlDatabase(options, migrationsFolder);
-  db = await createLibsqlDatabase(options);
+  db = await createTestDb();
   auth = createAuth({ db, baseURL: "http://localhost:3000", secret: "test-secret-that-is-long-enough-123" });
 });
 
@@ -58,6 +52,27 @@ describe("createAuth", () => {
       .where(eq(account.userId, row.id));
     expect(credential.providerId).toBe("credential");
     expect(credential.password).not.toContain(VALID_PASSWORD);
+  });
+
+  it("gives new users a default Mon-Fri 9-5 schedule in their time zone", async () => {
+    const result = await signUp({ email: "tz@example.com", username: "tz", timeZone: "Asia/Kolkata" });
+
+    const [row] = await db
+      .select({ defaultScheduleId: user.defaultScheduleId })
+      .from(user)
+      .where(eq(user.id, Number(result.user.id)));
+    const schedules = await db
+      .select({ id: schedule.id, name: schedule.name, timeZone: schedule.timeZone })
+      .from(schedule);
+    expect(schedules).toEqual([
+      { id: row.defaultScheduleId, name: "Working hours", timeZone: "Asia/Kolkata" },
+    ]);
+  });
+
+  it("falls back to a default time zone when the browser sends an invalid one", async () => {
+    await signUp({ email: "badtz@example.com", username: "badtz", timeZone: "Not/AZone" });
+    const [row] = await db.select({ timeZone: user.timeZone }).from(user);
+    expect(row.timeZone).toBe("Europe/London");
   });
 
   it("rejects passwords that don't meet Cal's complexity rule", async () => {
