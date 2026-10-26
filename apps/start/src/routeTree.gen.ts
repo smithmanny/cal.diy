@@ -19,6 +19,7 @@ import { Route as AuthSignupRouteImport } from './routes/auth/signup'
 import { Route as BookingUidRouteImport } from './routes/booking/$uid'
 import { Route as AuthedAvailabilityIndexRouteImport } from './routes/_authed/availability/index'
 import { Route as AuthedAvailabilityScheduleIdRouteImport } from './routes/_authed/availability/$scheduleId'
+import { Route as AuthedBookingsStatusRouteImport } from './routes/_authed/bookings/$status'
 import { Route as AuthedEventTypesIndexRouteImport } from './routes/_authed/event-types/index'
 import { Route as AuthedEventTypesEventTypeIdRouteImport } from './routes/_authed/event-types/$eventTypeId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -73,6 +74,11 @@ const AuthedAvailabilityScheduleIdRoute =
     path: '/availability/$scheduleId',
     getParentRoute: () => AuthedRoute,
   } as any)
+const AuthedBookingsStatusRoute = AuthedBookingsStatusRouteImport.update({
+  id: '/bookings/$status',
+  path: '/bookings/$status',
+  getParentRoute: () => AuthedRoute,
+} as any)
 const AuthedEventTypesIndexRoute = AuthedEventTypesIndexRouteImport.update({
   id: '/event-types/',
   path: '/event-types/',
@@ -99,6 +105,7 @@ export interface FileRoutesByFullPath {
   '/booking/$uid': typeof BookingUidRoute
   '/$username/': typeof UsernameIndexRoute
   '/availability/$scheduleId': typeof AuthedAvailabilityScheduleIdRoute
+  '/bookings/$status': typeof AuthedBookingsStatusRoute
   '/event-types/$eventTypeId': typeof AuthedEventTypesEventTypeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/availability/': typeof AuthedAvailabilityIndexRoute
@@ -113,6 +120,7 @@ export interface FileRoutesByTo {
   '/booking/$uid': typeof BookingUidRoute
   '/$username': typeof UsernameIndexRoute
   '/availability/$scheduleId': typeof AuthedAvailabilityScheduleIdRoute
+  '/bookings/$status': typeof AuthedBookingsStatusRoute
   '/event-types/$eventTypeId': typeof AuthedEventTypesEventTypeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/availability': typeof AuthedAvailabilityIndexRoute
@@ -129,6 +137,7 @@ export interface FileRoutesById {
   '/booking/$uid': typeof BookingUidRoute
   '/$username/': typeof UsernameIndexRoute
   '/_authed/availability/$scheduleId': typeof AuthedAvailabilityScheduleIdRoute
+  '/_authed/bookings/$status': typeof AuthedBookingsStatusRoute
   '/_authed/event-types/$eventTypeId': typeof AuthedEventTypesEventTypeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/_authed/availability/': typeof AuthedAvailabilityIndexRoute
@@ -145,6 +154,7 @@ export interface FileRouteTypes {
     | '/booking/$uid'
     | '/$username/'
     | '/availability/$scheduleId'
+    | '/bookings/$status'
     | '/event-types/$eventTypeId'
     | '/api/auth/$'
     | '/availability/'
@@ -159,6 +169,7 @@ export interface FileRouteTypes {
     | '/booking/$uid'
     | '/$username'
     | '/availability/$scheduleId'
+    | '/bookings/$status'
     | '/event-types/$eventTypeId'
     | '/api/auth/$'
     | '/availability'
@@ -174,6 +185,7 @@ export interface FileRouteTypes {
     | '/booking/$uid'
     | '/$username/'
     | '/_authed/availability/$scheduleId'
+    | '/_authed/bookings/$status'
     | '/_authed/event-types/$eventTypeId'
     | '/api/auth/$'
     | '/_authed/availability/'
@@ -264,6 +276,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedAvailabilityScheduleIdRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/bookings/$status': {
+      id: '/_authed/bookings/$status'
+      path: '/bookings/$status'
+      fullPath: '/bookings/$status'
+      preLoaderRoute: typeof AuthedBookingsStatusRouteImport
+      parentRoute: typeof AuthedRoute
+    }
     '/_authed/event-types/': {
       id: '/_authed/event-types/'
       path: '/event-types'
@@ -290,6 +309,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthedRouteChildren {
   AuthedAvailabilityScheduleIdRoute: typeof AuthedAvailabilityScheduleIdRoute
+  AuthedBookingsStatusRoute: typeof AuthedBookingsStatusRoute
   AuthedEventTypesEventTypeIdRoute: typeof AuthedEventTypesEventTypeIdRoute
   AuthedAvailabilityIndexRoute: typeof AuthedAvailabilityIndexRoute
   AuthedEventTypesIndexRoute: typeof AuthedEventTypesIndexRoute
@@ -297,6 +317,7 @@ interface AuthedRouteChildren {
 
 const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedAvailabilityScheduleIdRoute: AuthedAvailabilityScheduleIdRoute,
+  AuthedBookingsStatusRoute: AuthedBookingsStatusRoute,
   AuthedEventTypesEventTypeIdRoute: AuthedEventTypesEventTypeIdRoute,
   AuthedAvailabilityIndexRoute: AuthedAvailabilityIndexRoute,
   AuthedEventTypesIndexRoute: AuthedEventTypesIndexRoute,

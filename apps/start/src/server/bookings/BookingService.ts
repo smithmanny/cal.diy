@@ -203,6 +203,21 @@ export class BookingService {
     if (snapshot) this.emit({ type: "BOOKING_CANCELLED", booking: snapshot });
   }
 
+  listForHost(hostId: number, filter: "upcoming" | "past" | "cancelled" | "unconfirmed", limit: number) {
+    return this.deps.bookingRepo.findManyForHost({
+      userId: hostId,
+      filter,
+      now: this.deps.now?.() ?? new Date(),
+      limit,
+    });
+  }
+
+  async cancelAsHost(hostId: number, uid: string, reason: string | null): Promise<void> {
+    const found = await this.deps.bookingRepo.findByUid(uid);
+    if (!found || found.userId !== hostId) throw new AppError("booking_not_found", 404);
+    await this.cancel(uid, reason, found.host?.email ?? null);
+  }
+
   /** Host-only decisions on bookings that require confirmation. */
   async decide(hostId: number, uid: string, accept: boolean, reason: string | null): Promise<void> {
     const found = await this.deps.bookingRepo.findByUid(uid);

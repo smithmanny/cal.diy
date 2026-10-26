@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { authMiddleware } from "../middleware";
 // Only referenced inside handlers, so this server-only module stays out of the client bundle.
 import { getBookingService } from "./container";
 import { createBookingSchema, slotsQuerySchema } from "./types";
@@ -37,4 +38,37 @@ export const cancelBookingByUid = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) =>
     (await getBookingService()).cancel(data.uid, data.reason ?? null, data.cancelledBy ?? null)
+  );
+
+// Host endpoints.
+
+export const listHostBookings = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .validator(
+    z.object({
+      filter: z.enum(["upcoming", "past", "cancelled", "unconfirmed"]),
+      limit: z.number().int().min(1).max(500),
+    })
+  )
+  .handler(async ({ context, data }) => {
+    const bookings = await (await getBookingService()).listForHost(context.userId, data.filter, data.limit);
+    return bookings.map((booking) => ({
+      ...booking,
+      startTime: booking.startTime.toISOString(),
+      endTime: booking.endTime.toISOString(),
+    }));
+  });
+
+export const cancelBookingAsHost = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(uidSchema.extend({ reason: z.string().max(1000).optional() }))
+  .handler(async ({ context, data }) =>
+    (await getBookingService()).cancelAsHost(context.userId, data.uid, data.reason ?? null)
+  );
+
+export const decideBooking = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(uidSchema.extend({ accept: z.boolean(), reason: z.string().max(1000).optional() }))
+  .handler(async ({ context, data }) =>
+    (await getBookingService()).decide(context.userId, data.uid, data.accept, data.reason ?? null)
   );

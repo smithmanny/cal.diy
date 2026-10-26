@@ -196,6 +196,32 @@ describe("BookingService", () => {
     await expect(service.cancel(uid, null, null)).rejects.toMatchObject({ code: "event_cancelled" });
   });
 
+  it("lists a host's bookings by tab", async () => {
+    const accepted = await book(at("10:00"));
+    const pendingBooking = await book(at("11:00"), { slug: "approval" });
+    const cancelled = await book(at("12:00"));
+    await service.cancel(cancelled.uid, null, null);
+    const uids = async (filter: "upcoming" | "unconfirmed" | "cancelled" | "past") =>
+      (await service.listForHost(hostId, filter, 50)).map((b) => b.uid);
+
+    expect(await uids("upcoming")).toEqual([accepted.uid]);
+    expect(await uids("unconfirmed")).toEqual([pendingBooking.uid]);
+    expect(await uids("cancelled")).toEqual([cancelled.uid]);
+    expect(await uids("past")).toEqual([]);
+    expect((await service.listForHost(hostId, "upcoming", 50))[0].attendees).toEqual([
+      { name: "Guest", email: "guest@example.com" },
+    ]);
+  });
+
+  it("lets only the owning host cancel through the host endpoint", async () => {
+    const { uid } = await book(at("10:00"));
+    await expect(service.cancelAsHost(hostId + 1, uid, null)).rejects.toMatchObject({
+      code: "booking_not_found",
+    });
+    await service.cancelAsHost(hostId, uid, "Sick");
+    expect(await service.getBooking(uid)).toMatchObject({ status: "CANCELLED", cancellationReason: "Sick" });
+  });
+
   it("reports unknown users, event types and bookings as not found", async () => {
     await expect(service.getProfile("nobody")).rejects.toMatchObject({ code: "user_not_found" });
     await expect(service.getPublicEvent("host", "nope")).rejects.toMatchObject({

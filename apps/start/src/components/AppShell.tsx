@@ -26,7 +26,7 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 const navLinkClass =
-  "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground";
+  "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors hover:bg-accent hover:text-foreground";
 
 export const APP_SHELL_MESSAGE_KEYS = [
   "event_types_page_title",
@@ -55,6 +55,7 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
           to={to}
           className={navLinkClass}
           activeProps={{ className: "bg-accent text-foreground" }}
+          inactiveProps={{ className: "text-muted-foreground" }}
           activeOptions={{ includeSearch: false }}>
           <Icon className="size-4 shrink-0" />
           <span className="whitespace-nowrap">{t(labelKey)}</span>
@@ -87,7 +88,7 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
             <div className="truncate text-muted-foreground text-xs">{user.email}</div>
           </div>
           <HydratedFieldset>
-            <button type="button" onClick={signOut} className={navLinkClass}>
+            <button type="button" onClick={signOut} className={`${navLinkClass} text-muted-foreground`}>
               <LogOutIcon className="size-4" />
               {t("sign_out")}
             </button>
