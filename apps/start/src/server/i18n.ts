@@ -29,5 +29,5 @@ export function pickMessages(keys: readonly string[]): Messages {
 }
 
 export const getMessages = createServerFn({ method: "GET" })
-  .inputValidator((keys: readonly string[]) => keys)
+  .validator((keys: readonly string[]) => keys)
   .handler(({ data }) => pickMessages(data));

@@ -1,4 +1,4 @@
-import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useHydrated, useNavigate } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { authClient } from "~/lib/auth-client";
 import { AUTH_ERROR_MESSAGE_KEYS, authErrorKey } from "~/lib/auth-errors";
@@ -28,6 +28,9 @@ function SignupPage() {
   const t = createT(messages);
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  // Until React hydrates, a click would fall back to a native form submit and post the
+  // credentials to this page instead of the auth API, so the button stays disabled.
+  const hydrated = useHydrated();
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -53,7 +56,7 @@ function SignupPage() {
   return (
     <main>
       <h1>{t("create_your_account")}</h1>
-      <form onSubmit={onSubmit}>
+      <form method="post" onSubmit={onSubmit}>
         <label>
           {t("username")}
           <input name="username" autoComplete="username" required />
@@ -68,7 +71,7 @@ function SignupPage() {
           <small>{t("password_complexity_requirement")}</small>
         </label>
         {errorKey && <p role="alert">{t(errorKey, { passwordLength: 7 })}</p>}
-        <button type="submit" disabled={pending}>
+        <button type="submit" disabled={pending || !hydrated}>
           {pending ? t("loading") : t("create_account")}
         </button>
       </form>
