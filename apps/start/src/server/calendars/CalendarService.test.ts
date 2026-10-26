@@ -6,6 +6,8 @@ import { createTestDb } from "../../test/testDb";
 import { BookingRepository } from "../bookings/BookingRepository";
 import { BookingService } from "../bookings/BookingService";
 import { EventTypeRepository } from "../event-types/EventTypeRepository";
+import { HolidayRepository } from "../holidays/HolidayRepository";
+import { HolidayService } from "../holidays/HolidayService";
 import { OutOfOfficeRepository } from "../out-of-office/OutOfOfficeRepository";
 import { ScheduleRepository } from "../schedules/ScheduleRepository";
 import { ScheduleService } from "../schedules/ScheduleService";
@@ -144,6 +146,7 @@ describe("Google Calendar in the booking flow", () => {
       bookingRepo: new BookingRepository(db),
       travelScheduleRepo: new TravelScheduleRepository(db),
       oooRepo: new OutOfOfficeRepository(db),
+      holidayService: new HolidayService({ repo: new HolidayRepository(db), fetchHolidays: null }),
       busyTimesProviders: [({ userId, from, to }) => calendars.busyTimes(userId, from, to)],
       listeners: [(event) => calendars.onBookingEvent(event)],
       runInBackground: (promise) => void pending.push(promise),

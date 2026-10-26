@@ -9,6 +9,17 @@ describe("createT", () => {
     expect(t("signed_in_as", { name: "Jane" })).toBe("Signed in as Jane");
     expect(t("missing_key")).toBe("missing_key");
   });
+
+  it("picks i18next plural variants by the locale's rules", () => {
+    const messages = {
+      bookings_count_one: "{{count}} booking",
+      bookings_count_other: "{{count}} bookings",
+    };
+    expect(createT(messages)("bookings_count", { count: 1 })).toBe("1 booking");
+    expect(createT(messages)("bookings_count", { count: 3 })).toBe("3 bookings");
+    // Arabic has a "few" category; without that variant, "other" applies.
+    expect(createT(messages, "ar")("bookings_count", { count: 3 })).toBe("3 bookings");
+  });
 });
 
 describe("pickMessages", () => {
@@ -24,6 +35,13 @@ describe("pickMessages", () => {
 
   it("falls back to English for unknown locales", async () => {
     expect((await pickMessages("xx", ["sign_in"])).sign_in).toBe("Sign in");
+  });
+
+  it("brings a key's plural variants along", async () => {
+    const picked = await pickMessages("en", ["holiday_booking_conflict_warning"]);
+    expect(createT(picked)("holiday_booking_conflict_warning", { count: 2 })).toBe(
+      "You have 2 bookings on holidays"
+    );
   });
 });
 

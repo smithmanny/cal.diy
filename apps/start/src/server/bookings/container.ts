@@ -2,6 +2,7 @@ import "@tanstack/react-start/server-only";
 
 import { getDb } from "../db";
 import { EventTypeRepository } from "../event-types/EventTypeRepository";
+import { createHolidayService } from "../holidays/container";
 import { OutOfOfficeRepository } from "../out-of-office/OutOfOfficeRepository";
 import { ScheduleRepository } from "../schedules/ScheduleRepository";
 import { TravelScheduleRepository } from "../users/TravelScheduleRepository";
@@ -20,6 +21,7 @@ export async function getBookingService(): Promise<BookingService> {
     bookingRepo: new BookingRepository(db),
     travelScheduleRepo: new TravelScheduleRepository(db),
     oooRepo: new OutOfOfficeRepository(db),
+    holidayService: createHolidayService(db),
     busyTimesProviders: getBusyTimesProviders(db),
     listeners: getBookingListeners(db),
     runInBackground,

@@ -4,6 +4,8 @@ import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createTestDb } from "../../test/testDb";
 import { EventTypeRepository } from "../event-types/EventTypeRepository";
+import { HolidayRepository } from "../holidays/HolidayRepository";
+import { HolidayService } from "../holidays/HolidayService";
 import { OutOfOfficeRepository } from "../out-of-office/OutOfOfficeRepository";
 import { OutOfOfficeService } from "../out-of-office/OutOfOfficeService";
 import { ScheduleRepository } from "../schedules/ScheduleRepository";
@@ -67,6 +69,7 @@ beforeEach(async () => {
     bookingRepo: new BookingRepository(db),
     travelScheduleRepo: new TravelScheduleRepository(db),
     oooRepo: new OutOfOfficeRepository(db),
+    holidayService: new HolidayService({ repo: new HolidayRepository(db), fetchHolidays: null }),
     listeners: [async (event) => void events.push(event)],
     runInBackground: (promise) => void pending.push(promise),
   });
@@ -136,6 +139,7 @@ describe("BookingService", () => {
     const result = await daySlots();
     expect(result.slots).toEqual([]);
     expect(result.outOfOffice[MONDAY]).toEqual({
+      kind: "away",
       displayName: "Hana Host",
       reason: "ooo_reasons_vacation",
       emoji: "🏝️",

@@ -44,6 +44,7 @@ export default defineConfig({
           GOOGLE_OAUTH_TOKEN_URL: "http://localhost:3298/token",
           GOOGLE_OAUTH_REVOKE_URL: "http://localhost:3298/revoke",
           GOOGLE_CALENDAR_API_URL: "http://localhost:3298/calendar/v3",
+          GOOGLE_CALENDAR_API_KEY: "fake-holiday-key",
           EMAIL_FROM: "cal@example.com",
           RESEND_API_KEY: "fake-resend-key",
           RESEND_API_URL: "http://localhost:3297/emails",

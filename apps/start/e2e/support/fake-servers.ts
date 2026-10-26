@@ -40,6 +40,14 @@ export function startWebhookReceiver(port: number): Server {
   }).listen(port);
 }
 
+/** The fake holiday: the first weekday from the 15th of next month (UTC), as YYYY-MM-DD. */
+export function fakeHolidayDate(): string {
+  const now = new Date();
+  const date = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 15));
+  while (date.getUTCDay() === 0 || date.getUTCDay() === 6) date.setUTCDate(date.getUTCDate() + 1);
+  return date.toISOString().slice(0, 10);
+}
+
 /** Google's OAuth consent/token endpoints and the bits of Calendar API the app uses. */
 export function startFakeGoogle(port: number): Server {
   let counter = 0;
@@ -78,6 +86,16 @@ export function startFakeGoogle(port: number): Server {
       }
       if (url.pathname === "/calendar/v3/freeBusy")
         return json({ calendars: { "me@example.com": { busy: [] } } });
+      // Public holiday calendars are read with an API key; one holiday next month is enough.
+      if (req.method === "GET" && url.pathname.includes("%23holiday")) {
+        const holiday = fakeHolidayDate();
+        const year = url.searchParams.get("timeMin")?.slice(0, 4);
+        return json({
+          items: holiday.startsWith(`${year}-`)
+            ? [{ id: "e2e-founders-day", summary: "Founders Day", start: { date: holiday } }]
+            : [],
+        });
+      }
       if (/^\/calendar\/v3\/calendars\/[^/]+\/events/.test(url.pathname)) {
         if (req.method === "POST")
           return json({ id: `evt-${++counter}`, hangoutLink: `https://meet.google.com/e2e-${counter}` });

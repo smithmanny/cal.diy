@@ -1,5 +1,6 @@
 import type { Page } from "@playwright/test";
-import { signUp } from "./support/helpers";
+import { fakeHolidayDate } from "./support/fake-servers";
+import { hasFakes, signUp } from "./support/helpers";
 import { expect, newClientContext, test } from "./support/test";
 
 /** The first bookable time shown next month, in the visitor's time zone. */
@@ -127,5 +128,28 @@ test("out of office days show the host's reason and note instead of times", asyn
   await guest.reload();
   await guest.getByRole("button", { name: "View next month" }).click();
   await guest.locator("td button:not([disabled])").first().click();
+  await expect(guest.locator("ul li button").first()).toBeVisible();
+});
+
+test("holidays the host takes off can't be booked, and can be switched back on", async ({ page, browser }) => {
+  test.skip(!hasFakes, "needs the fake Google holiday calendar");
+  const { username } = await signUp(page);
+  await page.goto("/settings/my-account/out-of-office");
+  await page.getByLabel("Select country").selectOption({ label: "United Kingdom" });
+  await expect(page.getByTestId("holidays")).toContainText("Founders Day");
+
+  const holiday = fakeHolidayDate();
+  const guest = await (await newClientContext(browser, { timezoneId: "UTC" })).newPage();
+  await guest.goto(`/${username}/30min`);
+  await guest.getByRole("button", { name: "View next month" }).click();
+  await guest.getByRole("button", { name: holiday }).click();
+  await expect(guest.getByText("Founders Day")).toBeVisible();
+  await expect(guest.getByText("No availability on this holiday")).toBeVisible();
+
+  await page.getByTestId("holidays").getByRole("switch").click();
+  await expect(page.getByTestId("holidays").getByRole("switch")).not.toBeChecked();
+  await guest.reload();
+  await guest.getByRole("button", { name: "View next month" }).click();
+  await guest.getByRole("button", { name: holiday }).click();
   await expect(guest.locator("ul li button").first()).toBeVisible();
 });

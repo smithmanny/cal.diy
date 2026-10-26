@@ -1,6 +1,7 @@
 import "@tanstack/react-start/server-only";
 
 import type { Messages } from "~/lib/i18n";
+import { PLURAL_SUFFIXES } from "~/lib/i18n";
 import { DEFAULT_LOCALE, matchLocale } from "~/lib/locales";
 import { readStaticAsset } from "#runtime";
 
@@ -43,8 +44,10 @@ export async function pickMessages(locale: string, keys: readonly string[]): Pro
   ]);
   const picked: Messages = {};
   for (const key of keys) {
-    const message = lookup(primary, key) ?? lookup(fallback, key);
-    if (message !== undefined) picked[key] = message;
+    for (const variant of [key, ...PLURAL_SUFFIXES.map((suffix) => `${key}${suffix}`)]) {
+      const message = lookup(primary, variant) ?? lookup(fallback, variant);
+      if (message !== undefined) picked[variant] = message;
+    }
   }
   return picked;
 }

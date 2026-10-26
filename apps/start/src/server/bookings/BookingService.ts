@@ -9,6 +9,7 @@ import { pickMessages } from "../catalog";
 import { AppError } from "../errors";
 import type { EventTypeRepository } from "../event-types/EventTypeRepository";
 import { type EventLocation, eventLocationSchema } from "../event-types/types";
+import type { HolidayService } from "../holidays/HolidayService";
 import type { OutOfOfficeRepository } from "../out-of-office/OutOfOfficeRepository";
 import type { ScheduleRepository } from "../schedules/ScheduleRepository";
 import { isValidTimeZone } from "../schedules/scheduleMapper";
@@ -36,6 +37,7 @@ type Deps = {
   bookingRepo: BookingRepository;
   travelScheduleRepo: Pick<TravelScheduleRepository, "findByUserId">;
   oooRepo: Pick<OutOfOfficeRepository, "findOverlappingIncludeReasonAndUsers">;
+  holidayService: Pick<HolidayService, "blockedDays">;
   busyTimesProviders?: BusyTimesProvider[];
   listeners?: BookingListener[];
   runInBackground?: (promise: Promise<unknown>) => void;
@@ -149,6 +151,7 @@ export class BookingService {
         Object.entries(outOfOffice).map(([date, day]) => [
           date,
           {
+            kind: day.fromUser ? "away" : "holiday",
             displayName: day.fromUser?.displayName ?? null,
             reason: day.reason ?? null,
             emoji: day.emoji ?? null,
@@ -378,14 +381,19 @@ export class BookingService {
 
     // Like Cal, trips only move the default schedule; a dedicated schedule keeps its own time zone.
     const isDefaultSchedule = !scheduleId || scheduleId === host.defaultScheduleId;
-    const [travel, oooEntries, bookings, ...external] = await Promise.all([
+    const [travel, oooEntries, holidays, bookings, ...external] = await Promise.all([
       isDefaultSchedule ? this.deps.travelScheduleRepo.findByUserId(host.id) : Promise.resolve([]),
       this.deps.oooRepo.findOverlappingIncludeReasonAndUsers(host.id, from, to),
+      this.deps.holidayService.blockedDays(host.id, from, to, schedule.availability),
       this.deps.bookingRepo.findBusyForUser({ userId: host.id, email: host.email, from, to, excludeUid }),
       ...(this.deps.busyTimesProviders ?? []).map((provider) => provider({ userId: host.id, from, to })),
     ]);
 
-    const outOfOffice = outOfOfficeByDate(oooEntries, schedule.availability, this.deps.now?.());
+    // An explicit out-of-office entry wins over a holiday on the same day, as in Cal.
+    const outOfOffice = {
+      ...holidays,
+      ...outOfOfficeByDate(oooEntries, schedule.availability, this.deps.now?.()),
+    };
     const slots = computeAvailableSlots({
       availability: schedule.availability,
       scheduleTimeZone: schedule.timeZone ?? host.timeZone,

@@ -7,10 +7,12 @@ import { PencilIcon, TrashIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { FormError } from "~/components/AuthCard";
 import { selectClass } from "~/components/availability/TimeSelect";
+import { HOLIDAY_MESSAGE_KEYS, HolidaySettings } from "~/components/HolidaySettings";
 import { HydratedFieldset } from "~/components/HydratedFieldset";
 import { errorMessageKey } from "~/lib/errors";
 import { useT } from "~/lib/i18n";
 import { loadMessages } from "~/lib/messages";
+import { getHolidaySettings } from "~/server/holidays/functions";
 import { deleteOutOfOffice, listOutOfOffice, saveOutOfOffice } from "~/server/out-of-office/functions";
 
 const MESSAGE_KEYS = [
@@ -40,6 +42,7 @@ const MESSAGE_KEYS = [
   "ooo_reasons_sick_leave",
   "ooo_reasons_public_holiday",
   "something_went_wrong",
+  ...HOLIDAY_MESSAGE_KEYS,
 ];
 
 type Data = Awaited<ReturnType<typeof listOutOfOffice>>;
@@ -124,7 +127,7 @@ function EntryForm({
 }
 
 function OutOfOfficePage() {
-  const { data } = Route.useLoaderData();
+  const { data, holidays } = Route.useLoaderData();
   const { locale } = Route.useRouteContext();
   const t = useT();
   const router = useRouter();
@@ -210,14 +213,19 @@ function OutOfOfficePage() {
           ))}
         </ul>
       )}
+      {holidays.enabled && <HolidaySettings settings={holidays} locale={locale} />}
     </HydratedFieldset>
   );
 }
 
 export const Route = createFileRoute("/_authed/settings/my-account/out-of-office")({
   loader: async ({ context }) => {
-    const [messages, data] = await Promise.all([loadMessages(context, MESSAGE_KEYS), listOutOfOffice()]);
-    return { messages, data };
+    const [messages, data, holidays] = await Promise.all([
+      loadMessages(context, MESSAGE_KEYS),
+      listOutOfOffice(),
+      getHolidaySettings(),
+    ]);
+    return { messages, data, holidays };
   },
   component: OutOfOfficePage,
 });

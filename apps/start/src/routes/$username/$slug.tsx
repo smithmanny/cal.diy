@@ -43,6 +43,7 @@ const MESSAGE_KEYS = [
   "24_hour_short",
   "ooo_user_is_ooo",
   "ooo_slots_book_with",
+  "holiday_no_availability",
   "ooo_reasons_unspecified",
   "ooo_reasons_vacation",
   "ooo_reasons_travel",

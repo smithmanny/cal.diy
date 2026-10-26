@@ -77,8 +77,12 @@ export type BookingDetailsDto = {
   attendees: { name: string; email: string; timeZone: string }[];
 };
 
-/** What the booker shows for a day the host is away. `reason` is a translation key. */
+/**
+ * What the booker shows for a day the host is away. For "away" days `reason` is a translation key;
+ * for "holiday" days it is the holiday's name.
+ */
 export type OutOfOfficeDayDto = {
+  kind: "away" | "holiday";
   displayName: string | null;
   reason: string | null;
   emoji: string | null;
