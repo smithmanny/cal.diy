@@ -12,7 +12,8 @@
     "deploy:cf": "yarn build:cf && wrangler deploy",
     "cf-typegen": "wrangler types",
     "type-check": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@base-ui/react": "1.0.0",
@@ -39,6 +40,7 @@
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.65.0",
     "@cloudflare/workers-types": "5.20261026.1",
+    "@playwright/test": "1.57.0",
     "@tailwindcss/typography": "0.5.4",
     "@tailwindcss/vite": "4.3.3",
     "@types/node": "20.19.43",

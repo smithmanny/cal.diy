@@ -1,0 +1,49 @@
+import process from "node:process";
+import { expect, type Page } from "@playwright/test";
+
+export const PASSWORD = "Secret123";
+
+/** Fakes (Google, webhook receiver) only exist when Playwright started the dev server itself. */
+export const hasFakes = !process.env.E2E_BASE_URL;
+
+export function uniqueName(prefix: string): string {
+  return `${prefix}${Date.now()}${Math.floor(Math.random() * 1000)}`;
+}
+
+export async function signUp(
+  page: Page,
+  username = uniqueName("user")
+): Promise<{ username: string; email: string }> {
+  const email = `${username}@example.com`;
+  await page.goto("/auth/signup");
+  await page.getByLabel("Username").fill(username);
+  await page.getByLabel("Email address").fill(email);
+  await page.getByLabel("Password").fill(PASSWORD);
+  await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page).toHaveURL(/\/event-types$/);
+  await expect(page.getByRole("heading", { name: "Event types" })).toBeVisible();
+  return { username, email };
+}
+
+/** Books the first free slot next month (always beyond minimum notice) and returns the booking uid. */
+export async function bookFirstSlot(
+  page: Page,
+  username: string,
+  slug: string,
+  guest = { name: "Greta Guest", email: "greta@example.com" }
+) {
+  await page.goto(`/${username}/${slug}`);
+  await page.getByRole("button", { name: "View next month" }).click();
+  const day = page.locator("td button:not([disabled])").first();
+  const date = await day.getAttribute("aria-label");
+  await day.click();
+  const slot = page.locator("ul li button").first();
+  const time = await slot.innerText();
+  await slot.click();
+  await page.getByLabel("Your name").fill(guest.name);
+  await page.getByLabel("Email address").fill(guest.email);
+  await page.getByRole("button", { name: "Confirm" }).click();
+  await expect(page).toHaveURL(/\/booking\//);
+  await expect(page.getByRole("heading", { level: 1, name: /scheduled|submitted/i })).toBeVisible();
+  return { uid: page.url().split("/booking/")[1], date: date ?? "", time };
+}

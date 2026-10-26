@@ -7,3 +7,5 @@ worker-configuration.d.ts
 .env
 .env.local
 public/locales
+test-results
+playwright-report
