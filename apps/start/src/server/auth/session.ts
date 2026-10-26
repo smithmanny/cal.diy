@@ -1,5 +1,6 @@
+import process from "node:process";
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeaders } from "@tanstack/react-start/server";
+import { getRequest, getRequestHeaders } from "@tanstack/react-start/server";
 import { DEFAULT_LOCALE, localeFromAcceptLanguage, matchLocale } from "~/lib/locales";
 import { getAuth } from "./auth";
 
@@ -14,6 +15,8 @@ export type SessionUser = {
 export type RequestContext = {
   user: SessionUser | null;
   locale: string;
+  /** Public origin for links people share (booking pages); behind a proxy the request URL may be internal. */
+  origin: string;
 };
 
 /** One session lookup per navigation; the result is shared with every route through router context. */
@@ -33,6 +36,7 @@ export const getRequestContext = createServerFn({ method: "GET" }).handler(
       : null;
     const userLocale = session?.user.locale ? matchLocale(session.user.locale) : null;
     const locale = userLocale ?? localeFromAcceptLanguage(headers.get("accept-language")) ?? DEFAULT_LOCALE;
-    return { user, locale };
+    const origin = process.env.BETTER_AUTH_URL ?? new URL(getRequest().url).origin;
+    return { user, locale, origin: origin.replace(/\/+$/, "") };
   }
 );

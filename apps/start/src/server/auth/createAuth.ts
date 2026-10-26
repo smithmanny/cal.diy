@@ -8,6 +8,8 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { pickMessages } from "../catalog";
+import { EventTypeRepository } from "../event-types/EventTypeRepository";
+import { EventTypeService } from "../event-types/EventTypeService";
 import { ScheduleRepository } from "../schedules/ScheduleRepository";
 import { ScheduleService } from "../schedules/ScheduleService";
 import { UserRepository } from "../users/UserRepository";
@@ -42,7 +44,9 @@ export const AUTH_ERROR_CODES = {
 
 export function createAuth({ db, baseURL, secret, google }: AuthConfig) {
   const users = new UserRepository(db);
-  const schedules = new ScheduleService({ scheduleRepo: new ScheduleRepository(db), userRepo: users });
+  const scheduleRepo = new ScheduleRepository(db);
+  const schedules = new ScheduleService({ scheduleRepo, userRepo: users });
+  const eventTypes = new EventTypeService({ eventTypeRepo: new EventTypeRepository(db), scheduleRepo });
 
   return betterAuth({
     appName: "Cal.diy",
@@ -110,15 +114,23 @@ export function createAuth({ db, baseURL, secret, google }: AuthConfig) {
               },
             };
           },
-          // Every user needs a schedule before any event type can offer slots.
+          // A schedule and two event types, as Cal's onboarding sets up, so the booking page works right away.
           after: async (createdUser) => {
-            const name =
-              (await pickMessages("en", ["default_schedule_name"])).default_schedule_name ?? "Working hours";
+            const userId = Number(createdUser.id);
+            const messages = await pickMessages("en", [
+              "default_schedule_name",
+              "15min_meeting",
+              "30min_meeting",
+            ]);
             await schedules.createDefault(
-              Number(createdUser.id),
+              userId,
               validTimeZone(createdUser.timeZone) ?? DEFAULT_TIME_ZONE,
-              name
+              messages.default_schedule_name ?? "Working hours"
             );
+            await eventTypes.createDefaults(userId, {
+              fifteen: messages["15min_meeting"] ?? "15 min meeting",
+              thirty: messages["30min_meeting"] ?? "30 min meeting",
+            });
           },
         },
       },

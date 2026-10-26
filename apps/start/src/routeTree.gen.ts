@@ -11,12 +11,13 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthedRouteImport } from './routes/_authed'
-import { Route as AuthedEventTypesRouteImport } from './routes/_authed/event-types'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthSignupRouteImport } from './routes/auth/signup'
 import { Route as AuthedAvailabilityIndexRouteImport } from './routes/_authed/availability/index'
 import { Route as AuthedAvailabilityScheduleIdRouteImport } from './routes/_authed/availability/$scheduleId'
+import { Route as AuthedEventTypesIndexRouteImport } from './routes/_authed/event-types/index'
+import { Route as AuthedEventTypesEventTypeIdRouteImport } from './routes/_authed/event-types/$eventTypeId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const IndexRoute = IndexRouteImport.update({
@@ -27,11 +28,6 @@ const IndexRoute = IndexRouteImport.update({
 const AuthedRoute = AuthedRouteImport.update({
   id: '/_authed',
   getParentRoute: () => rootRouteImport,
-} as any)
-const AuthedEventTypesRoute = AuthedEventTypesRouteImport.update({
-  id: '/event-types',
-  path: '/event-types',
-  getParentRoute: () => AuthedRoute,
 } as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
@@ -59,6 +55,17 @@ const AuthedAvailabilityScheduleIdRoute =
     path: '/availability/$scheduleId',
     getParentRoute: () => AuthedRoute,
   } as any)
+const AuthedEventTypesIndexRoute = AuthedEventTypesIndexRouteImport.update({
+  id: '/event-types/',
+  path: '/event-types/',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedEventTypesEventTypeIdRoute =
+  AuthedEventTypesEventTypeIdRouteImport.update({
+    id: '/event-types/$eventTypeId',
+    path: '/event-types/$eventTypeId',
+    getParentRoute: () => AuthedRoute,
+  } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -67,68 +74,74 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/event-types': typeof AuthedEventTypesRoute
   '/api/health': typeof ApiHealthRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
   '/availability/$scheduleId': typeof AuthedAvailabilityScheduleIdRoute
+  '/event-types/$eventTypeId': typeof AuthedEventTypesEventTypeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/availability/': typeof AuthedAvailabilityIndexRoute
+  '/event-types/': typeof AuthedEventTypesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/event-types': typeof AuthedEventTypesRoute
   '/api/health': typeof ApiHealthRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
   '/availability/$scheduleId': typeof AuthedAvailabilityScheduleIdRoute
+  '/event-types/$eventTypeId': typeof AuthedEventTypesEventTypeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/availability': typeof AuthedAvailabilityIndexRoute
+  '/event-types': typeof AuthedEventTypesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authed': typeof AuthedRouteWithChildren
-  '/_authed/event-types': typeof AuthedEventTypesRoute
   '/api/health': typeof ApiHealthRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
   '/_authed/availability/$scheduleId': typeof AuthedAvailabilityScheduleIdRoute
+  '/_authed/event-types/$eventTypeId': typeof AuthedEventTypesEventTypeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/_authed/availability/': typeof AuthedAvailabilityIndexRoute
+  '/_authed/event-types/': typeof AuthedEventTypesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/event-types'
     | '/api/health'
     | '/auth/login'
     | '/auth/signup'
     | '/availability/$scheduleId'
+    | '/event-types/$eventTypeId'
     | '/api/auth/$'
     | '/availability/'
+    | '/event-types/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/event-types'
     | '/api/health'
     | '/auth/login'
     | '/auth/signup'
     | '/availability/$scheduleId'
+    | '/event-types/$eventTypeId'
     | '/api/auth/$'
     | '/availability'
+    | '/event-types'
   id:
     | '__root__'
     | '/'
     | '/_authed'
-    | '/_authed/event-types'
     | '/api/health'
     | '/auth/login'
     | '/auth/signup'
     | '/_authed/availability/$scheduleId'
+    | '/_authed/event-types/$eventTypeId'
     | '/api/auth/$'
     | '/_authed/availability/'
+    | '/_authed/event-types/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -155,13 +168,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof AuthedRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/_authed/event-types': {
-      id: '/_authed/event-types'
-      path: '/event-types'
-      fullPath: '/event-types'
-      preLoaderRoute: typeof AuthedEventTypesRouteImport
-      parentRoute: typeof AuthedRoute
     }
     '/api/health': {
       id: '/api/health'
@@ -198,6 +204,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedAvailabilityScheduleIdRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/event-types/': {
+      id: '/_authed/event-types/'
+      path: '/event-types'
+      fullPath: '/event-types/'
+      preLoaderRoute: typeof AuthedEventTypesIndexRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/event-types/$eventTypeId': {
+      id: '/_authed/event-types/$eventTypeId'
+      path: '/event-types/$eventTypeId'
+      fullPath: '/event-types/$eventTypeId'
+      preLoaderRoute: typeof AuthedEventTypesEventTypeIdRouteImport
+      parentRoute: typeof AuthedRoute
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -209,15 +229,17 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthedRouteChildren {
-  AuthedEventTypesRoute: typeof AuthedEventTypesRoute
   AuthedAvailabilityScheduleIdRoute: typeof AuthedAvailabilityScheduleIdRoute
+  AuthedEventTypesEventTypeIdRoute: typeof AuthedEventTypesEventTypeIdRoute
   AuthedAvailabilityIndexRoute: typeof AuthedAvailabilityIndexRoute
+  AuthedEventTypesIndexRoute: typeof AuthedEventTypesIndexRoute
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
-  AuthedEventTypesRoute: AuthedEventTypesRoute,
   AuthedAvailabilityScheduleIdRoute: AuthedAvailabilityScheduleIdRoute,
+  AuthedEventTypesEventTypeIdRoute: AuthedEventTypesEventTypeIdRoute,
   AuthedAvailabilityIndexRoute: AuthedAvailabilityIndexRoute,
+  AuthedEventTypesIndexRoute: AuthedEventTypesIndexRoute,
 }
 
 const AuthedRouteWithChildren =

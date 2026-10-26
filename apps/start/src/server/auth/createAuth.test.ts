@@ -1,5 +1,5 @@
 import type { Database } from "@calcom/db/database";
-import { account, schedule, user } from "@calcom/db/schema";
+import { account, eventType, schedule, user } from "@calcom/db/schema";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createTestDb } from "../../test/testDb";
@@ -54,7 +54,7 @@ describe("createAuth", () => {
     expect(credential.password).not.toContain(VALID_PASSWORD);
   });
 
-  it("gives new users a default Mon-Fri 9-5 schedule in their time zone", async () => {
+  it("gives new users a default Mon-Fri 9-5 schedule in their time zone and default event types", async () => {
     const result = await signUp({ email: "tz@example.com", username: "tz", timeZone: "Asia/Kolkata" });
 
     const [row] = await db
@@ -66,6 +66,11 @@ describe("createAuth", () => {
       .from(schedule);
     expect(schedules).toEqual([
       { id: row.defaultScheduleId, name: "Working hours", timeZone: "Asia/Kolkata" },
+    ]);
+    const eventTypes = await db.select({ slug: eventType.slug, title: eventType.title }).from(eventType);
+    expect(eventTypes).toEqual([
+      { slug: "30min", title: "30 min meeting" },
+      { slug: "15min", title: "15 min meeting" },
     ]);
   });
 

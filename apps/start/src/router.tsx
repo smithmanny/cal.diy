@@ -5,7 +5,7 @@ export function getRouter() {
   return createRouter({
     routeTree,
     // Filled in by the root route's beforeLoad (session + locale).
-    context: { user: null, locale: "en" },
+    context: { user: null, locale: "en", origin: "" },
     scrollRestoration: true,
     defaultPreload: "intent",
   });

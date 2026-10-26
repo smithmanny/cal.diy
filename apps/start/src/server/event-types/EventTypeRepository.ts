@@ -1,0 +1,101 @@
+import "@tanstack/react-start/server-only";
+import type { Database } from "@calcom/db/database";
+import { eventType } from "@calcom/db/schema";
+import { and, asc, desc, eq, max, ne } from "drizzle-orm";
+
+const summaryColumns = {
+  id: eventType.id,
+  title: eventType.title,
+  slug: eventType.slug,
+  length: eventType.length,
+  hidden: eventType.hidden,
+  description: eventType.description,
+};
+
+const detailColumns = {
+  ...summaryColumns,
+  userId: eventType.userId,
+  scheduleId: eventType.scheduleId,
+  locations: eventType.locations,
+  minimumBookingNotice: eventType.minimumBookingNotice,
+  beforeEventBuffer: eventType.beforeEventBuffer,
+  afterEventBuffer: eventType.afterEventBuffer,
+  slotInterval: eventType.slotInterval,
+  periodType: eventType.periodType,
+  periodDays: eventType.periodDays,
+  periodCountCalendarDays: eventType.periodCountCalendarDays,
+  requiresConfirmation: eventType.requiresConfirmation,
+};
+
+type WritableColumns = Partial<Omit<typeof eventType.$inferInsert, "id" | "userId" | "teamId">>;
+
+export type EventTypeRow = NonNullable<Awaited<ReturnType<EventTypeRepository["findById"]>>>;
+
+export class EventTypeRepository {
+  constructor(private readonly db: Database) {}
+
+  findManyByUserId(userId: number) {
+    return this.db
+      .select(summaryColumns)
+      .from(eventType)
+      .where(eq(eventType.userId, userId))
+      .orderBy(desc(eventType.position), asc(eventType.id));
+  }
+
+  async findById(id: number) {
+    const [found] = await this.db.select(detailColumns).from(eventType).where(eq(eventType.id, id)).limit(1);
+    return found ?? null;
+  }
+
+  async findByUserIdAndSlug(userId: number, slug: string) {
+    const [found] = await this.db
+      .select(detailColumns)
+      .from(eventType)
+      .where(and(eq(eventType.userId, userId), eq(eventType.slug, slug)))
+      .limit(1);
+    return found ?? null;
+  }
+
+  async slugExistsForUser(userId: number, slug: string, excludeId?: number): Promise<boolean> {
+    const conditions = [eq(eventType.userId, userId), eq(eventType.slug, slug)];
+    if (excludeId !== undefined) conditions.push(ne(eventType.id, excludeId));
+    const [found] = await this.db
+      .select({ id: eventType.id })
+      .from(eventType)
+      .where(and(...conditions))
+      .limit(1);
+    return Boolean(found);
+  }
+
+  async findMaxPositionForUser(userId: number): Promise<number> {
+    const [row] = await this.db
+      .select({ position: max(eventType.position) })
+      .from(eventType)
+      .where(eq(eventType.userId, userId));
+    return row?.position ?? 0;
+  }
+
+  async create(userId: number, data: WritableColumns & { title: string; slug: string; length: number }) {
+    const [created] = await this.db
+      .insert(eventType)
+      .values({ ...data, userId })
+      .returning({ id: eventType.id });
+    return created;
+  }
+
+  async createMany(
+    userId: number,
+    rows: (WritableColumns & { title: string; slug: string; length: number })[]
+  ) {
+    if (!rows.length) return;
+    await this.db.insert(eventType).values(rows.map((row) => ({ ...row, userId })));
+  }
+
+  async update(id: number, data: WritableColumns) {
+    await this.db.update(eventType).set(data).where(eq(eventType.id, id));
+  }
+
+  async deleteById(id: number) {
+    await this.db.delete(eventType).where(eq(eventType.id, id));
+  }
+}
