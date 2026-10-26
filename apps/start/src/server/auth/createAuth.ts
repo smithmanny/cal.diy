@@ -35,6 +35,8 @@ export type AuthConfig = {
   baseURL: string;
   secret: string;
   google?: { clientId: string; clientSecret: string };
+  /** Headers the runtime guarantees hold the real client IP; rate limiting is keyed on it. */
+  clientIpHeaders: string[];
 };
 
 // Error codes are i18n keys from packages/i18n/locales/en/common.json; the client translates them.
@@ -43,7 +45,7 @@ export const AUTH_ERROR_CODES = {
   usernameTaken: "username_already_taken",
 } as const;
 
-export function createAuth({ db, baseURL, secret, google }: AuthConfig) {
+export function createAuth({ db, baseURL, secret, google, clientIpHeaders }: AuthConfig) {
   const users = new UserRepository(db);
   const scheduleRepo = new ScheduleRepository(db);
   const schedules = new ScheduleService({ scheduleRepo, userRepo: users });
@@ -58,6 +60,9 @@ export function createAuth({ db, baseURL, secret, google }: AuthConfig) {
       // Cal's users.id (and every foreign key to it) is an integer, so all auth ids are serial too.
       database: { generateId: "serial" },
       cookiePrefix: "cal",
+      // Without a trustworthy IP, Better Auth puts every client in one rate-limit bucket, so a few
+      // failed sign-ins anywhere would lock everyone out.
+      ipAddress: { ipAddressHeaders: clientIpHeaders },
     },
     user: {
       fields: { image: "avatarUrl", createdAt: "createdDate" },

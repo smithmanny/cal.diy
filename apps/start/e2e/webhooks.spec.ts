@@ -1,7 +1,7 @@
-import { expect, test } from "@playwright/test";
 import { WEBHOOK_SECRET } from "./support/fake-servers";
 import { WEBHOOK_RECEIVER_PORT } from "./support/global-setup";
 import { bookFirstSlot, hasFakes, signUp } from "./support/helpers";
+import { expect, newClientContext, test } from "./support/test";
 
 test.skip(!hasFakes, "needs the local webhook receiver");
 
@@ -20,7 +20,7 @@ test("webhooks get signed BOOKING_CREATED and BOOKING_CANCELLED deliveries", asy
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.locator("ul > li")).toContainText(String(WEBHOOK_RECEIVER_PORT));
 
-  const guest = await (await browser.newContext()).newPage();
+  const guest = await (await newClientContext(browser)).newPage();
   const { uid } = await bookFirstSlot(guest, username, "30min");
   await guest.getByRole("button", { name: "Cancel", exact: true }).click();
   await guest.getByRole("button", { name: "Cancel event" }).click();

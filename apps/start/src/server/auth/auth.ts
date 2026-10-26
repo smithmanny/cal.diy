@@ -3,6 +3,7 @@ import "@tanstack/react-start/server-only";
 import process from "node:process";
 import { getDb } from "../db";
 import { type Auth, createAuth } from "./createAuth";
+import { CLIENT_IP_HEADERS } from "#runtime";
 
 let authPromise: Promise<Auth> | undefined;
 
@@ -22,6 +23,7 @@ async function init(): Promise<Auth> {
     db: await getDb(),
     baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
     secret: readSecret(),
+    clientIpHeaders: CLIENT_IP_HEADERS,
     google:
       GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET
         ? { clientId: GOOGLE_CLIENT_ID, clientSecret: GOOGLE_CLIENT_SECRET }

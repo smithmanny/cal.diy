@@ -1,13 +1,13 @@
-import { expect, test } from "@playwright/test";
 import { bookFirstSlot, signUp } from "./support/helpers";
+import { expect, newClientContext, test } from "./support/test";
 
 test("a guest in another time zone books, the slot disappears, then reschedules and cancels", async ({
   browser,
 }) => {
-  const hostContext = await browser.newContext({ timezoneId: "America/New_York" });
+  const hostContext = await newClientContext(browser, { timezoneId: "America/New_York" });
   const { username } = await signUp(await hostContext.newPage());
 
-  const guestContext = await browser.newContext({ timezoneId: "Europe/Berlin", locale: "en-GB" });
+  const guestContext = await newClientContext(browser, { timezoneId: "Europe/Berlin", locale: "en-GB" });
   const guest = await guestContext.newPage();
   await guest.goto(`/${username}`);
   await expect(guest.locator("main li")).toHaveCount(2);

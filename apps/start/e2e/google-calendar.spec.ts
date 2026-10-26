@@ -1,5 +1,5 @@
-import { expect, test } from "@playwright/test";
 import { bookFirstSlot, hasFakes, signUp } from "./support/helpers";
+import { expect, newClientContext, test } from "./support/test";
 
 test.skip(!hasFakes, "needs the fake Google endpoints");
 
@@ -18,7 +18,7 @@ test("connecting Google Calendar and booking a Google Meet event", async ({ page
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.getByRole("status")).toBeVisible();
 
-  const guest = await (await browser.newContext()).newPage();
+  const guest = await (await newClientContext(browser)).newPage();
   await bookFirstSlot(guest, username, "30min");
   await expect
     .poll(async () => {

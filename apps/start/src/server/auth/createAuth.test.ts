@@ -12,7 +12,12 @@ let auth: ReturnType<typeof createAuth>;
 
 beforeEach(async () => {
   db = await createTestDb();
-  auth = createAuth({ db, baseURL: "http://localhost:3000", secret: "test-secret-that-is-long-enough-123" });
+  auth = createAuth({
+    db,
+    baseURL: "http://localhost:3000",
+    secret: "test-secret-that-is-long-enough-123",
+    clientIpHeaders: ["x-cal-client-ip"],
+  });
 });
 
 function signUp(body: { email: string; password?: string; username?: string; timeZone?: string }) {

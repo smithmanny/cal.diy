@@ -1,5 +1,5 @@
-import { expect, test } from "@playwright/test";
 import { signUp } from "./support/helpers";
+import { expect, test } from "./support/test";
 
 test("default event types, create, edit with locations and limits, unique URLs, hide and delete", async ({
   page,

@@ -16,6 +16,12 @@ describe("authErrorKey", () => {
     expect(authErrorKey({ code: "SOMETHING_NEW" })).toBe("something_went_wrong");
     expect(authErrorKey(null)).toBe("something_went_wrong");
   });
+
+  it("explains rate limiting instead of a generic failure", () => {
+    expect(authErrorKey({ status: 429, message: "Too many requests. Please try again later." })).toBe(
+      "too_many_attempts"
+    );
+  });
 });
 
 describe("safeCallbackUrl", () => {

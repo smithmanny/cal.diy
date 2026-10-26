@@ -1,5 +1,5 @@
-import { expect, test } from "@playwright/test";
 import { signUp } from "./support/helpers";
+import { expect, test } from "./support/test";
 
 test.use({ timezoneId: "America/New_York" });
 

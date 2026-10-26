@@ -1,8 +1,8 @@
-import { expect, test } from "@playwright/test";
 import { bookFirstSlot, signUp } from "./support/helpers";
+import { expect, newClientContext, test } from "./support/test";
 
 test("hosts confirm requested bookings and cancel upcoming ones", async ({ browser }) => {
-  const host = await (await browser.newContext({ timezoneId: "America/New_York" })).newPage();
+  const host = await (await newClientContext(browser, { timezoneId: "America/New_York" })).newPage();
   host.on("dialog", (dialog) => dialog.accept(dialog.type() === "prompt" ? "Out sick" : undefined));
   const { username } = await signUp(host);
   await host.locator("ul > li").filter({ hasText: "30 min meeting" }).getByRole("link").first().click();
@@ -10,7 +10,7 @@ test("hosts confirm requested bookings and cancel upcoming ones", async ({ brows
   await host.getByRole("button", { name: "Save" }).click();
   await expect(host.getByRole("status")).toBeVisible();
 
-  const guest = await (await browser.newContext()).newPage();
+  const guest = await (await newClientContext(browser)).newPage();
   await bookFirstSlot(guest, username, "30min");
   await expect(guest.getByRole("heading", { level: 1 })).toHaveText("Your booking has been submitted");
   await bookFirstSlot(guest, username, "15min");

@@ -1,5 +1,6 @@
-import { expect, test } from "@playwright/test";
+import process from "node:process";
 import { PASSWORD, signUp, uniqueName } from "./support/helpers";
+import { expect, test } from "./support/test";
 
 test("protected pages redirect to login and keep the destination", async ({ page }) => {
   await page.goto("/event-types");
@@ -75,4 +76,18 @@ test("server functions reject cross-site requests", async ({ page, request }) =>
     data: {},
   });
   expect(sameOrigin.status()).not.toBe(403);
+});
+
+test("repeated failed sign-ins are rate limited per client with a clear message", async ({ page }) => {
+  test.skip(!process.env.E2E_BASE_URL, "rate limiting is only on in production builds");
+  await page.goto("/auth/login");
+  await page.getByLabel("Email address").fill(`${uniqueName("limited")}@example.com`);
+  await page.getByLabel("Password").fill("Wrong1234");
+  const signIn = page.getByRole("button", { name: "Sign in" });
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await signIn.click();
+    await expect(page.getByRole("alert")).toHaveText("Email or password is incorrect.");
+  }
+  await signIn.click();
+  await expect(page.getByRole("alert")).toHaveText("Too many attempts. Please wait a moment and try again.");
 });

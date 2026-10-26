@@ -3,8 +3,11 @@ import { expect, type Page } from "@playwright/test";
 
 export const PASSWORD = "Secret123";
 
-/** Fakes (Google, webhook receiver) only exist when Playwright started the dev server itself. */
-export const hasFakes = !process.env.E2E_BASE_URL;
+/**
+ * The fake Google and webhook receiver always run on localhost, but an external server only uses
+ * them if it was started with the fake Google URLs; E2E_FAKES=1 says it was.
+ */
+export const hasFakes = !process.env.E2E_BASE_URL || process.env.E2E_FAKES === "1";
 
 export function uniqueName(prefix: string): string {
   return `${prefix}${Date.now()}${Math.floor(Math.random() * 1000)}`;

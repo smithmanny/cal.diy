@@ -7,6 +7,9 @@ import { createD1Database } from "@calcom/db/drivers/d1";
 
 let db: Database | undefined;
 
+/** Cloudflare sets this from the connecting socket and overwrites any value the client sent. */
+export const CLIENT_IP_HEADERS = ["cf-connecting-ip"];
+
 export async function getDb(): Promise<Database> {
   db ??= createD1Database(env.DB);
   return db;

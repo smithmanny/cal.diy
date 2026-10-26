@@ -1878,6 +1878,7 @@
   "download_for_linux": "Linux",
   "set_ping_link": "Set Ping link",
   "rate_limit_exceeded": "Rate limit exceeded",
+  "too_many_attempts": "Too many attempts. Please wait a moment and try again.",
   "when_something_happens": "When something happens",
   "action_is_performed": "An action is performed",
   "test_action": "Test action",

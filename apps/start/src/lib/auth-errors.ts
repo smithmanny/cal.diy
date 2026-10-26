@@ -9,13 +9,18 @@ const BETTER_AUTH_CODE_TO_KEY: Record<string, string> = {
 
 export const AUTH_ERROR_MESSAGE_KEYS = [
   ...new Set(Object.values(BETTER_AUTH_CODE_TO_KEY)),
+  "too_many_attempts",
   "invalid_password_hint",
   "username_already_taken",
   "something_went_wrong",
 ];
 
-export function authErrorKey(error: { code?: string; message?: string } | null | undefined): string {
+export function authErrorKey(
+  error: { code?: string; message?: string; status?: number } | null | undefined
+): string {
   if (!error) return "something_went_wrong";
+  // Better Auth's rate limiter answers with a bare 429 and no error code.
+  if (error.status === 429) return "too_many_attempts";
   if (error.code && BETTER_AUTH_CODE_TO_KEY[error.code]) return BETTER_AUTH_CODE_TO_KEY[error.code];
   if (error.code && AUTH_ERROR_MESSAGE_KEYS.includes(error.code.toLowerCase()))
     return error.code.toLowerCase();

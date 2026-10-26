@@ -13,6 +13,9 @@ const STATIC_DIR = resolve(process.cwd(), process.env.NODE_ENV === "production" 
 
 let dbPromise: Promise<Database> | undefined;
 
+/** server.node.mjs sets this from the socket (or a trusted proxy), overwriting any client value. */
+export const CLIENT_IP_HEADERS = ["x-cal-client-ip"];
+
 async function init(): Promise<Database> {
   const options = {
     url: process.env.DATABASE_URL ?? "file:./data/cal.db",
