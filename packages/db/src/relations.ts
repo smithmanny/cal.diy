@@ -164,14 +164,6 @@ export const destinationCalendarRelations = relations(t.destinationCalendar, ({ 
   }),
 }));
 
-export const userPasswordRelations = relations(t.userPassword, ({ one }) => ({
-  user: one(t.user, {
-    fields: [t.userPassword.userId],
-    references: [t.user.id],
-    relationName: "UserToUserPassword",
-  }),
-}));
-
 export const travelScheduleRelations = relations(t.travelSchedule, ({ one }) => ({
   user: one(t.user, {
     fields: [t.travelSchedule.userId],
@@ -181,7 +173,6 @@ export const travelScheduleRelations = relations(t.travelSchedule, ({ one }) => 
 }));
 
 export const userRelations = relations(t.user, ({ one, many }) => ({
-  password: one(t.userPassword),
   travelSchedules: many(t.travelSchedule, { relationName: "TravelScheduleToUser" }),
   eventTypes: many(t.eventType, { relationName: "user_eventtype" }),
   credentials: many(t.credential, { relationName: "CredentialToUser" }),

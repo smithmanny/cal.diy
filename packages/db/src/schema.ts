@@ -460,14 +460,6 @@ export const destinationCalendar = sqliteTable(
   ]
 );
 
-export const userPassword = sqliteTable("UserPassword", {
-  hash: text("hash").notNull(),
-  userId: integer("userId")
-    .notNull()
-    .unique("UserPassword_userId_key")
-    .references((): AnySQLiteColumn => user.id, { onDelete: "cascade", onUpdate: "cascade" }),
-});
-
 export const travelSchedule = sqliteTable(
   "TravelSchedule",
   {
@@ -497,7 +489,8 @@ export const user = sqliteTable(
     username: text("username"),
     name: text("name"),
     email: text("email").notNull().unique("users_email_key"),
-    emailVerified: integer("emailVerified", { mode: "timestamp_ms" }),
+    // Owned by Better Auth, which tracks verification as a flag rather than a timestamp.
+    emailVerified: integer("emailVerified", { mode: "boolean" }).notNull().default(false),
     bio: text("bio"),
     avatarUrl: text("avatarUrl"),
     timeZone: text("timeZone").notNull().default("Europe/London"),
@@ -509,6 +502,10 @@ export const user = sqliteTable(
     createdDate: integer("created", { mode: "timestamp_ms" })
       .notNull()
       .$defaultFn(() => new Date()),
+    updatedAt: integer("updatedAt", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
     trialEndsAt: integer("trialEndsAt", { mode: "timestamp_ms" }),
     lastActiveAt: integer("lastActiveAt", { mode: "timestamp_ms" }),
     defaultScheduleId: integer("defaultScheduleId"),
@@ -1310,43 +1307,79 @@ export const hashedLink = sqliteTable(
   (t) => [index("HashedLink_eventTypeId_idx").on(t.eventTypeId)]
 );
 
+// Better Auth `account`: one row per sign-in method. Email/password logins are the
+// `credential` provider and keep their hash in `password` (this replaces UserPassword).
 export const account = sqliteTable(
   "Account",
   {
-    id: text("id").primaryKey().$defaultFn(cuid),
+    id: integer("id").primaryKey({ autoIncrement: true }),
     userId: integer("userId")
       .notNull()
       .references((): AnySQLiteColumn => user.id, { onDelete: "cascade", onUpdate: "cascade" }),
-    type: text("type").notNull(),
-    provider: text("provider").notNull(),
-    providerAccountId: text("providerAccountId").notNull(),
-    providerEmail: text("providerEmail"),
-    refresh_token: text("refresh_token"),
-    access_token: text("access_token"),
-    expires_at: integer("expires_at"),
-    token_type: text("token_type"),
+    providerId: text("providerId").notNull(),
+    accountId: text("accountId").notNull(),
+    accessToken: text("accessToken"),
+    refreshToken: text("refreshToken"),
+    idToken: text("idToken"),
+    accessTokenExpiresAt: integer("accessTokenExpiresAt", { mode: "timestamp_ms" }),
+    refreshTokenExpiresAt: integer("refreshTokenExpiresAt", { mode: "timestamp_ms" }),
     scope: text("scope"),
-    id_token: text("id_token"),
-    session_state: text("session_state"),
+    password: text("password"),
+    createdAt: integer("createdAt", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: integer("updatedAt", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
   },
   (t) => [
     index("Account_userId_idx").on(t.userId),
-    index("Account_type_idx").on(t.type),
-    uniqueIndex("Account_provider_providerAccountId_key").on(t.provider, t.providerAccountId),
+    uniqueIndex("Account_providerId_accountId_key").on(t.providerId, t.accountId),
   ]
 );
 
+// Better Auth `session`.
 export const session = sqliteTable(
   "Session",
   {
-    id: text("id").primaryKey().$defaultFn(cuid),
-    sessionToken: text("sessionToken").notNull().unique("Session_sessionToken_key"),
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    token: text("token").notNull().unique("Session_token_key"),
     userId: integer("userId")
       .notNull()
       .references((): AnySQLiteColumn => user.id, { onDelete: "cascade", onUpdate: "cascade" }),
-    expires: integer("expires", { mode: "timestamp_ms" }).notNull(),
+    expiresAt: integer("expiresAt", { mode: "timestamp_ms" }).notNull(),
+    ipAddress: text("ipAddress"),
+    userAgent: text("userAgent"),
+    createdAt: integer("createdAt", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: integer("updatedAt", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
   },
   (t) => [index("Session_userId_idx").on(t.userId)]
+);
+
+// Better Auth `verification`: short-lived tokens for its own flows (password reset, OAuth state).
+// Cal's VerificationToken stays for team invites and secondary emails.
+export const verification = sqliteTable(
+  "Verification",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    identifier: text("identifier").notNull(),
+    value: text("value").notNull(),
+    expiresAt: integer("expiresAt", { mode: "timestamp_ms" }).notNull(),
+    createdAt: integer("createdAt", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    updatedAt: integer("updatedAt", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
+  },
+  (t) => [index("Verification_identifier_idx").on(t.identifier)]
 );
 
 export const app = sqliteTable(
@@ -2993,8 +3026,6 @@ export type Credential = typeof credential.$inferSelect;
 export type NewCredential = typeof credential.$inferInsert;
 export type DestinationCalendar = typeof destinationCalendar.$inferSelect;
 export type NewDestinationCalendar = typeof destinationCalendar.$inferInsert;
-export type UserPassword = typeof userPassword.$inferSelect;
-export type NewUserPassword = typeof userPassword.$inferInsert;
 export type TravelSchedule = typeof travelSchedule.$inferSelect;
 export type NewTravelSchedule = typeof travelSchedule.$inferInsert;
 export type User = typeof user.$inferSelect;
@@ -3053,6 +3084,8 @@ export type Account = typeof account.$inferSelect;
 export type NewAccount = typeof account.$inferInsert;
 export type Session = typeof session.$inferSelect;
 export type NewSession = typeof session.$inferInsert;
+export type Verification = typeof verification.$inferSelect;
+export type NewVerification = typeof verification.$inferInsert;
 export type App = typeof app.$inferSelect;
 export type NewApp = typeof app.$inferInsert;
 export type Feedback = typeof feedback.$inferSelect;

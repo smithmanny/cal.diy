@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "5fa65c59-5868-458d-9aa1-bfc986a071b9",
+  "id": "fc2a259e-c0f0-4449-a663-bd5f8cbbeea5",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "AccessCode": {
@@ -78,8 +78,12 @@
           "name": "AccessCode_clientId_OAuthClient_clientId_fk",
           "tableFrom": "AccessCode",
           "tableTo": "OAuthClient",
-          "columnsFrom": ["clientId"],
-          "columnsTo": ["clientId"],
+          "columnsFrom": [
+            "clientId"
+          ],
+          "columnsTo": [
+            "clientId"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -87,8 +91,12 @@
           "name": "AccessCode_userId_users_id_fk",
           "tableFrom": "AccessCode",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -96,8 +104,12 @@
           "name": "AccessCode_teamId_Team_id_fk",
           "tableFrom": "AccessCode",
           "tableTo": "Team",
-          "columnsFrom": ["teamId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "teamId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -155,7 +167,9 @@
       "indexes": {
         "AccessToken_secret_key": {
           "name": "AccessToken_secret_key",
-          "columns": ["secret"],
+          "columns": [
+            "secret"
+          ],
           "isUnique": true
         }
       },
@@ -164,8 +178,12 @@
           "name": "AccessToken_platformOAuthClientId_PlatformOAuthClient_id_fk",
           "tableFrom": "AccessToken",
           "tableTo": "PlatformOAuthClient",
-          "columnsFrom": ["platformOAuthClientId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "platformOAuthClientId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -173,8 +191,12 @@
           "name": "AccessToken_userId_users_id_fk",
           "tableFrom": "AccessToken",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -188,10 +210,10 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "text",
+          "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": true
         },
         "userId": {
           "name": "userId",
@@ -200,58 +222,51 @@
           "notNull": true,
           "autoincrement": false
         },
-        "type": {
-          "name": "type",
+        "providerId": {
+          "name": "providerId",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "provider": {
-          "name": "provider",
+        "accountId": {
+          "name": "accountId",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "providerAccountId": {
-          "name": "providerAccountId",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "providerEmail": {
-          "name": "providerEmail",
+        "accessToken": {
+          "name": "accessToken",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
         },
-        "refresh_token": {
-          "name": "refresh_token",
+        "refreshToken": {
+          "name": "refreshToken",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
         },
-        "access_token": {
-          "name": "access_token",
+        "idToken": {
+          "name": "idToken",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
         },
-        "expires_at": {
-          "name": "expires_at",
+        "accessTokenExpiresAt": {
+          "name": "accessTokenExpiresAt",
           "type": "integer",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
         },
-        "token_type": {
-          "name": "token_type",
-          "type": "text",
+        "refreshTokenExpiresAt": {
+          "name": "refreshTokenExpiresAt",
+          "type": "integer",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
@@ -263,35 +278,42 @@
           "notNull": false,
           "autoincrement": false
         },
-        "id_token": {
-          "name": "id_token",
+        "password": {
+          "name": "password",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false
         },
-        "session_state": {
-          "name": "session_state",
-          "type": "text",
+        "createdAt": {
+          "name": "createdAt",
+          "type": "integer",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updatedAt": {
+          "name": "updatedAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
           "autoincrement": false
         }
       },
       "indexes": {
         "Account_userId_idx": {
           "name": "Account_userId_idx",
-          "columns": ["userId"],
+          "columns": [
+            "userId"
+          ],
           "isUnique": false
         },
-        "Account_type_idx": {
-          "name": "Account_type_idx",
-          "columns": ["type"],
-          "isUnique": false
-        },
-        "Account_provider_providerAccountId_key": {
-          "name": "Account_provider_providerAccountId_key",
-          "columns": ["provider", "providerAccountId"],
+        "Account_providerId_accountId_key": {
+          "name": "Account_providerId_accountId_key",
+          "columns": [
+            "providerId",
+            "accountId"
+          ],
           "isUnique": true
         }
       },
@@ -300,8 +322,12 @@
           "name": "Account_userId_users_id_fk",
           "tableFrom": "Account",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -388,27 +414,37 @@
       "indexes": {
         "Agent_providerAgentId_key": {
           "name": "Agent_providerAgentId_key",
-          "columns": ["providerAgentId"],
+          "columns": [
+            "providerAgentId"
+          ],
           "isUnique": true
         },
         "Agent_userId_idx": {
           "name": "Agent_userId_idx",
-          "columns": ["userId"],
+          "columns": [
+            "userId"
+          ],
           "isUnique": false
         },
         "Agent_teamId_idx": {
           "name": "Agent_teamId_idx",
-          "columns": ["teamId"],
+          "columns": [
+            "teamId"
+          ],
           "isUnique": false
         },
         "Agent_inboundEventTypeId_idx": {
           "name": "Agent_inboundEventTypeId_idx",
-          "columns": ["inboundEventTypeId"],
+          "columns": [
+            "inboundEventTypeId"
+          ],
           "isUnique": false
         },
         "Agent_outboundEventTypeId_idx": {
           "name": "Agent_outboundEventTypeId_idx",
-          "columns": ["outboundEventTypeId"],
+          "columns": [
+            "outboundEventTypeId"
+          ],
           "isUnique": false
         }
       },
@@ -417,8 +453,12 @@
           "name": "Agent_userId_users_id_fk",
           "tableFrom": "Agent",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -426,8 +466,12 @@
           "name": "Agent_teamId_Team_id_fk",
           "tableFrom": "Agent",
           "tableTo": "Team",
-          "columnsFrom": ["teamId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "teamId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -506,12 +550,16 @@
       "indexes": {
         "ApiKey_hashedKey_key": {
           "name": "ApiKey_hashedKey_key",
-          "columns": ["hashedKey"],
+          "columns": [
+            "hashedKey"
+          ],
           "isUnique": true
         },
         "ApiKey_userId_idx": {
           "name": "ApiKey_userId_idx",
-          "columns": ["userId"],
+          "columns": [
+            "userId"
+          ],
           "isUnique": false
         }
       },
@@ -520,8 +568,12 @@
           "name": "ApiKey_userId_users_id_fk",
           "tableFrom": "ApiKey",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -529,8 +581,12 @@
           "name": "ApiKey_teamId_Team_id_fk",
           "tableFrom": "ApiKey",
           "tableTo": "Team",
-          "columnsFrom": ["teamId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "teamId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -538,8 +594,12 @@
           "name": "ApiKey_appId_App_slug_fk",
           "tableFrom": "ApiKey",
           "tableTo": "App",
-          "columnsFrom": ["appId"],
-          "columnsTo": ["slug"],
+          "columnsFrom": [
+            "appId"
+          ],
+          "columnsTo": [
+            "slug"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -605,12 +665,16 @@
       "indexes": {
         "App_dirName_key": {
           "name": "App_dirName_key",
-          "columns": ["dirName"],
+          "columns": [
+            "dirName"
+          ],
           "isUnique": true
         },
         "App_enabled_idx": {
           "name": "App_enabled_idx",
-          "columns": ["enabled"],
+          "columns": [
+            "enabled"
+          ],
           "isUnique": false
         }
       },
@@ -661,7 +725,9 @@
       "indexes": {
         "AssignmentReason_bookingId_idx": {
           "name": "AssignmentReason_bookingId_idx",
-          "columns": ["bookingId"],
+          "columns": [
+            "bookingId"
+          ],
           "isUnique": false
         }
       },
@@ -670,8 +736,12 @@
           "name": "AssignmentReason_bookingId_Booking_id_fk",
           "tableFrom": "AssignmentReason",
           "tableTo": "Booking",
-          "columnsFrom": ["bookingId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "bookingId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -745,17 +815,24 @@
       "indexes": {
         "Attendee_email_idx": {
           "name": "Attendee_email_idx",
-          "columns": ["email"],
+          "columns": [
+            "email"
+          ],
           "isUnique": false
         },
         "Attendee_bookingId_idx": {
           "name": "Attendee_bookingId_idx",
-          "columns": ["bookingId"],
+          "columns": [
+            "bookingId"
+          ],
           "isUnique": false
         },
         "Attendee_email_bookingId_idx": {
           "name": "Attendee_email_bookingId_idx",
-          "columns": ["email", "bookingId"],
+          "columns": [
+            "email",
+            "bookingId"
+          ],
           "isUnique": false
         }
       },
@@ -764,8 +841,12 @@
           "name": "Attendee_bookingId_Booking_id_fk",
           "tableFrom": "Attendee",
           "tableTo": "Booking",
-          "columnsFrom": ["bookingId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "bookingId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -862,12 +943,17 @@
       "indexes": {
         "Attribute_teamId_idx": {
           "name": "Attribute_teamId_idx",
-          "columns": ["teamId"],
+          "columns": [
+            "teamId"
+          ],
           "isUnique": false
         },
         "Attribute_teamId_slug_key": {
           "name": "Attribute_teamId_slug_key",
-          "columns": ["teamId", "slug"],
+          "columns": [
+            "teamId",
+            "slug"
+          ],
           "isUnique": true
         }
       },
@@ -876,8 +962,12 @@
           "name": "Attribute_teamId_Team_id_fk",
           "tableFrom": "Attribute",
           "tableTo": "Team",
-          "columnsFrom": ["teamId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "teamId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -939,8 +1029,12 @@
           "name": "AttributeOption_attributeId_Attribute_id_fk",
           "tableFrom": "AttributeOption",
           "tableTo": "Attribute",
-          "columnsFrom": ["attributeId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "attributeId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -1005,12 +1099,17 @@
       "indexes": {
         "AttributeSyncFieldMapping_integrationAttributeSyncId_idx": {
           "name": "AttributeSyncFieldMapping_integrationAttributeSyncId_idx",
-          "columns": ["integrationAttributeSyncId"],
+          "columns": [
+            "integrationAttributeSyncId"
+          ],
           "isUnique": false
         },
         "AttributeSyncFieldMapping_integrationAttributeSyncId_attributeId_key": {
           "name": "AttributeSyncFieldMapping_integrationAttributeSyncId_attributeId_key",
-          "columns": ["integrationAttributeSyncId", "attributeId"],
+          "columns": [
+            "integrationAttributeSyncId",
+            "attributeId"
+          ],
           "isUnique": true
         }
       },
@@ -1019,8 +1118,12 @@
           "name": "AttributeSyncFieldMapping_attributeId_Attribute_id_fk",
           "tableFrom": "AttributeSyncFieldMapping",
           "tableTo": "Attribute",
-          "columnsFrom": ["attributeId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "attributeId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -1028,8 +1131,12 @@
           "name": "AttributeSyncFieldMapping_integrationAttributeSyncId_IntegrationAttributeSync_id_fk",
           "tableFrom": "AttributeSyncFieldMapping",
           "tableTo": "IntegrationAttributeSync",
-          "columnsFrom": ["integrationAttributeSyncId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "integrationAttributeSyncId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -1080,7 +1187,9 @@
       "indexes": {
         "AttributeSyncRule_integrationAttributeSyncId_key": {
           "name": "AttributeSyncRule_integrationAttributeSyncId_key",
-          "columns": ["integrationAttributeSyncId"],
+          "columns": [
+            "integrationAttributeSyncId"
+          ],
           "isUnique": true
         }
       },
@@ -1089,8 +1198,12 @@
           "name": "AttributeSyncRule_integrationAttributeSyncId_IntegrationAttributeSync_id_fk",
           "tableFrom": "AttributeSyncRule",
           "tableTo": "IntegrationAttributeSync",
-          "columnsFrom": ["integrationAttributeSyncId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "integrationAttributeSyncId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -1176,7 +1289,10 @@
       "indexes": {
         "AttributeToUser_memberId_attributeOptionId_key": {
           "name": "AttributeToUser_memberId_attributeOptionId_key",
-          "columns": ["memberId", "attributeOptionId"],
+          "columns": [
+            "memberId",
+            "attributeOptionId"
+          ],
           "isUnique": true
         }
       },
@@ -1185,8 +1301,12 @@
           "name": "AttributeToUser_memberId_Membership_id_fk",
           "tableFrom": "AttributeToUser",
           "tableTo": "Membership",
-          "columnsFrom": ["memberId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "memberId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -1194,8 +1314,12 @@
           "name": "AttributeToUser_attributeOptionId_AttributeOption_id_fk",
           "tableFrom": "AttributeToUser",
           "tableTo": "AttributeOption",
-          "columnsFrom": ["attributeOptionId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "attributeOptionId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -1203,8 +1327,12 @@
           "name": "AttributeToUser_createdById_users_id_fk",
           "tableFrom": "AttributeToUser",
           "tableTo": "users",
-          "columnsFrom": ["createdById"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "createdById"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         },
@@ -1212,8 +1340,12 @@
           "name": "AttributeToUser_createdByDSyncId_DSyncData_directoryId_fk",
           "tableFrom": "AttributeToUser",
           "tableTo": "DSyncData",
-          "columnsFrom": ["createdByDSyncId"],
-          "columnsTo": ["directoryId"],
+          "columnsFrom": [
+            "createdByDSyncId"
+          ],
+          "columnsTo": [
+            "directoryId"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         },
@@ -1221,8 +1353,12 @@
           "name": "AttributeToUser_updatedById_users_id_fk",
           "tableFrom": "AttributeToUser",
           "tableTo": "users",
-          "columnsFrom": ["updatedById"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "updatedById"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         },
@@ -1230,8 +1366,12 @@
           "name": "AttributeToUser_updatedByDSyncId_DSyncData_directoryId_fk",
           "tableFrom": "AttributeToUser",
           "tableTo": "DSyncData",
-          "columnsFrom": ["updatedByDSyncId"],
-          "columnsTo": ["directoryId"],
+          "columnsFrom": [
+            "updatedByDSyncId"
+          ],
+          "columnsTo": [
+            "directoryId"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         }
@@ -1310,47 +1450,65 @@
       "indexes": {
         "AuditActor_userUuid_key": {
           "name": "AuditActor_userUuid_key",
-          "columns": ["userUuid"],
+          "columns": [
+            "userUuid"
+          ],
           "isUnique": true
         },
         "AuditActor_attendeeId_key": {
           "name": "AuditActor_attendeeId_key",
-          "columns": ["attendeeId"],
+          "columns": [
+            "attendeeId"
+          ],
           "isUnique": true
         },
         "AuditActor_credentialId_key": {
           "name": "AuditActor_credentialId_key",
-          "columns": ["credentialId"],
+          "columns": [
+            "credentialId"
+          ],
           "isUnique": true
         },
         "AuditActor_email_key": {
           "name": "AuditActor_email_key",
-          "columns": ["email"],
+          "columns": [
+            "email"
+          ],
           "isUnique": true
         },
         "AuditActor_phone_key": {
           "name": "AuditActor_phone_key",
-          "columns": ["phone"],
+          "columns": [
+            "phone"
+          ],
           "isUnique": true
         },
         "AuditActor_email_idx": {
           "name": "AuditActor_email_idx",
-          "columns": ["email"],
+          "columns": [
+            "email"
+          ],
           "isUnique": false
         },
         "AuditActor_userUuid_idx": {
           "name": "AuditActor_userUuid_idx",
-          "columns": ["userUuid"],
+          "columns": [
+            "userUuid"
+          ],
           "isUnique": false
         },
         "AuditActor_attendeeId_idx": {
           "name": "AuditActor_attendeeId_idx",
-          "columns": ["attendeeId"],
+          "columns": [
+            "attendeeId"
+          ],
           "isUnique": false
         },
         "AuditActor_credentialId_idx": {
           "name": "AuditActor_credentialId_idx",
-          "columns": ["credentialId"],
+          "columns": [
+            "credentialId"
+          ],
           "isUnique": false
         }
       },
@@ -1422,17 +1580,23 @@
       "indexes": {
         "Availability_userId_idx": {
           "name": "Availability_userId_idx",
-          "columns": ["userId"],
+          "columns": [
+            "userId"
+          ],
           "isUnique": false
         },
         "Availability_eventTypeId_idx": {
           "name": "Availability_eventTypeId_idx",
-          "columns": ["eventTypeId"],
+          "columns": [
+            "eventTypeId"
+          ],
           "isUnique": false
         },
         "Availability_scheduleId_idx": {
           "name": "Availability_scheduleId_idx",
-          "columns": ["scheduleId"],
+          "columns": [
+            "scheduleId"
+          ],
           "isUnique": false
         }
       },
@@ -1441,8 +1605,12 @@
           "name": "Availability_userId_users_id_fk",
           "tableFrom": "Availability",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -1450,8 +1618,12 @@
           "name": "Availability_eventTypeId_EventType_id_fk",
           "tableFrom": "Availability",
           "tableTo": "EventType",
-          "columnsFrom": ["eventTypeId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "eventTypeId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         },
@@ -1459,8 +1631,12 @@
           "name": "Availability_scheduleId_Schedule_id_fk",
           "tableFrom": "Availability",
           "tableTo": "Schedule",
-          "columnsFrom": ["scheduleId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "scheduleId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         }
@@ -1514,12 +1690,18 @@
       "indexes": {
         "avatars_objectKey_key": {
           "name": "avatars_objectKey_key",
-          "columns": ["objectKey"],
+          "columns": [
+            "objectKey"
+          ],
           "isUnique": true
         },
         "avatars_teamId_userId_isBanner_key": {
           "name": "avatars_teamId_userId_isBanner_key",
-          "columns": ["teamId", "userId", "isBanner"],
+          "columns": [
+            "teamId",
+            "userId",
+            "isBanner"
+          ],
           "isUnique": true
         }
       },
@@ -1821,77 +2003,114 @@
       "indexes": {
         "Booking_uid_key": {
           "name": "Booking_uid_key",
-          "columns": ["uid"],
+          "columns": [
+            "uid"
+          ],
           "isUnique": true
         },
         "Booking_idempotencyKey_key": {
           "name": "Booking_idempotencyKey_key",
-          "columns": ["idempotencyKey"],
+          "columns": [
+            "idempotencyKey"
+          ],
           "isUnique": true
         },
         "Booking_oneTimePassword_key": {
           "name": "Booking_oneTimePassword_key",
-          "columns": ["oneTimePassword"],
+          "columns": [
+            "oneTimePassword"
+          ],
           "isUnique": true
         },
         "Booking_eventTypeId_idx": {
           "name": "Booking_eventTypeId_idx",
-          "columns": ["eventTypeId"],
+          "columns": [
+            "eventTypeId"
+          ],
           "isUnique": false
         },
         "Booking_userId_idx": {
           "name": "Booking_userId_idx",
-          "columns": ["userId"],
+          "columns": [
+            "userId"
+          ],
           "isUnique": false
         },
         "Booking_destinationCalendarId_idx": {
           "name": "Booking_destinationCalendarId_idx",
-          "columns": ["destinationCalendarId"],
+          "columns": [
+            "destinationCalendarId"
+          ],
           "isUnique": false
         },
         "Booking_recurringEventId_idx": {
           "name": "Booking_recurringEventId_idx",
-          "columns": ["recurringEventId"],
+          "columns": [
+            "recurringEventId"
+          ],
           "isUnique": false
         },
         "Booking_uid_idx": {
           "name": "Booking_uid_idx",
-          "columns": ["uid"],
+          "columns": [
+            "uid"
+          ],
           "isUnique": false
         },
         "Booking_status_idx": {
           "name": "Booking_status_idx",
-          "columns": ["status"],
+          "columns": [
+            "status"
+          ],
           "isUnique": false
         },
         "Booking_startTime_endTime_status_idx": {
           "name": "Booking_startTime_endTime_status_idx",
-          "columns": ["startTime", "endTime", "status"],
+          "columns": [
+            "startTime",
+            "endTime",
+            "status"
+          ],
           "isUnique": false
         },
         "Booking_fromReschedule_idx": {
           "name": "Booking_fromReschedule_idx",
-          "columns": ["fromReschedule"],
+          "columns": [
+            "fromReschedule"
+          ],
           "isUnique": false
         },
         "Booking_userId_endTime_idx": {
           "name": "Booking_userId_endTime_idx",
-          "columns": ["userId", "endTime"],
+          "columns": [
+            "userId",
+            "endTime"
+          ],
           "isUnique": false
         },
         "Booking_userId_status_startTime_idx": {
           "name": "Booking_userId_status_startTime_idx",
-          "columns": ["userId", "status", "startTime"],
+          "columns": [
+            "userId",
+            "status",
+            "startTime"
+          ],
           "isUnique": false
         },
         "Booking_eventTypeId_status_idx": {
           "name": "Booking_eventTypeId_status_idx",
-          "columns": ["eventTypeId", "status"],
+          "columns": [
+            "eventTypeId",
+            "status"
+          ],
           "isUnique": false
         },
         "Booking_userId_createdAt_idx": {
           "name": "Booking_userId_createdAt_idx",
-          "columns": ["userId", "createdAt"],
+          "columns": [
+            "userId",
+            "createdAt"
+          ],
           "isUnique": false
         }
       },
@@ -1900,8 +2119,12 @@
           "name": "Booking_userId_users_id_fk",
           "tableFrom": "Booking",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -1909,8 +2132,12 @@
           "name": "Booking_eventTypeId_EventType_id_fk",
           "tableFrom": "Booking",
           "tableTo": "EventType",
-          "columnsFrom": ["eventTypeId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "eventTypeId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         },
@@ -1918,8 +2145,12 @@
           "name": "Booking_destinationCalendarId_DestinationCalendar_id_fk",
           "tableFrom": "Booking",
           "tableTo": "DestinationCalendar",
-          "columnsFrom": ["destinationCalendarId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "destinationCalendarId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         },
@@ -1927,8 +2158,12 @@
           "name": "Booking_reassignById_users_id_fk",
           "tableFrom": "Booking",
           "tableTo": "users",
-          "columnsFrom": ["reassignById"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "reassignById"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         }
@@ -2028,22 +2263,30 @@
       "indexes": {
         "BookingAudit_actorId_idx": {
           "name": "BookingAudit_actorId_idx",
-          "columns": ["actorId"],
+          "columns": [
+            "actorId"
+          ],
           "isUnique": false
         },
         "BookingAudit_bookingUid_idx": {
           "name": "BookingAudit_bookingUid_idx",
-          "columns": ["bookingUid"],
+          "columns": [
+            "bookingUid"
+          ],
           "isUnique": false
         },
         "BookingAudit_timestamp_idx": {
           "name": "BookingAudit_timestamp_idx",
-          "columns": ["timestamp"],
+          "columns": [
+            "timestamp"
+          ],
           "isUnique": false
         },
         "BookingAudit_operationId_idx": {
           "name": "BookingAudit_operationId_idx",
-          "columns": ["operationId"],
+          "columns": [
+            "operationId"
+          ],
           "isUnique": false
         }
       },
@@ -2052,8 +2295,12 @@
           "name": "BookingAudit_actorId_AuditActor_id_fk",
           "tableFrom": "BookingAudit",
           "tableTo": "AuditActor",
-          "columnsFrom": ["actorId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "actorId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         }
@@ -2237,57 +2484,82 @@
       "indexes": {
         "BookingDenormalized_userId_idx": {
           "name": "BookingDenormalized_userId_idx",
-          "columns": ["userId"],
+          "columns": [
+            "userId"
+          ],
           "isUnique": false
         },
         "BookingDenormalized_createdAt_idx": {
           "name": "BookingDenormalized_createdAt_idx",
-          "columns": ["createdAt"],
+          "columns": [
+            "createdAt"
+          ],
           "isUnique": false
         },
         "BookingDenormalized_eventTypeId_idx": {
           "name": "BookingDenormalized_eventTypeId_idx",
-          "columns": ["eventTypeId"],
+          "columns": [
+            "eventTypeId"
+          ],
           "isUnique": false
         },
         "BookingDenormalized_eventParentId_idx": {
           "name": "BookingDenormalized_eventParentId_idx",
-          "columns": ["eventParentId"],
+          "columns": [
+            "eventParentId"
+          ],
           "isUnique": false
         },
         "BookingDenormalized_teamId_idx": {
           "name": "BookingDenormalized_teamId_idx",
-          "columns": ["teamId"],
+          "columns": [
+            "teamId"
+          ],
           "isUnique": false
         },
         "BookingDenormalized_startTime_idx": {
           "name": "BookingDenormalized_startTime_idx",
-          "columns": ["startTime"],
+          "columns": [
+            "startTime"
+          ],
           "isUnique": false
         },
         "BookingDenormalized_endTime_idx": {
           "name": "BookingDenormalized_endTime_idx",
-          "columns": ["endTime"],
+          "columns": [
+            "endTime"
+          ],
           "isUnique": false
         },
         "BookingDenormalized_status_idx": {
           "name": "BookingDenormalized_status_idx",
-          "columns": ["status"],
+          "columns": [
+            "status"
+          ],
           "isUnique": false
         },
         "BookingDenormalized_teamId_isTeamBooking_idx": {
           "name": "BookingDenormalized_teamId_isTeamBooking_idx",
-          "columns": ["teamId", "isTeamBooking"],
+          "columns": [
+            "teamId",
+            "isTeamBooking"
+          ],
           "isUnique": false
         },
         "BookingDenormalized_userId_isTeamBooking_idx": {
           "name": "BookingDenormalized_userId_isTeamBooking_idx",
-          "columns": ["userId", "isTeamBooking"],
+          "columns": [
+            "userId",
+            "isTeamBooking"
+          ],
           "isUnique": false
         },
         "BookingDenormalized_startTime_endTime_idx": {
           "name": "BookingDenormalized_startTime_endTime_idx",
-          "columns": ["startTime", "endTime"],
+          "columns": [
+            "startTime",
+            "endTime"
+          ],
           "isUnique": false
         }
       },
@@ -2345,12 +2617,17 @@
       "indexes": {
         "BookingInternalNote_bookingId_idx": {
           "name": "BookingInternalNote_bookingId_idx",
-          "columns": ["bookingId"],
+          "columns": [
+            "bookingId"
+          ],
           "isUnique": false
         },
         "BookingInternalNote_bookingId_notePresetId_key": {
           "name": "BookingInternalNote_bookingId_notePresetId_key",
-          "columns": ["bookingId", "notePresetId"],
+          "columns": [
+            "bookingId",
+            "notePresetId"
+          ],
           "isUnique": true
         }
       },
@@ -2359,8 +2636,12 @@
           "name": "BookingInternalNote_notePresetId_InternalNotePreset_id_fk",
           "tableFrom": "BookingInternalNote",
           "tableTo": "InternalNotePreset",
-          "columnsFrom": ["notePresetId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "notePresetId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -2368,8 +2649,12 @@
           "name": "BookingInternalNote_bookingId_Booking_id_fk",
           "tableFrom": "BookingInternalNote",
           "tableTo": "Booking",
-          "columnsFrom": ["bookingId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "bookingId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -2377,8 +2662,12 @@
           "name": "BookingInternalNote_createdById_users_id_fk",
           "tableFrom": "BookingInternalNote",
           "tableTo": "users",
-          "columnsFrom": ["createdById"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "createdById"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         }
@@ -2478,17 +2767,23 @@
       "indexes": {
         "BookingReference_bookingId_idx": {
           "name": "BookingReference_bookingId_idx",
-          "columns": ["bookingId"],
+          "columns": [
+            "bookingId"
+          ],
           "isUnique": false
         },
         "BookingReference_type_idx": {
           "name": "BookingReference_type_idx",
-          "columns": ["type"],
+          "columns": [
+            "type"
+          ],
           "isUnique": false
         },
         "BookingReference_uid_idx": {
           "name": "BookingReference_uid_idx",
-          "columns": ["uid"],
+          "columns": [
+            "uid"
+          ],
           "isUnique": false
         }
       },
@@ -2497,8 +2792,12 @@
           "name": "BookingReference_bookingId_Booking_id_fk",
           "tableFrom": "BookingReference",
           "tableTo": "Booking",
-          "columnsFrom": ["bookingId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "bookingId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -2506,8 +2805,12 @@
           "name": "BookingReference_credentialId_Credential_id_fk",
           "tableFrom": "BookingReference",
           "tableTo": "Credential",
-          "columnsFrom": ["credentialId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "credentialId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         },
@@ -2515,8 +2818,12 @@
           "name": "BookingReference_delegationCredentialId_DelegationCredential_id_fk",
           "tableFrom": "BookingReference",
           "tableTo": "DelegationCredential",
-          "columnsFrom": ["delegationCredentialId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "delegationCredentialId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         }
@@ -2633,42 +2940,58 @@
       "indexes": {
         "BookingReport_bookingUid_key": {
           "name": "BookingReport_bookingUid_key",
-          "columns": ["bookingUid"],
+          "columns": [
+            "bookingUid"
+          ],
           "isUnique": true
         },
         "BookingReport_bookerEmail_idx": {
           "name": "BookingReport_bookerEmail_idx",
-          "columns": ["bookerEmail"],
+          "columns": [
+            "bookerEmail"
+          ],
           "isUnique": false
         },
         "BookingReport_reportedById_idx": {
           "name": "BookingReport_reportedById_idx",
-          "columns": ["reportedById"],
+          "columns": [
+            "reportedById"
+          ],
           "isUnique": false
         },
         "BookingReport_organizationId_idx": {
           "name": "BookingReport_organizationId_idx",
-          "columns": ["organizationId"],
+          "columns": [
+            "organizationId"
+          ],
           "isUnique": false
         },
         "BookingReport_watchlistId_idx": {
           "name": "BookingReport_watchlistId_idx",
-          "columns": ["watchlistId"],
+          "columns": [
+            "watchlistId"
+          ],
           "isUnique": false
         },
         "BookingReport_globalWatchlistId_idx": {
           "name": "BookingReport_globalWatchlistId_idx",
-          "columns": ["globalWatchlistId"],
+          "columns": [
+            "globalWatchlistId"
+          ],
           "isUnique": false
         },
         "BookingReport_systemStatus_idx": {
           "name": "BookingReport_systemStatus_idx",
-          "columns": ["systemStatus"],
+          "columns": [
+            "systemStatus"
+          ],
           "isUnique": false
         },
         "BookingReport_createdAt_idx": {
           "name": "BookingReport_createdAt_idx",
-          "columns": ["createdAt"],
+          "columns": [
+            "createdAt"
+          ],
           "isUnique": false
         }
       },
@@ -2677,8 +3000,12 @@
           "name": "BookingReport_bookingUid_Booking_uid_fk",
           "tableFrom": "BookingReport",
           "tableTo": "Booking",
-          "columnsFrom": ["bookingUid"],
-          "columnsTo": ["uid"],
+          "columnsFrom": [
+            "bookingUid"
+          ],
+          "columnsTo": [
+            "uid"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -2686,8 +3013,12 @@
           "name": "BookingReport_reportedById_users_id_fk",
           "tableFrom": "BookingReport",
           "tableTo": "users",
-          "columnsFrom": ["reportedById"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "reportedById"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         },
@@ -2695,8 +3026,12 @@
           "name": "BookingReport_organizationId_Team_id_fk",
           "tableFrom": "BookingReport",
           "tableTo": "Team",
-          "columnsFrom": ["organizationId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "organizationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -2704,8 +3039,12 @@
           "name": "BookingReport_watchlistId_Watchlist_id_fk",
           "tableFrom": "BookingReport",
           "tableTo": "Watchlist",
-          "columnsFrom": ["watchlistId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "watchlistId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         },
@@ -2713,8 +3052,12 @@
           "name": "BookingReport_globalWatchlistId_Watchlist_id_fk",
           "tableFrom": "BookingReport",
           "tableTo": "Watchlist",
-          "columnsFrom": ["globalWatchlistId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "globalWatchlistId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         }
@@ -2772,22 +3115,30 @@
       "indexes": {
         "BookingSeat_referenceUid_key": {
           "name": "BookingSeat_referenceUid_key",
-          "columns": ["referenceUid"],
+          "columns": [
+            "referenceUid"
+          ],
           "isUnique": true
         },
         "BookingSeat_attendeeId_key": {
           "name": "BookingSeat_attendeeId_key",
-          "columns": ["attendeeId"],
+          "columns": [
+            "attendeeId"
+          ],
           "isUnique": true
         },
         "BookingSeat_bookingId_idx": {
           "name": "BookingSeat_bookingId_idx",
-          "columns": ["bookingId"],
+          "columns": [
+            "bookingId"
+          ],
           "isUnique": false
         },
         "BookingSeat_attendeeId_idx": {
           "name": "BookingSeat_attendeeId_idx",
-          "columns": ["attendeeId"],
+          "columns": [
+            "attendeeId"
+          ],
           "isUnique": false
         }
       },
@@ -2796,8 +3147,12 @@
           "name": "BookingSeat_bookingId_Booking_id_fk",
           "tableFrom": "BookingSeat",
           "tableTo": "Booking",
-          "columnsFrom": ["bookingId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "bookingId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -2805,8 +3160,12 @@
           "name": "BookingSeat_attendeeId_Attendee_id_fk",
           "tableFrom": "BookingSeat",
           "tableTo": "Attendee",
-          "columnsFrom": ["attendeeId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "attendeeId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -2913,37 +3272,51 @@
       "indexes": {
         "CalAiPhoneNumber_phoneNumber_key": {
           "name": "CalAiPhoneNumber_phoneNumber_key",
-          "columns": ["phoneNumber"],
+          "columns": [
+            "phoneNumber"
+          ],
           "isUnique": true
         },
         "CalAiPhoneNumber_providerPhoneNumberId_key": {
           "name": "CalAiPhoneNumber_providerPhoneNumberId_key",
-          "columns": ["providerPhoneNumberId"],
+          "columns": [
+            "providerPhoneNumberId"
+          ],
           "isUnique": true
         },
         "CalAiPhoneNumber_stripeSubscriptionId_key": {
           "name": "CalAiPhoneNumber_stripeSubscriptionId_key",
-          "columns": ["stripeSubscriptionId"],
+          "columns": [
+            "stripeSubscriptionId"
+          ],
           "isUnique": true
         },
         "CalAiPhoneNumber_userId_idx": {
           "name": "CalAiPhoneNumber_userId_idx",
-          "columns": ["userId"],
+          "columns": [
+            "userId"
+          ],
           "isUnique": false
         },
         "CalAiPhoneNumber_teamId_idx": {
           "name": "CalAiPhoneNumber_teamId_idx",
-          "columns": ["teamId"],
+          "columns": [
+            "teamId"
+          ],
           "isUnique": false
         },
         "CalAiPhoneNumber_inboundAgentId_idx": {
           "name": "CalAiPhoneNumber_inboundAgentId_idx",
-          "columns": ["inboundAgentId"],
+          "columns": [
+            "inboundAgentId"
+          ],
           "isUnique": false
         },
         "CalAiPhoneNumber_outboundAgentId_idx": {
           "name": "CalAiPhoneNumber_outboundAgentId_idx",
-          "columns": ["outboundAgentId"],
+          "columns": [
+            "outboundAgentId"
+          ],
           "isUnique": false
         }
       },
@@ -2952,8 +3325,12 @@
           "name": "CalAiPhoneNumber_userId_users_id_fk",
           "tableFrom": "CalAiPhoneNumber",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -2961,8 +3338,12 @@
           "name": "CalAiPhoneNumber_teamId_Team_id_fk",
           "tableFrom": "CalAiPhoneNumber",
           "tableTo": "Team",
-          "columnsFrom": ["teamId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "teamId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -2970,8 +3351,12 @@
           "name": "CalAiPhoneNumber_inboundAgentId_Agent_id_fk",
           "tableFrom": "CalAiPhoneNumber",
           "tableTo": "Agent",
-          "columnsFrom": ["inboundAgentId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "inboundAgentId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         },
@@ -2979,8 +3364,12 @@
           "name": "CalAiPhoneNumber_outboundAgentId_Agent_id_fk",
           "tableFrom": "CalAiPhoneNumber",
           "tableTo": "Agent",
-          "columnsFrom": ["outboundAgentId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "outboundAgentId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         }
@@ -3083,8 +3472,12 @@
           "name": "CalVideoSettings_eventTypeId_EventType_id_fk",
           "tableFrom": "CalVideoSettings",
           "tableTo": "EventType",
-          "columnsFrom": ["eventTypeId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "eventTypeId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -3149,12 +3542,18 @@
       "indexes": {
         "CalendarCache_userId_key_idx": {
           "name": "CalendarCache_userId_key_idx",
-          "columns": ["userId", "key"],
+          "columns": [
+            "userId",
+            "key"
+          ],
           "isUnique": false
         },
         "CalendarCache_credentialId_key_key": {
           "name": "CalendarCache_credentialId_key_key",
-          "columns": ["credentialId", "key"],
+          "columns": [
+            "credentialId",
+            "key"
+          ],
           "isUnique": true
         }
       },
@@ -3163,15 +3562,22 @@
           "name": "CalendarCache_credentialId_Credential_id_fk",
           "tableFrom": "CalendarCache",
           "tableTo": "Credential",
-          "columnsFrom": ["credentialId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "credentialId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
       },
       "compositePrimaryKeys": {
         "CalendarCache_credentialId_key_pk": {
-          "columns": ["credentialId", "key"],
+          "columns": [
+            "credentialId",
+            "key"
+          ],
           "name": "CalendarCache_credentialId_key_pk"
         }
       },
@@ -3328,17 +3734,27 @@
       "indexes": {
         "CalendarCacheEvent_start_end_status_idx": {
           "name": "CalendarCacheEvent_start_end_status_idx",
-          "columns": ["start", "end", "status"],
+          "columns": [
+            "start",
+            "end",
+            "status"
+          ],
           "isUnique": false
         },
         "CalendarCacheEvent_selectedCalendarId_iCalUID_idx": {
           "name": "CalendarCacheEvent_selectedCalendarId_iCalUID_idx",
-          "columns": ["selectedCalendarId", "iCalUID"],
+          "columns": [
+            "selectedCalendarId",
+            "iCalUID"
+          ],
           "isUnique": false
         },
         "CalendarCacheEvent_selectedCalendarId_externalId_key": {
           "name": "CalendarCacheEvent_selectedCalendarId_externalId_key",
-          "columns": ["selectedCalendarId", "externalId"],
+          "columns": [
+            "selectedCalendarId",
+            "externalId"
+          ],
           "isUnique": true
         }
       },
@@ -3347,8 +3763,12 @@
           "name": "CalendarCacheEvent_selectedCalendarId_SelectedCalendar_id_fk",
           "tableFrom": "CalendarCacheEvent",
           "tableTo": "SelectedCalendar",
-          "columnsFrom": ["selectedCalendarId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "selectedCalendarId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -3449,27 +3869,38 @@
       "indexes": {
         "Credential_appId_idx": {
           "name": "Credential_appId_idx",
-          "columns": ["appId"],
+          "columns": [
+            "appId"
+          ],
           "isUnique": false
         },
         "Credential_subscriptionId_idx": {
           "name": "Credential_subscriptionId_idx",
-          "columns": ["subscriptionId"],
+          "columns": [
+            "subscriptionId"
+          ],
           "isUnique": false
         },
         "Credential_invalid_idx": {
           "name": "Credential_invalid_idx",
-          "columns": ["invalid"],
+          "columns": [
+            "invalid"
+          ],
           "isUnique": false
         },
         "Credential_userId_delegationCredentialId_idx": {
           "name": "Credential_userId_delegationCredentialId_idx",
-          "columns": ["userId", "delegationCredentialId"],
+          "columns": [
+            "userId",
+            "delegationCredentialId"
+          ],
           "isUnique": false
         },
         "Credential_teamId_idx": {
           "name": "Credential_teamId_idx",
-          "columns": ["teamId"],
+          "columns": [
+            "teamId"
+          ],
           "isUnique": false
         }
       },
@@ -3478,8 +3909,12 @@
           "name": "Credential_userId_users_id_fk",
           "tableFrom": "Credential",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -3487,8 +3922,12 @@
           "name": "Credential_teamId_Team_id_fk",
           "tableFrom": "Credential",
           "tableTo": "Team",
-          "columnsFrom": ["teamId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "teamId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -3496,8 +3935,12 @@
           "name": "Credential_appId_App_slug_fk",
           "tableFrom": "Credential",
           "tableTo": "App",
-          "columnsFrom": ["appId"],
-          "columnsTo": ["slug"],
+          "columnsFrom": [
+            "appId"
+          ],
+          "columnsTo": [
+            "slug"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -3505,8 +3948,12 @@
           "name": "Credential_delegationCredentialId_DelegationCredential_id_fk",
           "tableFrom": "Credential",
           "tableTo": "DelegationCredential",
-          "columnsFrom": ["delegationCredentialId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "delegationCredentialId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -3565,12 +4012,16 @@
       "indexes": {
         "CreditBalance_teamId_key": {
           "name": "CreditBalance_teamId_key",
-          "columns": ["teamId"],
+          "columns": [
+            "teamId"
+          ],
           "isUnique": true
         },
         "CreditBalance_userId_key": {
           "name": "CreditBalance_userId_key",
-          "columns": ["userId"],
+          "columns": [
+            "userId"
+          ],
           "isUnique": true
         }
       },
@@ -3579,8 +4030,12 @@
           "name": "CreditBalance_teamId_Team_id_fk",
           "tableFrom": "CreditBalance",
           "tableTo": "Team",
-          "columnsFrom": ["teamId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "teamId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -3588,8 +4043,12 @@
           "name": "CreditBalance_userId_users_id_fk",
           "tableFrom": "CreditBalance",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -3696,7 +4155,9 @@
       "indexes": {
         "CreditExpenseLog_externalRef_key": {
           "name": "CreditExpenseLog_externalRef_key",
-          "columns": ["externalRef"],
+          "columns": [
+            "externalRef"
+          ],
           "isUnique": true
         }
       },
@@ -3705,8 +4166,12 @@
           "name": "CreditExpenseLog_creditBalanceId_CreditBalance_id_fk",
           "tableFrom": "CreditExpenseLog",
           "tableTo": "CreditBalance",
-          "columnsFrom": ["creditBalanceId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "creditBalanceId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -3714,8 +4179,12 @@
           "name": "CreditExpenseLog_bookingUid_Booking_uid_fk",
           "tableFrom": "CreditExpenseLog",
           "tableTo": "Booking",
-          "columnsFrom": ["bookingUid"],
-          "columnsTo": ["uid"],
+          "columnsFrom": [
+            "bookingUid"
+          ],
+          "columnsTo": [
+            "uid"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -3762,8 +4231,12 @@
           "name": "CreditPurchaseLog_creditBalanceId_CreditBalance_id_fk",
           "tableFrom": "CreditPurchaseLog",
           "tableTo": "CreditBalance",
-          "columnsFrom": ["creditBalanceId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "creditBalanceId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -3807,12 +4280,16 @@
       "indexes": {
         "DSyncData_directoryId_key": {
           "name": "DSyncData_directoryId_key",
-          "columns": ["directoryId"],
+          "columns": [
+            "directoryId"
+          ],
           "isUnique": true
         },
         "DSyncData_organizationId_key": {
           "name": "DSyncData_organizationId_key",
-          "columns": ["organizationId"],
+          "columns": [
+            "organizationId"
+          ],
           "isUnique": true
         }
       },
@@ -3821,8 +4298,12 @@
           "name": "DSyncData_organizationId_OrganizationSettings_organizationId_fk",
           "tableFrom": "DSyncData",
           "tableTo": "OrganizationSettings",
-          "columnsFrom": ["organizationId"],
-          "columnsTo": ["organizationId"],
+          "columnsFrom": [
+            "organizationId"
+          ],
+          "columnsTo": [
+            "organizationId"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -3873,7 +4354,10 @@
       "indexes": {
         "DSyncTeamGroupMapping_teamId_groupName_key": {
           "name": "DSyncTeamGroupMapping_teamId_groupName_key",
-          "columns": ["teamId", "groupName"],
+          "columns": [
+            "teamId",
+            "groupName"
+          ],
           "isUnique": true
         }
       },
@@ -3882,8 +4366,12 @@
           "name": "DSyncTeamGroupMapping_teamId_Team_id_fk",
           "tableFrom": "DSyncTeamGroupMapping",
           "tableTo": "Team",
-          "columnsFrom": ["teamId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "teamId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -3891,8 +4379,12 @@
           "name": "DSyncTeamGroupMapping_directoryId_DSyncData_directoryId_fk",
           "tableFrom": "DSyncTeamGroupMapping",
           "tableTo": "DSyncData",
-          "columnsFrom": ["directoryId"],
-          "columnsTo": ["directoryId"],
+          "columnsFrom": [
+            "directoryId"
+          ],
+          "columnsTo": [
+            "directoryId"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -3979,12 +4471,17 @@
       "indexes": {
         "DelegationCredential_enabled_idx": {
           "name": "DelegationCredential_enabled_idx",
-          "columns": ["enabled"],
+          "columns": [
+            "enabled"
+          ],
           "isUnique": false
         },
         "DelegationCredential_organizationId_domain_key": {
           "name": "DelegationCredential_organizationId_domain_key",
-          "columns": ["organizationId", "domain"],
+          "columns": [
+            "organizationId",
+            "domain"
+          ],
           "isUnique": true
         }
       },
@@ -3993,8 +4490,12 @@
           "name": "DelegationCredential_workspacePlatformId_WorkspacePlatform_id_fk",
           "tableFrom": "DelegationCredential",
           "tableTo": "WorkspacePlatform",
-          "columnsFrom": ["workspacePlatformId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "workspacePlatformId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -4002,8 +4503,12 @@
           "name": "DelegationCredential_organizationId_Team_id_fk",
           "tableFrom": "DelegationCredential",
           "tableTo": "Team",
-          "columnsFrom": ["organizationId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "organizationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -4149,27 +4654,37 @@
       "indexes": {
         "DestinationCalendar_userId_key": {
           "name": "DestinationCalendar_userId_key",
-          "columns": ["userId"],
+          "columns": [
+            "userId"
+          ],
           "isUnique": true
         },
         "DestinationCalendar_eventTypeId_key": {
           "name": "DestinationCalendar_eventTypeId_key",
-          "columns": ["eventTypeId"],
+          "columns": [
+            "eventTypeId"
+          ],
           "isUnique": true
         },
         "DestinationCalendar_userId_idx": {
           "name": "DestinationCalendar_userId_idx",
-          "columns": ["userId"],
+          "columns": [
+            "userId"
+          ],
           "isUnique": false
         },
         "DestinationCalendar_eventTypeId_idx": {
           "name": "DestinationCalendar_eventTypeId_idx",
-          "columns": ["eventTypeId"],
+          "columns": [
+            "eventTypeId"
+          ],
           "isUnique": false
         },
         "DestinationCalendar_credentialId_idx": {
           "name": "DestinationCalendar_credentialId_idx",
-          "columns": ["credentialId"],
+          "columns": [
+            "credentialId"
+          ],
           "isUnique": false
         }
       },
@@ -4178,8 +4693,12 @@
           "name": "DestinationCalendar_userId_users_id_fk",
           "tableFrom": "DestinationCalendar",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -4187,8 +4706,12 @@
           "name": "DestinationCalendar_eventTypeId_EventType_id_fk",
           "tableFrom": "DestinationCalendar",
           "tableTo": "EventType",
-          "columnsFrom": ["eventTypeId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "eventTypeId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -4196,8 +4719,12 @@
           "name": "DestinationCalendar_credentialId_Credential_id_fk",
           "tableFrom": "DestinationCalendar",
           "tableTo": "Credential",
-          "columnsFrom": ["credentialId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "credentialId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -4205,8 +4732,12 @@
           "name": "DestinationCalendar_delegationCredentialId_DelegationCredential_id_fk",
           "tableFrom": "DestinationCalendar",
           "tableTo": "DelegationCredential",
-          "columnsFrom": ["delegationCredentialId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "delegationCredentialId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -4862,57 +5393,83 @@
       "indexes": {
         "EventType_userId_idx": {
           "name": "EventType_userId_idx",
-          "columns": ["userId"],
+          "columns": [
+            "userId"
+          ],
           "isUnique": false
         },
         "EventType_teamId_idx": {
           "name": "EventType_teamId_idx",
-          "columns": ["teamId"],
+          "columns": [
+            "teamId"
+          ],
           "isUnique": false
         },
         "EventType_profileId_idx": {
           "name": "EventType_profileId_idx",
-          "columns": ["profileId"],
+          "columns": [
+            "profileId"
+          ],
           "isUnique": false
         },
         "EventType_scheduleId_idx": {
           "name": "EventType_scheduleId_idx",
-          "columns": ["scheduleId"],
+          "columns": [
+            "scheduleId"
+          ],
           "isUnique": false
         },
         "EventType_secondaryEmailId_idx": {
           "name": "EventType_secondaryEmailId_idx",
-          "columns": ["secondaryEmailId"],
+          "columns": [
+            "secondaryEmailId"
+          ],
           "isUnique": false
         },
         "EventType_parentId_idx": {
           "name": "EventType_parentId_idx",
-          "columns": ["parentId"],
+          "columns": [
+            "parentId"
+          ],
           "isUnique": false
         },
         "EventType_parentId_teamId_idx": {
           "name": "EventType_parentId_teamId_idx",
-          "columns": ["parentId", "teamId"],
+          "columns": [
+            "parentId",
+            "teamId"
+          ],
           "isUnique": false
         },
         "EventType_restrictionScheduleId_idx": {
           "name": "EventType_restrictionScheduleId_idx",
-          "columns": ["restrictionScheduleId"],
+          "columns": [
+            "restrictionScheduleId"
+          ],
           "isUnique": false
         },
         "EventType_userId_slug_key": {
           "name": "EventType_userId_slug_key",
-          "columns": ["userId", "slug"],
+          "columns": [
+            "userId",
+            "slug"
+          ],
           "isUnique": true
         },
         "EventType_teamId_slug_key": {
           "name": "EventType_teamId_slug_key",
-          "columns": ["teamId", "slug"],
+          "columns": [
+            "teamId",
+            "slug"
+          ],
           "isUnique": true
         },
         "EventType_userId_parentId_key": {
           "name": "EventType_userId_parentId_key",
-          "columns": ["userId", "parentId"],
+          "columns": [
+            "userId",
+            "parentId"
+          ],
           "isUnique": true
         }
       },
@@ -4921,8 +5478,12 @@
           "name": "EventType_userId_users_id_fk",
           "tableFrom": "EventType",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -4930,8 +5491,12 @@
           "name": "EventType_profileId_Profile_id_fk",
           "tableFrom": "EventType",
           "tableTo": "Profile",
-          "columnsFrom": ["profileId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "profileId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         },
@@ -4939,8 +5504,12 @@
           "name": "EventType_teamId_Team_id_fk",
           "tableFrom": "EventType",
           "tableTo": "Team",
-          "columnsFrom": ["teamId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "teamId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -4948,8 +5517,12 @@
           "name": "EventType_parentId_EventType_id_fk",
           "tableFrom": "EventType",
           "tableTo": "EventType",
-          "columnsFrom": ["parentId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "parentId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -4957,8 +5530,12 @@
           "name": "EventType_scheduleId_Schedule_id_fk",
           "tableFrom": "EventType",
           "tableTo": "Schedule",
-          "columnsFrom": ["scheduleId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "scheduleId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         },
@@ -4966,8 +5543,12 @@
           "name": "EventType_instantMeetingScheduleId_Schedule_id_fk",
           "tableFrom": "EventType",
           "tableTo": "Schedule",
-          "columnsFrom": ["instantMeetingScheduleId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "instantMeetingScheduleId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         },
@@ -4975,8 +5556,12 @@
           "name": "EventType_secondaryEmailId_SecondaryEmail_id_fk",
           "tableFrom": "EventType",
           "tableTo": "SecondaryEmail",
-          "columnsFrom": ["secondaryEmailId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "secondaryEmailId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -4984,8 +5569,12 @@
           "name": "EventType_restrictionScheduleId_Schedule_id_fk",
           "tableFrom": "EventType",
           "tableTo": "Schedule",
-          "columnsFrom": ["restrictionScheduleId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "restrictionScheduleId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         }
@@ -5051,7 +5640,9 @@
       "indexes": {
         "EventTypeCustomInput_eventTypeId_idx": {
           "name": "EventTypeCustomInput_eventTypeId_idx",
-          "columns": ["eventTypeId"],
+          "columns": [
+            "eventTypeId"
+          ],
           "isUnique": false
         }
       },
@@ -5060,8 +5651,12 @@
           "name": "EventTypeCustomInput_eventTypeId_EventType_id_fk",
           "tableFrom": "EventTypeCustomInput",
           "tableTo": "EventType",
-          "columnsFrom": ["eventTypeId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "eventTypeId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -5147,12 +5742,20 @@
       "indexes": {
         "EventTypeTranslation_eventTypeId_field_targetLocale_idx": {
           "name": "EventTypeTranslation_eventTypeId_field_targetLocale_idx",
-          "columns": ["eventTypeId", "field", "targetLocale"],
+          "columns": [
+            "eventTypeId",
+            "field",
+            "targetLocale"
+          ],
           "isUnique": false
         },
         "EventTypeTranslation_eventTypeId_field_targetLocale_key": {
           "name": "EventTypeTranslation_eventTypeId_field_targetLocale_key",
-          "columns": ["eventTypeId", "field", "targetLocale"],
+          "columns": [
+            "eventTypeId",
+            "field",
+            "targetLocale"
+          ],
           "isUnique": true
         }
       },
@@ -5161,8 +5764,12 @@
           "name": "EventTypeTranslation_eventTypeId_EventType_id_fk",
           "tableFrom": "EventTypeTranslation",
           "tableTo": "EventType",
-          "columnsFrom": ["eventTypeId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "eventTypeId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -5170,8 +5777,12 @@
           "name": "EventTypeTranslation_createdBy_users_id_fk",
           "tableFrom": "EventTypeTranslation",
           "tableTo": "users",
-          "columnsFrom": ["createdBy"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "createdBy"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "restrict",
           "onUpdate": "cascade"
         },
@@ -5179,8 +5790,12 @@
           "name": "EventTypeTranslation_updatedBy_users_id_fk",
           "tableFrom": "EventTypeTranslation",
           "tableTo": "users",
-          "columnsFrom": ["updatedBy"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "updatedBy"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         }
@@ -5262,12 +5877,16 @@
       "indexes": {
         "Feature_enabled_idx": {
           "name": "Feature_enabled_idx",
-          "columns": ["enabled"],
+          "columns": [
+            "enabled"
+          ],
           "isUnique": false
         },
         "Feature_stale_idx": {
           "name": "Feature_stale_idx",
-          "columns": ["stale"],
+          "columns": [
+            "stale"
+          ],
           "isUnique": false
         }
       },
@@ -5318,12 +5937,16 @@
       "indexes": {
         "Feedback_userId_idx": {
           "name": "Feedback_userId_idx",
-          "columns": ["userId"],
+          "columns": [
+            "userId"
+          ],
           "isUnique": false
         },
         "Feedback_rating_idx": {
           "name": "Feedback_rating_idx",
-          "columns": ["rating"],
+          "columns": [
+            "rating"
+          ],
           "isUnique": false
         }
       },
@@ -5332,8 +5955,12 @@
           "name": "Feedback_userId_users_id_fk",
           "tableFrom": "Feedback",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -5447,12 +6074,20 @@
       "indexes": {
         "FilterSegment_scope_userId_tableIdentifier_idx": {
           "name": "FilterSegment_scope_userId_tableIdentifier_idx",
-          "columns": ["scope", "userId", "tableIdentifier"],
+          "columns": [
+            "scope",
+            "userId",
+            "tableIdentifier"
+          ],
           "isUnique": false
         },
         "FilterSegment_scope_teamId_tableIdentifier_idx": {
           "name": "FilterSegment_scope_teamId_tableIdentifier_idx",
-          "columns": ["scope", "teamId", "tableIdentifier"],
+          "columns": [
+            "scope",
+            "teamId",
+            "tableIdentifier"
+          ],
           "isUnique": false
         }
       },
@@ -5461,8 +6096,12 @@
           "name": "FilterSegment_userId_users_id_fk",
           "tableFrom": "FilterSegment",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -5470,8 +6109,12 @@
           "name": "FilterSegment_teamId_Team_id_fk",
           "tableFrom": "FilterSegment",
           "tableTo": "Team",
-          "columnsFrom": ["teamId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "teamId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -5531,12 +6174,16 @@
       "indexes": {
         "HashedLink_link_key": {
           "name": "HashedLink_link_key",
-          "columns": ["link"],
+          "columns": [
+            "link"
+          ],
           "isUnique": true
         },
         "HashedLink_eventTypeId_idx": {
           "name": "HashedLink_eventTypeId_idx",
-          "columns": ["eventTypeId"],
+          "columns": [
+            "eventTypeId"
+          ],
           "isUnique": false
         }
       },
@@ -5545,8 +6192,12 @@
           "name": "HashedLink_eventTypeId_EventType_id_fk",
           "tableFrom": "HashedLink",
           "tableTo": "EventType",
-          "columnsFrom": ["eventTypeId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "eventTypeId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -5625,17 +6276,26 @@
       "indexes": {
         "HolidayCache_countryCode_year_idx": {
           "name": "HolidayCache_countryCode_year_idx",
-          "columns": ["countryCode", "year"],
+          "columns": [
+            "countryCode",
+            "year"
+          ],
           "isUnique": false
         },
         "HolidayCache_countryCode_date_idx": {
           "name": "HolidayCache_countryCode_date_idx",
-          "columns": ["countryCode", "date"],
+          "columns": [
+            "countryCode",
+            "date"
+          ],
           "isUnique": false
         },
         "HolidayCache_countryCode_eventId_key": {
           "name": "HolidayCache_countryCode_eventId_key",
-          "columns": ["countryCode", "eventId"],
+          "columns": [
+            "countryCode",
+            "eventId"
+          ],
           "isUnique": true
         }
       },
@@ -5722,22 +6382,30 @@
       "indexes": {
         "Host_memberId_idx": {
           "name": "Host_memberId_idx",
-          "columns": ["memberId"],
+          "columns": [
+            "memberId"
+          ],
           "isUnique": false
         },
         "Host_userId_idx": {
           "name": "Host_userId_idx",
-          "columns": ["userId"],
+          "columns": [
+            "userId"
+          ],
           "isUnique": false
         },
         "Host_eventTypeId_idx": {
           "name": "Host_eventTypeId_idx",
-          "columns": ["eventTypeId"],
+          "columns": [
+            "eventTypeId"
+          ],
           "isUnique": false
         },
         "Host_scheduleId_idx": {
           "name": "Host_scheduleId_idx",
-          "columns": ["scheduleId"],
+          "columns": [
+            "scheduleId"
+          ],
           "isUnique": false
         }
       },
@@ -5746,8 +6414,12 @@
           "name": "Host_userId_users_id_fk",
           "tableFrom": "Host",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -5755,8 +6427,12 @@
           "name": "Host_eventTypeId_EventType_id_fk",
           "tableFrom": "Host",
           "tableTo": "EventType",
-          "columnsFrom": ["eventTypeId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "eventTypeId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -5764,8 +6440,12 @@
           "name": "Host_scheduleId_Schedule_id_fk",
           "tableFrom": "Host",
           "tableTo": "Schedule",
-          "columnsFrom": ["scheduleId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "scheduleId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         },
@@ -5773,8 +6453,12 @@
           "name": "Host_groupId_HostGroup_id_fk",
           "tableFrom": "Host",
           "tableTo": "HostGroup",
-          "columnsFrom": ["groupId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "groupId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         },
@@ -5782,15 +6466,22 @@
           "name": "Host_memberId_Membership_id_fk",
           "tableFrom": "Host",
           "tableTo": "Membership",
-          "columnsFrom": ["memberId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "memberId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
       },
       "compositePrimaryKeys": {
         "Host_userId_eventTypeId_pk": {
-          "columns": ["userId", "eventTypeId"],
+          "columns": [
+            "userId",
+            "eventTypeId"
+          ],
           "name": "Host_userId_eventTypeId_pk"
         }
       },
@@ -5839,12 +6530,16 @@
       "indexes": {
         "HostGroup_name_idx": {
           "name": "HostGroup_name_idx",
-          "columns": ["name"],
+          "columns": [
+            "name"
+          ],
           "isUnique": false
         },
         "HostGroup_eventTypeId_idx": {
           "name": "HostGroup_eventTypeId_idx",
-          "columns": ["eventTypeId"],
+          "columns": [
+            "eventTypeId"
+          ],
           "isUnique": false
         }
       },
@@ -5853,8 +6548,12 @@
           "name": "HostGroup_eventTypeId_EventType_id_fk",
           "tableFrom": "HostGroup",
           "tableTo": "EventType",
-          "columnsFrom": ["eventTypeId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "eventTypeId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -5940,17 +6639,24 @@
       "indexes": {
         "HostLocation_credentialId_idx": {
           "name": "HostLocation_credentialId_idx",
-          "columns": ["credentialId"],
+          "columns": [
+            "credentialId"
+          ],
           "isUnique": false
         },
         "HostLocation_eventTypeId_idx": {
           "name": "HostLocation_eventTypeId_idx",
-          "columns": ["eventTypeId"],
+          "columns": [
+            "eventTypeId"
+          ],
           "isUnique": false
         },
         "HostLocation_userId_eventTypeId_key": {
           "name": "HostLocation_userId_eventTypeId_key",
-          "columns": ["userId", "eventTypeId"],
+          "columns": [
+            "userId",
+            "eventTypeId"
+          ],
           "isUnique": true
         }
       },
@@ -5959,8 +6665,12 @@
           "name": "HostLocation_credentialId_Credential_id_fk",
           "tableFrom": "HostLocation",
           "tableTo": "Credential",
-          "columnsFrom": ["credentialId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "credentialId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         },
@@ -5968,8 +6678,14 @@
           "name": "HostLocation_userId_eventTypeId_Host_userId_eventTypeId_fk",
           "tableFrom": "HostLocation",
           "tableTo": "Host",
-          "columnsFrom": ["userId", "eventTypeId"],
-          "columnsTo": ["userId", "eventTypeId"],
+          "columnsFrom": [
+            "userId",
+            "eventTypeId"
+          ],
+          "columnsTo": [
+            "userId",
+            "eventTypeId"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -6034,17 +6750,23 @@
       "indexes": {
         "InstantMeetingToken_token_key": {
           "name": "InstantMeetingToken_token_key",
-          "columns": ["token"],
+          "columns": [
+            "token"
+          ],
           "isUnique": true
         },
         "InstantMeetingToken_bookingId_key": {
           "name": "InstantMeetingToken_bookingId_key",
-          "columns": ["bookingId"],
+          "columns": [
+            "bookingId"
+          ],
           "isUnique": true
         },
         "InstantMeetingToken_token_idx": {
           "name": "InstantMeetingToken_token_idx",
-          "columns": ["token"],
+          "columns": [
+            "token"
+          ],
           "isUnique": false
         }
       },
@@ -6053,8 +6775,12 @@
           "name": "InstantMeetingToken_teamId_Team_id_fk",
           "tableFrom": "InstantMeetingToken",
           "tableTo": "Team",
-          "columnsFrom": ["teamId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "teamId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -6062,8 +6788,12 @@
           "name": "InstantMeetingToken_bookingId_Booking_id_fk",
           "tableFrom": "InstantMeetingToken",
           "tableTo": "Booking",
-          "columnsFrom": ["bookingId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "bookingId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -6135,12 +6865,16 @@
       "indexes": {
         "IntegrationAttributeSync_organizationId_idx": {
           "name": "IntegrationAttributeSync_organizationId_idx",
-          "columns": ["organizationId"],
+          "columns": [
+            "organizationId"
+          ],
           "isUnique": false
         },
         "IntegrationAttributeSync_credentialId_idx": {
           "name": "IntegrationAttributeSync_credentialId_idx",
-          "columns": ["credentialId"],
+          "columns": [
+            "credentialId"
+          ],
           "isUnique": false
         }
       },
@@ -6149,8 +6883,12 @@
           "name": "IntegrationAttributeSync_organizationId_Team_id_fk",
           "tableFrom": "IntegrationAttributeSync",
           "tableTo": "Team",
-          "columnsFrom": ["organizationId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "organizationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -6158,8 +6896,12 @@
           "name": "IntegrationAttributeSync_credentialId_Credential_id_fk",
           "tableFrom": "IntegrationAttributeSync",
           "tableTo": "Credential",
-          "columnsFrom": ["credentialId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "credentialId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -6210,12 +6952,17 @@
       "indexes": {
         "InternalNotePreset_teamId_idx": {
           "name": "InternalNotePreset_teamId_idx",
-          "columns": ["teamId"],
+          "columns": [
+            "teamId"
+          ],
           "isUnique": false
         },
         "InternalNotePreset_teamId_name_key": {
           "name": "InternalNotePreset_teamId_name_key",
-          "columns": ["teamId", "name"],
+          "columns": [
+            "teamId",
+            "name"
+          ],
           "isUnique": true
         }
       },
@@ -6224,8 +6971,12 @@
           "name": "InternalNotePreset_teamId_Team_id_fk",
           "tableFrom": "InternalNotePreset",
           "tableTo": "Team",
-          "columnsFrom": ["teamId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "teamId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -6262,17 +7013,24 @@
       "indexes": {
         "ManagedOrganization_managedOrganizationId_key": {
           "name": "ManagedOrganization_managedOrganizationId_key",
-          "columns": ["managedOrganizationId"],
+          "columns": [
+            "managedOrganizationId"
+          ],
           "isUnique": true
         },
         "ManagedOrganization_managerOrganizationId_idx": {
           "name": "ManagedOrganization_managerOrganizationId_idx",
-          "columns": ["managerOrganizationId"],
+          "columns": [
+            "managerOrganizationId"
+          ],
           "isUnique": false
         },
         "ManagedOrganization_managerOrganizationId_managedOrganizationId_key": {
           "name": "ManagedOrganization_managerOrganizationId_managedOrganizationId_key",
-          "columns": ["managerOrganizationId", "managedOrganizationId"],
+          "columns": [
+            "managerOrganizationId",
+            "managedOrganizationId"
+          ],
           "isUnique": true
         }
       },
@@ -6281,8 +7039,12 @@
           "name": "ManagedOrganization_managedOrganizationId_Team_id_fk",
           "tableFrom": "ManagedOrganization",
           "tableTo": "Team",
-          "columnsFrom": ["managedOrganizationId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "managedOrganizationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -6290,8 +7052,12 @@
           "name": "ManagedOrganization_managerOrganizationId_Team_id_fk",
           "tableFrom": "ManagedOrganization",
           "tableTo": "Team",
-          "columnsFrom": ["managerOrganizationId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "managerOrganizationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -6364,32 +7130,45 @@
       "indexes": {
         "Membership_teamId_idx": {
           "name": "Membership_teamId_idx",
-          "columns": ["teamId"],
+          "columns": [
+            "teamId"
+          ],
           "isUnique": false
         },
         "Membership_userId_idx": {
           "name": "Membership_userId_idx",
-          "columns": ["userId"],
+          "columns": [
+            "userId"
+          ],
           "isUnique": false
         },
         "Membership_accepted_idx": {
           "name": "Membership_accepted_idx",
-          "columns": ["accepted"],
+          "columns": [
+            "accepted"
+          ],
           "isUnique": false
         },
         "Membership_role_idx": {
           "name": "Membership_role_idx",
-          "columns": ["role"],
+          "columns": [
+            "role"
+          ],
           "isUnique": false
         },
         "Membership_customRoleId_idx": {
           "name": "Membership_customRoleId_idx",
-          "columns": ["customRoleId"],
+          "columns": [
+            "customRoleId"
+          ],
           "isUnique": false
         },
         "Membership_userId_teamId_key": {
           "name": "Membership_userId_teamId_key",
-          "columns": ["userId", "teamId"],
+          "columns": [
+            "userId",
+            "teamId"
+          ],
           "isUnique": true
         }
       },
@@ -6398,8 +7177,12 @@
           "name": "Membership_teamId_Team_id_fk",
           "tableFrom": "Membership",
           "tableTo": "Team",
-          "columnsFrom": ["teamId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "teamId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -6407,8 +7190,12 @@
           "name": "Membership_userId_users_id_fk",
           "tableFrom": "Membership",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -6416,8 +7203,12 @@
           "name": "Membership_customRoleId_Role_id_fk",
           "tableFrom": "Membership",
           "tableTo": "Role",
-          "columnsFrom": ["customRoleId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "customRoleId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         }
@@ -6652,22 +7443,32 @@
       "indexes": {
         "MonthlyProration_monthKey_status_idx": {
           "name": "MonthlyProration_monthKey_status_idx",
-          "columns": ["monthKey", "status"],
+          "columns": [
+            "monthKey",
+            "status"
+          ],
           "isUnique": false
         },
         "MonthlyProration_status_idx": {
           "name": "MonthlyProration_status_idx",
-          "columns": ["status"],
+          "columns": [
+            "status"
+          ],
           "isUnique": false
         },
         "MonthlyProration_teamId_idx": {
           "name": "MonthlyProration_teamId_idx",
-          "columns": ["teamId"],
+          "columns": [
+            "teamId"
+          ],
           "isUnique": false
         },
         "MonthlyProration_teamId_monthKey_key": {
           "name": "MonthlyProration_teamId_monthKey_key",
-          "columns": ["teamId", "monthKey"],
+          "columns": [
+            "teamId",
+            "monthKey"
+          ],
           "isUnique": true
         }
       },
@@ -6676,8 +7477,12 @@
           "name": "MonthlyProration_teamId_Team_id_fk",
           "tableFrom": "MonthlyProration",
           "tableTo": "Team",
-          "columnsFrom": ["teamId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "teamId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -6685,8 +7490,12 @@
           "name": "MonthlyProration_teamBillingId_TeamBilling_id_fk",
           "tableFrom": "MonthlyProration",
           "tableTo": "TeamBilling",
-          "columnsFrom": ["teamBillingId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "teamBillingId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         },
@@ -6694,8 +7503,12 @@
           "name": "MonthlyProration_organizationBillingId_OrganizationBilling_id_fk",
           "tableFrom": "MonthlyProration",
           "tableTo": "OrganizationBilling",
-          "columnsFrom": ["organizationBillingId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "organizationBillingId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         }
@@ -6732,7 +7545,10 @@
       "indexes": {
         "NotificationsSubscriptions_userId_subscription_idx": {
           "name": "NotificationsSubscriptions_userId_subscription_idx",
-          "columns": ["userId", "subscription"],
+          "columns": [
+            "userId",
+            "subscription"
+          ],
           "isUnique": false
         }
       },
@@ -6741,8 +7557,12 @@
           "name": "NotificationsSubscriptions_userId_users_id_fk",
           "tableFrom": "NotificationsSubscriptions",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -6852,7 +7672,9 @@
       "indexes": {
         "OAuthClient_userId_idx": {
           "name": "OAuthClient_userId_idx",
-          "columns": ["userId"],
+          "columns": [
+            "userId"
+          ],
           "isUnique": false
         }
       },
@@ -6861,8 +7683,12 @@
           "name": "OAuthClient_userId_users_id_fk",
           "tableFrom": "OAuthClient",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         }
@@ -7005,12 +7831,16 @@
       "indexes": {
         "OrganizationBilling_teamId_key": {
           "name": "OrganizationBilling_teamId_key",
-          "columns": ["teamId"],
+          "columns": [
+            "teamId"
+          ],
           "isUnique": true
         },
         "OrganizationBilling_subscriptionId_key": {
           "name": "OrganizationBilling_subscriptionId_key",
-          "columns": ["subscriptionId"],
+          "columns": [
+            "subscriptionId"
+          ],
           "isUnique": true
         }
       },
@@ -7019,8 +7849,12 @@
           "name": "OrganizationBilling_teamId_Team_id_fk",
           "tableFrom": "OrganizationBilling",
           "tableTo": "Team",
-          "columnsFrom": ["teamId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "teamId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -7207,27 +8041,37 @@
       "indexes": {
         "OrganizationOnboarding_orgOwnerEmail_key": {
           "name": "OrganizationOnboarding_orgOwnerEmail_key",
-          "columns": ["orgOwnerEmail"],
+          "columns": [
+            "orgOwnerEmail"
+          ],
           "isUnique": true
         },
         "OrganizationOnboarding_organizationId_key": {
           "name": "OrganizationOnboarding_organizationId_key",
-          "columns": ["organizationId"],
+          "columns": [
+            "organizationId"
+          ],
           "isUnique": true
         },
         "OrganizationOnboarding_stripeCustomerId_key": {
           "name": "OrganizationOnboarding_stripeCustomerId_key",
-          "columns": ["stripeCustomerId"],
+          "columns": [
+            "stripeCustomerId"
+          ],
           "isUnique": true
         },
         "OrganizationOnboarding_orgOwnerEmail_idx": {
           "name": "OrganizationOnboarding_orgOwnerEmail_idx",
-          "columns": ["orgOwnerEmail"],
+          "columns": [
+            "orgOwnerEmail"
+          ],
           "isUnique": false
         },
         "OrganizationOnboarding_stripeCustomerId_idx": {
           "name": "OrganizationOnboarding_stripeCustomerId_idx",
-          "columns": ["stripeCustomerId"],
+          "columns": [
+            "stripeCustomerId"
+          ],
           "isUnique": false
         }
       },
@@ -7236,8 +8080,12 @@
           "name": "OrganizationOnboarding_createdById_users_id_fk",
           "tableFrom": "OrganizationOnboarding",
           "tableTo": "users",
-          "columnsFrom": ["createdById"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "createdById"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -7245,8 +8093,12 @@
           "name": "OrganizationOnboarding_organizationId_Team_id_fk",
           "tableFrom": "OrganizationOnboarding",
           "tableTo": "Team",
-          "columnsFrom": ["organizationId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "organizationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -7443,7 +8295,9 @@
       "indexes": {
         "OrganizationSettings_organizationId_key": {
           "name": "OrganizationSettings_organizationId_key",
-          "columns": ["organizationId"],
+          "columns": [
+            "organizationId"
+          ],
           "isUnique": true
         }
       },
@@ -7452,8 +8306,12 @@
           "name": "OrganizationSettings_organizationId_Team_id_fk",
           "tableFrom": "OrganizationSettings",
           "tableTo": "Team",
-          "columnsFrom": ["organizationId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "organizationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -7547,27 +8405,38 @@
       "indexes": {
         "OutOfOfficeEntry_uuid_key": {
           "name": "OutOfOfficeEntry_uuid_key",
-          "columns": ["uuid"],
+          "columns": [
+            "uuid"
+          ],
           "isUnique": true
         },
         "OutOfOfficeEntry_uuid_idx": {
           "name": "OutOfOfficeEntry_uuid_idx",
-          "columns": ["uuid"],
+          "columns": [
+            "uuid"
+          ],
           "isUnique": false
         },
         "OutOfOfficeEntry_userId_idx": {
           "name": "OutOfOfficeEntry_userId_idx",
-          "columns": ["userId"],
+          "columns": [
+            "userId"
+          ],
           "isUnique": false
         },
         "OutOfOfficeEntry_toUserId_idx": {
           "name": "OutOfOfficeEntry_toUserId_idx",
-          "columns": ["toUserId"],
+          "columns": [
+            "toUserId"
+          ],
           "isUnique": false
         },
         "OutOfOfficeEntry_start_end_idx": {
           "name": "OutOfOfficeEntry_start_end_idx",
-          "columns": ["start", "end"],
+          "columns": [
+            "start",
+            "end"
+          ],
           "isUnique": false
         }
       },
@@ -7576,8 +8445,12 @@
           "name": "OutOfOfficeEntry_userId_users_id_fk",
           "tableFrom": "OutOfOfficeEntry",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -7585,8 +8458,12 @@
           "name": "OutOfOfficeEntry_toUserId_users_id_fk",
           "tableFrom": "OutOfOfficeEntry",
           "tableTo": "users",
-          "columnsFrom": ["toUserId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "toUserId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -7594,8 +8471,12 @@
           "name": "OutOfOfficeEntry_reasonId_OutOfOfficeReason_id_fk",
           "tableFrom": "OutOfOfficeEntry",
           "tableTo": "OutOfOfficeReason",
-          "columnsFrom": ["reasonId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "reasonId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         }
@@ -7647,7 +8528,9 @@
       "indexes": {
         "OutOfOfficeReason_reason_key": {
           "name": "OutOfOfficeReason_reason_key",
-          "columns": ["reason"],
+          "columns": [
+            "reason"
+          ],
           "isUnique": true
         }
       },
@@ -7656,8 +8539,12 @@
           "name": "OutOfOfficeReason_userId_users_id_fk",
           "tableFrom": "OutOfOfficeReason",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -7758,22 +8645,30 @@
       "indexes": {
         "Payment_uid_key": {
           "name": "Payment_uid_key",
-          "columns": ["uid"],
+          "columns": [
+            "uid"
+          ],
           "isUnique": true
         },
         "Payment_externalId_key": {
           "name": "Payment_externalId_key",
-          "columns": ["externalId"],
+          "columns": [
+            "externalId"
+          ],
           "isUnique": true
         },
         "Payment_bookingId_idx": {
           "name": "Payment_bookingId_idx",
-          "columns": ["bookingId"],
+          "columns": [
+            "bookingId"
+          ],
           "isUnique": false
         },
         "Payment_externalId_idx": {
           "name": "Payment_externalId_idx",
-          "columns": ["externalId"],
+          "columns": [
+            "externalId"
+          ],
           "isUnique": false
         }
       },
@@ -7782,8 +8677,12 @@
           "name": "Payment_appId_App_slug_fk",
           "tableFrom": "Payment",
           "tableTo": "App",
-          "columnsFrom": ["appId"],
-          "columnsTo": ["slug"],
+          "columnsFrom": [
+            "appId"
+          ],
+          "columnsTo": [
+            "slug"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -7791,8 +8690,12 @@
           "name": "Payment_bookingId_Booking_id_fk",
           "tableFrom": "Payment",
           "tableTo": "Booking",
-          "columnsFrom": ["bookingId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "bookingId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -7836,7 +8739,10 @@
       "indexes": {
         "PlatformAuthorizationToken_userId_platformOAuthClientId_key": {
           "name": "PlatformAuthorizationToken_userId_platformOAuthClientId_key",
-          "columns": ["userId", "platformOAuthClientId"],
+          "columns": [
+            "userId",
+            "platformOAuthClientId"
+          ],
           "isUnique": true
         }
       },
@@ -7845,8 +8751,12 @@
           "name": "PlatformAuthorizationToken_platformOAuthClientId_PlatformOAuthClient_id_fk",
           "tableFrom": "PlatformAuthorizationToken",
           "tableTo": "PlatformOAuthClient",
-          "columnsFrom": ["platformOAuthClientId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "platformOAuthClientId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -7854,8 +8764,12 @@
           "name": "PlatformAuthorizationToken_userId_users_id_fk",
           "tableFrom": "PlatformAuthorizationToken",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -7939,8 +8853,12 @@
           "name": "PlatformBilling_id_Team_id_fk",
           "tableFrom": "PlatformBilling",
           "tableTo": "Team",
-          "columnsFrom": ["id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -7948,8 +8866,12 @@
           "name": "PlatformBilling_managerBillingId_PlatformBilling_id_fk",
           "tableFrom": "PlatformBilling",
           "tableTo": "PlatformBilling",
-          "columnsFrom": ["managerBillingId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "managerBillingId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         }
@@ -8069,8 +8991,12 @@
           "name": "PlatformOAuthClient_organizationId_Team_id_fk",
           "tableFrom": "PlatformOAuthClient",
           "tableTo": "Team",
-          "columnsFrom": ["organizationId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "organizationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -8135,27 +9061,39 @@
       "indexes": {
         "Profile_uid_idx": {
           "name": "Profile_uid_idx",
-          "columns": ["uid"],
+          "columns": [
+            "uid"
+          ],
           "isUnique": false
         },
         "Profile_userId_idx": {
           "name": "Profile_userId_idx",
-          "columns": ["userId"],
+          "columns": [
+            "userId"
+          ],
           "isUnique": false
         },
         "Profile_organizationId_idx": {
           "name": "Profile_organizationId_idx",
-          "columns": ["organizationId"],
+          "columns": [
+            "organizationId"
+          ],
           "isUnique": false
         },
         "Profile_userId_organizationId_key": {
           "name": "Profile_userId_organizationId_key",
-          "columns": ["userId", "organizationId"],
+          "columns": [
+            "userId",
+            "organizationId"
+          ],
           "isUnique": true
         },
         "Profile_username_organizationId_key": {
           "name": "Profile_username_organizationId_key",
-          "columns": ["username", "organizationId"],
+          "columns": [
+            "username",
+            "organizationId"
+          ],
           "isUnique": true
         }
       },
@@ -8164,8 +9102,12 @@
           "name": "Profile_userId_users_id_fk",
           "tableFrom": "Profile",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -8173,8 +9115,12 @@
           "name": "Profile_organizationId_Team_id_fk",
           "tableFrom": "Profile",
           "tableTo": "Team",
-          "columnsFrom": ["organizationId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "organizationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -8246,7 +9192,9 @@
       "indexes": {
         "RateLimit_apiKeyId_idx": {
           "name": "RateLimit_apiKeyId_idx",
-          "columns": ["apiKeyId"],
+          "columns": [
+            "apiKeyId"
+          ],
           "isUnique": false
         }
       },
@@ -8255,8 +9203,12 @@
           "name": "RateLimit_apiKeyId_ApiKey_id_fk",
           "tableFrom": "RateLimit",
           "tableTo": "ApiKey",
-          "columnsFrom": ["apiKeyId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "apiKeyId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -8314,7 +9266,9 @@
       "indexes": {
         "RefreshToken_secret_key": {
           "name": "RefreshToken_secret_key",
-          "columns": ["secret"],
+          "columns": [
+            "secret"
+          ],
           "isUnique": true
         }
       },
@@ -8323,8 +9277,12 @@
           "name": "RefreshToken_platformOAuthClientId_PlatformOAuthClient_id_fk",
           "tableFrom": "RefreshToken",
           "tableTo": "PlatformOAuthClient",
-          "columnsFrom": ["platformOAuthClientId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "platformOAuthClientId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -8332,8 +9290,12 @@
           "name": "RefreshToken_userId_users_id_fk",
           "tableFrom": "RefreshToken",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -8384,12 +9346,16 @@
       "indexes": {
         "ReminderMail_referenceId_idx": {
           "name": "ReminderMail_referenceId_idx",
-          "columns": ["referenceId"],
+          "columns": [
+            "referenceId"
+          ],
           "isUnique": false
         },
         "ReminderMail_reminderType_idx": {
           "name": "ReminderMail_reminderType_idx",
-          "columns": ["reminderType"],
+          "columns": [
+            "reminderType"
+          ],
           "isUnique": false
         }
       },
@@ -8507,12 +9473,17 @@
       "indexes": {
         "Role_teamId_idx": {
           "name": "Role_teamId_idx",
-          "columns": ["teamId"],
+          "columns": [
+            "teamId"
+          ],
           "isUnique": false
         },
         "Role_name_teamId_key": {
           "name": "Role_name_teamId_key",
-          "columns": ["name", "teamId"],
+          "columns": [
+            "name",
+            "teamId"
+          ],
           "isUnique": true
         }
       },
@@ -8521,8 +9492,12 @@
           "name": "Role_teamId_Team_id_fk",
           "tableFrom": "Role",
           "tableTo": "Team",
-          "columnsFrom": ["teamId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "teamId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -8573,17 +9548,25 @@
       "indexes": {
         "RolePermission_roleId_idx": {
           "name": "RolePermission_roleId_idx",
-          "columns": ["roleId"],
+          "columns": [
+            "roleId"
+          ],
           "isUnique": false
         },
         "RolePermission_action_idx": {
           "name": "RolePermission_action_idx",
-          "columns": ["action"],
+          "columns": [
+            "action"
+          ],
           "isUnique": false
         },
         "RolePermission_roleId_resource_action_key": {
           "name": "RolePermission_roleId_resource_action_key",
-          "columns": ["roleId", "resource", "action"],
+          "columns": [
+            "roleId",
+            "resource",
+            "action"
+          ],
           "isUnique": true
         }
       },
@@ -8592,8 +9575,12 @@
           "name": "RolePermission_roleId_Role_id_fk",
           "tableFrom": "RolePermission",
           "tableTo": "Role",
-          "columnsFrom": ["roleId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "roleId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -8637,7 +9624,9 @@
       "indexes": {
         "Schedule_userId_idx": {
           "name": "Schedule_userId_idx",
-          "columns": ["userId"],
+          "columns": [
+            "userId"
+          ],
           "isUnique": false
         }
       },
@@ -8646,8 +9635,12 @@
           "name": "Schedule_userId_users_id_fk",
           "tableFrom": "Schedule",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -8761,22 +9754,33 @@
       "indexes": {
         "SeatChangeLog_teamId_monthKey_idx": {
           "name": "SeatChangeLog_teamId_monthKey_idx",
-          "columns": ["teamId", "monthKey"],
+          "columns": [
+            "teamId",
+            "monthKey"
+          ],
           "isUnique": false
         },
         "SeatChangeLog_teamId_processedInProrationId_idx": {
           "name": "SeatChangeLog_teamId_processedInProrationId_idx",
-          "columns": ["teamId", "processedInProrationId"],
+          "columns": [
+            "teamId",
+            "processedInProrationId"
+          ],
           "isUnique": false
         },
         "SeatChangeLog_monthKey_idx": {
           "name": "SeatChangeLog_monthKey_idx",
-          "columns": ["monthKey"],
+          "columns": [
+            "monthKey"
+          ],
           "isUnique": false
         },
         "SeatChangeLog_teamId_operationId_key": {
           "name": "SeatChangeLog_teamId_operationId_key",
-          "columns": ["teamId", "operationId"],
+          "columns": [
+            "teamId",
+            "operationId"
+          ],
           "isUnique": true
         }
       },
@@ -8785,8 +9789,12 @@
           "name": "SeatChangeLog_teamId_Team_id_fk",
           "tableFrom": "SeatChangeLog",
           "tableTo": "Team",
-          "columnsFrom": ["teamId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "teamId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -8794,8 +9802,12 @@
           "name": "SeatChangeLog_processedInProrationId_MonthlyProration_id_fk",
           "tableFrom": "SeatChangeLog",
           "tableTo": "MonthlyProration",
-          "columnsFrom": ["processedInProrationId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "processedInProrationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         },
@@ -8803,8 +9815,12 @@
           "name": "SeatChangeLog_teamBillingId_TeamBilling_id_fk",
           "tableFrom": "SeatChangeLog",
           "tableTo": "TeamBilling",
-          "columnsFrom": ["teamBillingId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "teamBillingId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         },
@@ -8812,8 +9828,12 @@
           "name": "SeatChangeLog_organizationBillingId_OrganizationBilling_id_fk",
           "tableFrom": "SeatChangeLog",
           "tableTo": "OrganizationBilling",
-          "columnsFrom": ["organizationBillingId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "organizationBillingId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         }
@@ -8857,22 +9877,32 @@
       "indexes": {
         "SecondaryEmail_email_key": {
           "name": "SecondaryEmail_email_key",
-          "columns": ["email"],
+          "columns": [
+            "email"
+          ],
           "isUnique": true
         },
         "SecondaryEmail_userId_idx": {
           "name": "SecondaryEmail_userId_idx",
-          "columns": ["userId"],
+          "columns": [
+            "userId"
+          ],
           "isUnique": false
         },
         "SecondaryEmail_email_emailVerified_idx": {
           "name": "SecondaryEmail_email_emailVerified_idx",
-          "columns": ["email", "emailVerified"],
+          "columns": [
+            "email",
+            "emailVerified"
+          ],
           "isUnique": false
         },
         "SecondaryEmail_userId_email_key": {
           "name": "SecondaryEmail_userId_email_key",
-          "columns": ["userId", "email"],
+          "columns": [
+            "userId",
+            "email"
+          ],
           "isUnique": true
         }
       },
@@ -8881,8 +9911,12 @@
           "name": "SecondaryEmail_userId_users_id_fk",
           "tableFrom": "SecondaryEmail",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -9120,47 +10154,77 @@
       "indexes": {
         "SelectedCalendar_userId_idx": {
           "name": "SelectedCalendar_userId_idx",
-          "columns": ["userId"],
+          "columns": [
+            "userId"
+          ],
           "isUnique": false
         },
         "SelectedCalendar_externalId_idx": {
           "name": "SelectedCalendar_externalId_idx",
-          "columns": ["externalId"],
+          "columns": [
+            "externalId"
+          ],
           "isUnique": false
         },
         "SelectedCalendar_eventTypeId_idx": {
           "name": "SelectedCalendar_eventTypeId_idx",
-          "columns": ["eventTypeId"],
+          "columns": [
+            "eventTypeId"
+          ],
           "isUnique": false
         },
         "SelectedCalendar_credentialId_idx": {
           "name": "SelectedCalendar_credentialId_idx",
-          "columns": ["credentialId"],
+          "columns": [
+            "credentialId"
+          ],
           "isUnique": false
         },
         "SelectedCalendar_channelId_idx": {
           "name": "SelectedCalendar_channelId_idx",
-          "columns": ["channelId"],
+          "columns": [
+            "channelId"
+          ],
           "isUnique": false
         },
         "SelectedCalendar_watch_idx": {
           "name": "SelectedCalendar_watch_idx",
-          "columns": ["integration", "googleChannelExpiration", "error", "watchAttempts", "maxAttempts"],
+          "columns": [
+            "integration",
+            "googleChannelExpiration",
+            "error",
+            "watchAttempts",
+            "maxAttempts"
+          ],
           "isUnique": false
         },
         "SelectedCalendar_unwatch_idx": {
           "name": "SelectedCalendar_unwatch_idx",
-          "columns": ["integration", "googleChannelExpiration", "error", "unwatchAttempts", "maxAttempts"],
+          "columns": [
+            "integration",
+            "googleChannelExpiration",
+            "error",
+            "unwatchAttempts",
+            "maxAttempts"
+          ],
           "isUnique": false
         },
         "SelectedCalendar_userId_integration_externalId_eventTypeId_key": {
           "name": "SelectedCalendar_userId_integration_externalId_eventTypeId_key",
-          "columns": ["userId", "integration", "externalId", "eventTypeId"],
+          "columns": [
+            "userId",
+            "integration",
+            "externalId",
+            "eventTypeId"
+          ],
           "isUnique": true
         },
         "SelectedCalendar_googleChannelId_eventTypeId_key": {
           "name": "SelectedCalendar_googleChannelId_eventTypeId_key",
-          "columns": ["googleChannelId", "eventTypeId"],
+          "columns": [
+            "googleChannelId",
+            "eventTypeId"
+          ],
           "isUnique": true
         }
       },
@@ -9169,8 +10233,12 @@
           "name": "SelectedCalendar_userId_users_id_fk",
           "tableFrom": "SelectedCalendar",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -9178,8 +10246,12 @@
           "name": "SelectedCalendar_credentialId_Credential_id_fk",
           "tableFrom": "SelectedCalendar",
           "tableTo": "Credential",
-          "columnsFrom": ["credentialId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "credentialId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -9187,8 +10259,12 @@
           "name": "SelectedCalendar_delegationCredentialId_DelegationCredential_id_fk",
           "tableFrom": "SelectedCalendar",
           "tableTo": "DelegationCredential",
-          "columnsFrom": ["delegationCredentialId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "delegationCredentialId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -9196,8 +10272,12 @@
           "name": "SelectedCalendar_eventTypeId_EventType_id_fk",
           "tableFrom": "SelectedCalendar",
           "tableTo": "EventType",
-          "columnsFrom": ["eventTypeId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "eventTypeId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         }
@@ -9270,7 +10350,12 @@
       "indexes": {
         "SelectedSlots_userId_slotUtcStartDate_slotUtcEndDate_uid_key": {
           "name": "SelectedSlots_userId_slotUtcStartDate_slotUtcEndDate_uid_key",
-          "columns": ["userId", "slotUtcStartDate", "slotUtcEndDate", "uid"],
+          "columns": [
+            "userId",
+            "slotUtcStartDate",
+            "slotUtcEndDate",
+            "uid"
+          ],
           "isUnique": true
         }
       },
@@ -9284,13 +10369,13 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "text",
+          "type": "integer",
           "primaryKey": true,
           "notNull": true,
-          "autoincrement": false
+          "autoincrement": true
         },
-        "sessionToken": {
-          "name": "sessionToken",
+        "token": {
+          "name": "token",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -9303,8 +10388,36 @@
           "notNull": true,
           "autoincrement": false
         },
-        "expires": {
-          "name": "expires",
+        "expiresAt": {
+          "name": "expiresAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "ipAddress": {
+          "name": "ipAddress",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "userAgent": {
+          "name": "userAgent",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updatedAt": {
+          "name": "updatedAt",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -9312,14 +10425,18 @@
         }
       },
       "indexes": {
-        "Session_sessionToken_key": {
-          "name": "Session_sessionToken_key",
-          "columns": ["sessionToken"],
+        "Session_token_key": {
+          "name": "Session_token_key",
+          "columns": [
+            "token"
+          ],
           "isUnique": true
         },
         "Session_userId_idx": {
           "name": "Session_userId_idx",
-          "columns": ["userId"],
+          "columns": [
+            "userId"
+          ],
           "isUnique": false
         }
       },
@@ -9328,8 +10445,12 @@
           "name": "Session_userId_users_id_fk",
           "tableFrom": "Session",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -9431,17 +10552,25 @@
       "indexes": {
         "Task_succeededAt_idx": {
           "name": "Task_succeededAt_idx",
-          "columns": ["succeededAt"],
+          "columns": [
+            "succeededAt"
+          ],
           "isUnique": false
         },
         "Task_scheduledAt_succeededAt_idx": {
           "name": "Task_scheduledAt_succeededAt_idx",
-          "columns": ["scheduledAt", "succeededAt"],
+          "columns": [
+            "scheduledAt",
+            "succeededAt"
+          ],
           "isUnique": false
         },
         "Task_referenceUid_type_key": {
           "name": "Task_referenceUid_type_key",
-          "columns": ["referenceUid", "type"],
+          "columns": [
+            "referenceUid",
+            "type"
+          ],
           "isUnique": true
         }
       },
@@ -9703,12 +10832,17 @@
       "indexes": {
         "Team_parentId_idx": {
           "name": "Team_parentId_idx",
-          "columns": ["parentId"],
+          "columns": [
+            "parentId"
+          ],
           "isUnique": false
         },
         "Team_slug_parentId_key": {
           "name": "Team_slug_parentId_key",
-          "columns": ["slug", "parentId"],
+          "columns": [
+            "slug",
+            "parentId"
+          ],
           "isUnique": true
         }
       },
@@ -9717,8 +10851,12 @@
           "name": "Team_parentId_Team_id_fk",
           "tableFrom": "Team",
           "tableTo": "Team",
-          "columnsFrom": ["parentId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "parentId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -9726,8 +10864,12 @@
           "name": "Team_createdByOAuthClientId_PlatformOAuthClient_id_fk",
           "tableFrom": "Team",
           "tableTo": "PlatformOAuthClient",
-          "columnsFrom": ["createdByOAuthClientId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "createdByOAuthClientId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -9870,12 +11012,16 @@
       "indexes": {
         "TeamBilling_teamId_key": {
           "name": "TeamBilling_teamId_key",
-          "columns": ["teamId"],
+          "columns": [
+            "teamId"
+          ],
           "isUnique": true
         },
         "TeamBilling_subscriptionId_key": {
           "name": "TeamBilling_subscriptionId_key",
-          "columns": ["subscriptionId"],
+          "columns": [
+            "subscriptionId"
+          ],
           "isUnique": true
         }
       },
@@ -9884,8 +11030,12 @@
           "name": "TeamBilling_teamId_Team_id_fk",
           "tableFrom": "TeamBilling",
           "tableTo": "Team",
-          "columnsFrom": ["teamId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "teamId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -9943,7 +11093,10 @@
       "indexes": {
         "TeamFeatures_teamId_featureId_idx": {
           "name": "TeamFeatures_teamId_featureId_idx",
-          "columns": ["teamId", "featureId"],
+          "columns": [
+            "teamId",
+            "featureId"
+          ],
           "isUnique": false
         }
       },
@@ -9952,8 +11105,12 @@
           "name": "TeamFeatures_teamId_Team_id_fk",
           "tableFrom": "TeamFeatures",
           "tableTo": "Team",
-          "columnsFrom": ["teamId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "teamId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -9961,15 +11118,22 @@
           "name": "TeamFeatures_featureId_Feature_slug_fk",
           "tableFrom": "TeamFeatures",
           "tableTo": "Feature",
-          "columnsFrom": ["featureId"],
-          "columnsTo": ["slug"],
+          "columnsFrom": [
+            "featureId"
+          ],
+          "columnsTo": [
+            "slug"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
       },
       "compositePrimaryKeys": {
         "TeamFeatures_teamId_featureId_pk": {
-          "columns": ["teamId", "featureId"],
+          "columns": [
+            "teamId",
+            "featureId"
+          ],
           "name": "TeamFeatures_teamId_featureId_pk"
         }
       },
@@ -10040,7 +11204,11 @@
       "indexes": {
         "TempOrgRedirect_from_type_fromOrgId_key": {
           "name": "TempOrgRedirect_from_type_fromOrgId_key",
-          "columns": ["from", "type", "fromOrgId"],
+          "columns": [
+            "from",
+            "type",
+            "fromOrgId"
+          ],
           "isUnique": true
         }
       },
@@ -10105,7 +11273,9 @@
       "indexes": {
         "Tracking_bookingId_key": {
           "name": "Tracking_bookingId_key",
-          "columns": ["bookingId"],
+          "columns": [
+            "bookingId"
+          ],
           "isUnique": true
         }
       },
@@ -10114,8 +11284,12 @@
           "name": "Tracking_bookingId_Booking_id_fk",
           "tableFrom": "Tracking",
           "tableTo": "Booking",
-          "columnsFrom": ["bookingId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "bookingId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -10173,12 +11347,16 @@
       "indexes": {
         "TravelSchedule_startDate_idx": {
           "name": "TravelSchedule_startDate_idx",
-          "columns": ["startDate"],
+          "columns": [
+            "startDate"
+          ],
           "isUnique": false
         },
         "TravelSchedule_endDate_idx": {
           "name": "TravelSchedule_endDate_idx",
-          "columns": ["endDate"],
+          "columns": [
+            "endDate"
+          ],
           "isUnique": false
         }
       },
@@ -10187,8 +11365,12 @@
           "name": "TravelSchedule_userId_users_id_fk",
           "tableFrom": "TravelSchedule",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -10239,8 +11421,9 @@
           "name": "emailVerified",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
         },
         "bio": {
           "name": "bio",
@@ -10304,6 +11487,13 @@
         },
         "created": {
           "name": "created",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updatedAt": {
+          "name": "updatedAt",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -10538,47 +11728,67 @@
       "indexes": {
         "users_uuid_key": {
           "name": "users_uuid_key",
-          "columns": ["uuid"],
+          "columns": [
+            "uuid"
+          ],
           "isUnique": true
         },
         "users_email_key": {
           "name": "users_email_key",
-          "columns": ["email"],
+          "columns": [
+            "email"
+          ],
           "isUnique": true
         },
         "users_movedToProfileId_key": {
           "name": "users_movedToProfileId_key",
-          "columns": ["movedToProfileId"],
+          "columns": [
+            "movedToProfileId"
+          ],
           "isUnique": true
         },
         "users_username_idx": {
           "name": "users_username_idx",
-          "columns": ["username"],
+          "columns": [
+            "username"
+          ],
           "isUnique": false
         },
         "users_emailVerified_idx": {
           "name": "users_emailVerified_idx",
-          "columns": ["emailVerified"],
+          "columns": [
+            "emailVerified"
+          ],
           "isUnique": false
         },
         "users_identityProvider_idx": {
           "name": "users_identityProvider_idx",
-          "columns": ["identityProvider"],
+          "columns": [
+            "identityProvider"
+          ],
           "isUnique": false
         },
         "users_identityProviderId_idx": {
           "name": "users_identityProviderId_idx",
-          "columns": ["identityProviderId"],
+          "columns": [
+            "identityProviderId"
+          ],
           "isUnique": false
         },
         "users_email_username_key": {
           "name": "users_email_username_key",
-          "columns": ["email", "username"],
+          "columns": [
+            "email",
+            "username"
+          ],
           "isUnique": true
         },
         "users_username_organizationId_key": {
           "name": "users_username_organizationId_key",
-          "columns": ["username", "organizationId"],
+          "columns": [
+            "username",
+            "organizationId"
+          ],
           "isUnique": true
         }
       },
@@ -10587,8 +11797,12 @@
           "name": "users_organizationId_Team_id_fk",
           "tableFrom": "users",
           "tableTo": "Team",
-          "columnsFrom": ["organizationId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "organizationId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         },
@@ -10596,8 +11810,12 @@
           "name": "users_movedToProfileId_Profile_id_fk",
           "tableFrom": "users",
           "tableTo": "Profile",
-          "columnsFrom": ["movedToProfileId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "movedToProfileId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         }
@@ -10655,7 +11873,10 @@
       "indexes": {
         "UserFeatures_userId_featureId_idx": {
           "name": "UserFeatures_userId_featureId_idx",
-          "columns": ["userId", "featureId"],
+          "columns": [
+            "userId",
+            "featureId"
+          ],
           "isUnique": false
         }
       },
@@ -10664,8 +11885,12 @@
           "name": "UserFeatures_userId_users_id_fk",
           "tableFrom": "UserFeatures",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -10673,15 +11898,22 @@
           "name": "UserFeatures_featureId_Feature_slug_fk",
           "tableFrom": "UserFeatures",
           "tableTo": "Feature",
-          "columnsFrom": ["featureId"],
-          "columnsTo": ["slug"],
+          "columnsFrom": [
+            "featureId"
+          ],
+          "columnsTo": [
+            "slug"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
       },
       "compositePrimaryKeys": {
         "UserFeatures_userId_featureId_pk": {
-          "columns": ["userId", "featureId"],
+          "columns": [
+            "userId",
+            "featureId"
+          ],
           "name": "UserFeatures_userId_featureId_pk"
         }
       },
@@ -10744,17 +11976,24 @@
       "indexes": {
         "UserFilterSegmentPreference_userId_idx": {
           "name": "UserFilterSegmentPreference_userId_idx",
-          "columns": ["userId"],
+          "columns": [
+            "userId"
+          ],
           "isUnique": false
         },
         "UserFilterSegmentPreference_segmentId_idx": {
           "name": "UserFilterSegmentPreference_segmentId_idx",
-          "columns": ["segmentId"],
+          "columns": [
+            "segmentId"
+          ],
           "isUnique": false
         },
         "UserFilterSegmentPreference_userId_tableIdentifier_key": {
           "name": "UserFilterSegmentPreference_userId_tableIdentifier_key",
-          "columns": ["userId", "tableIdentifier"],
+          "columns": [
+            "userId",
+            "tableIdentifier"
+          ],
           "isUnique": true
         }
       },
@@ -10763,8 +12002,12 @@
           "name": "UserFilterSegmentPreference_userId_users_id_fk",
           "tableFrom": "UserFilterSegmentPreference",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -10772,8 +12015,12 @@
           "name": "UserFilterSegmentPreference_segmentId_FilterSegment_id_fk",
           "tableFrom": "UserFilterSegmentPreference",
           "tableTo": "FilterSegment",
-          "columnsFrom": ["segmentId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "segmentId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -10831,7 +12078,9 @@
       "indexes": {
         "UserHolidaySettings_userId_key": {
           "name": "UserHolidaySettings_userId_key",
-          "columns": ["userId"],
+          "columns": [
+            "userId"
+          ],
           "isUnique": true
         }
       },
@@ -10840,8 +12089,12 @@
           "name": "UserHolidaySettings_userId_users_id_fk",
           "tableFrom": "UserHolidaySettings",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -10850,18 +12103,46 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "UserPassword": {
-      "name": "UserPassword",
+    "Verification": {
+      "name": "Verification",
       "columns": {
-        "hash": {
-          "name": "hash",
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "identifier": {
+          "name": "identifier",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
-        "userId": {
-          "name": "userId",
+        "value": {
+          "name": "value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "expiresAt": {
+          "name": "expiresAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "createdAt": {
+          "name": "createdAt",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "updatedAt": {
+          "name": "updatedAt",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,
@@ -10869,23 +12150,15 @@
         }
       },
       "indexes": {
-        "UserPassword_userId_key": {
-          "name": "UserPassword_userId_key",
-          "columns": ["userId"],
-          "isUnique": true
+        "Verification_identifier_idx": {
+          "name": "Verification_identifier_idx",
+          "columns": [
+            "identifier"
+          ],
+          "isUnique": false
         }
       },
-      "foreignKeys": {
-        "UserPassword_userId_users_id_fk": {
-          "name": "UserPassword_userId_users_id_fk",
-          "tableFrom": "UserPassword",
-          "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
-          "onDelete": "cascade",
-          "onUpdate": "cascade"
-        }
-      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "checkConstraints": {}
@@ -10960,27 +12233,38 @@
       "indexes": {
         "VerificationToken_token_key": {
           "name": "VerificationToken_token_key",
-          "columns": ["token"],
+          "columns": [
+            "token"
+          ],
           "isUnique": true
         },
         "VerificationToken_token_idx": {
           "name": "VerificationToken_token_idx",
-          "columns": ["token"],
+          "columns": [
+            "token"
+          ],
           "isUnique": false
         },
         "VerificationToken_teamId_idx": {
           "name": "VerificationToken_teamId_idx",
-          "columns": ["teamId"],
+          "columns": [
+            "teamId"
+          ],
           "isUnique": false
         },
         "VerificationToken_secondaryEmailId_idx": {
           "name": "VerificationToken_secondaryEmailId_idx",
-          "columns": ["secondaryEmailId"],
+          "columns": [
+            "secondaryEmailId"
+          ],
           "isUnique": false
         },
         "VerificationToken_identifier_token_key": {
           "name": "VerificationToken_identifier_token_key",
-          "columns": ["identifier", "token"],
+          "columns": [
+            "identifier",
+            "token"
+          ],
           "isUnique": true
         }
       },
@@ -10989,8 +12273,12 @@
           "name": "VerificationToken_teamId_Team_id_fk",
           "tableFrom": "VerificationToken",
           "tableTo": "Team",
-          "columnsFrom": ["teamId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "teamId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         },
@@ -10998,8 +12286,12 @@
           "name": "VerificationToken_secondaryEmailId_SecondaryEmail_id_fk",
           "tableFrom": "VerificationToken",
           "tableTo": "SecondaryEmail",
-          "columnsFrom": ["secondaryEmailId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "secondaryEmailId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         }
@@ -11043,12 +12335,16 @@
       "indexes": {
         "VerifiedEmail_userId_idx": {
           "name": "VerifiedEmail_userId_idx",
-          "columns": ["userId"],
+          "columns": [
+            "userId"
+          ],
           "isUnique": false
         },
         "VerifiedEmail_teamId_idx": {
           "name": "VerifiedEmail_teamId_idx",
-          "columns": ["teamId"],
+          "columns": [
+            "teamId"
+          ],
           "isUnique": false
         }
       },
@@ -11057,8 +12353,12 @@
           "name": "VerifiedEmail_userId_users_id_fk",
           "tableFrom": "VerifiedEmail",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -11066,8 +12366,12 @@
           "name": "VerifiedEmail_teamId_Team_id_fk",
           "tableFrom": "VerifiedEmail",
           "tableTo": "Team",
-          "columnsFrom": ["teamId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "teamId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -11111,12 +12415,16 @@
       "indexes": {
         "VerifiedNumber_userId_idx": {
           "name": "VerifiedNumber_userId_idx",
-          "columns": ["userId"],
+          "columns": [
+            "userId"
+          ],
           "isUnique": false
         },
         "VerifiedNumber_teamId_idx": {
           "name": "VerifiedNumber_teamId_idx",
-          "columns": ["teamId"],
+          "columns": [
+            "teamId"
+          ],
           "isUnique": false
         }
       },
@@ -11125,8 +12433,12 @@
           "name": "VerifiedNumber_userId_users_id_fk",
           "tableFrom": "VerifiedNumber",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -11134,8 +12446,12 @@
           "name": "VerifiedNumber_teamId_Team_id_fk",
           "tableFrom": "VerifiedNumber",
           "tableTo": "Team",
-          "columnsFrom": ["teamId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "teamId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -11200,17 +12516,24 @@
       "indexes": {
         "VideoCallGuest_bookingUid_idx": {
           "name": "VideoCallGuest_bookingUid_idx",
-          "columns": ["bookingUid"],
+          "columns": [
+            "bookingUid"
+          ],
           "isUnique": false
         },
         "VideoCallGuest_email_idx": {
           "name": "VideoCallGuest_email_idx",
-          "columns": ["email"],
+          "columns": [
+            "email"
+          ],
           "isUnique": false
         },
         "VideoCallGuest_bookingUid_email_key": {
           "name": "VideoCallGuest_bookingUid_email_key",
-          "columns": ["bookingUid", "email"],
+          "columns": [
+            "bookingUid",
+            "email"
+          ],
           "isUnique": true
         }
       },
@@ -11292,12 +12615,22 @@
       "indexes": {
         "Watchlist_isGlobal_action_organizationId_type_value_idx": {
           "name": "Watchlist_isGlobal_action_organizationId_type_value_idx",
-          "columns": ["isGlobal", "action", "organizationId", "type", "value"],
+          "columns": [
+            "isGlobal",
+            "action",
+            "organizationId",
+            "type",
+            "value"
+          ],
           "isUnique": false
         },
         "Watchlist_type_value_organizationId_key": {
           "name": "Watchlist_type_value_organizationId_key",
-          "columns": ["type", "value", "organizationId"],
+          "columns": [
+            "type",
+            "value",
+            "organizationId"
+          ],
           "isUnique": true
         }
       },
@@ -11370,7 +12703,10 @@
       "indexes": {
         "WatchlistAudit_watchlistId_changedAt_idx": {
           "name": "WatchlistAudit_watchlistId_changedAt_idx",
-          "columns": ["watchlistId", "changedAt"],
+          "columns": [
+            "watchlistId",
+            "changedAt"
+          ],
           "isUnique": false
         }
       },
@@ -11379,8 +12715,12 @@
           "name": "WatchlistAudit_watchlistId_Watchlist_id_fk",
           "tableFrom": "WatchlistAudit",
           "tableTo": "Watchlist",
-          "columnsFrom": ["watchlistId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "watchlistId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         }
@@ -11556,17 +12896,25 @@
       "indexes": {
         "Webhook_active_idx": {
           "name": "Webhook_active_idx",
-          "columns": ["active"],
+          "columns": [
+            "active"
+          ],
           "isUnique": false
         },
         "Webhook_userId_subscriberUrl_key": {
           "name": "Webhook_userId_subscriberUrl_key",
-          "columns": ["userId", "subscriberUrl"],
+          "columns": [
+            "userId",
+            "subscriberUrl"
+          ],
           "isUnique": true
         },
         "Webhook_platformOAuthClientId_subscriberUrl_key": {
           "name": "Webhook_platformOAuthClientId_subscriberUrl_key",
-          "columns": ["platformOAuthClientId", "subscriberUrl"],
+          "columns": [
+            "platformOAuthClientId",
+            "subscriberUrl"
+          ],
           "isUnique": true
         }
       },
@@ -11575,8 +12923,12 @@
           "name": "Webhook_userId_users_id_fk",
           "tableFrom": "Webhook",
           "tableTo": "users",
-          "columnsFrom": ["userId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -11584,8 +12936,12 @@
           "name": "Webhook_teamId_Team_id_fk",
           "tableFrom": "Webhook",
           "tableTo": "Team",
-          "columnsFrom": ["teamId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "teamId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -11593,8 +12949,12 @@
           "name": "Webhook_eventTypeId_EventType_id_fk",
           "tableFrom": "Webhook",
           "tableTo": "EventType",
-          "columnsFrom": ["eventTypeId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "eventTypeId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -11602,8 +12962,12 @@
           "name": "Webhook_platformOAuthClientId_PlatformOAuthClient_id_fk",
           "tableFrom": "Webhook",
           "tableTo": "PlatformOAuthClient",
-          "columnsFrom": ["platformOAuthClientId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "platformOAuthClientId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -11611,8 +12975,12 @@
           "name": "Webhook_appId_App_slug_fk",
           "tableFrom": "Webhook",
           "tableTo": "App",
-          "columnsFrom": ["appId"],
-          "columnsTo": ["slug"],
+          "columnsFrom": [
+            "appId"
+          ],
+          "columnsTo": [
+            "slug"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -11702,8 +13070,12 @@
           "name": "WebhookScheduledTriggers_webhookId_Webhook_id_fk",
           "tableFrom": "WebhookScheduledTriggers",
           "tableTo": "Webhook",
-          "columnsFrom": ["webhookId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "webhookId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -11711,8 +13083,12 @@
           "name": "WebhookScheduledTriggers_bookingId_Booking_id_fk",
           "tableFrom": "WebhookScheduledTriggers",
           "tableTo": "Booking",
-          "columnsFrom": ["bookingId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "bookingId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         }
@@ -11785,7 +13161,9 @@
       "indexes": {
         "WorkspacePlatform_slug_key": {
           "name": "WorkspacePlatform_slug_key",
-          "columns": ["slug"],
+          "columns": [
+            "slug"
+          ],
           "isUnique": true
         }
       },
@@ -11879,37 +13257,53 @@
       "indexes": {
         "WrongAssignmentReport_bookingUid_key": {
           "name": "WrongAssignmentReport_bookingUid_key",
-          "columns": ["bookingUid"],
+          "columns": [
+            "bookingUid"
+          ],
           "isUnique": true
         },
         "WrongAssignmentReport_reportedById_idx": {
           "name": "WrongAssignmentReport_reportedById_idx",
-          "columns": ["reportedById"],
+          "columns": [
+            "reportedById"
+          ],
           "isUnique": false
         },
         "WrongAssignmentReport_teamId_idx": {
           "name": "WrongAssignmentReport_teamId_idx",
-          "columns": ["teamId"],
+          "columns": [
+            "teamId"
+          ],
           "isUnique": false
         },
         "WrongAssignmentReport_status_idx": {
           "name": "WrongAssignmentReport_status_idx",
-          "columns": ["status"],
+          "columns": [
+            "status"
+          ],
           "isUnique": false
         },
         "WrongAssignmentReport_reviewedById_idx": {
           "name": "WrongAssignmentReport_reviewedById_idx",
-          "columns": ["reviewedById"],
+          "columns": [
+            "reviewedById"
+          ],
           "isUnique": false
         },
         "WrongAssignmentReport_createdAt_idx": {
           "name": "WrongAssignmentReport_createdAt_idx",
-          "columns": ["createdAt"],
+          "columns": [
+            "createdAt"
+          ],
           "isUnique": false
         },
         "WrongAssignmentReport_teamId_status_createdAt_idx": {
           "name": "WrongAssignmentReport_teamId_status_createdAt_idx",
-          "columns": ["teamId", "status", "createdAt"],
+          "columns": [
+            "teamId",
+            "status",
+            "createdAt"
+          ],
           "isUnique": false
         }
       },
@@ -11918,8 +13312,12 @@
           "name": "WrongAssignmentReport_bookingUid_Booking_uid_fk",
           "tableFrom": "WrongAssignmentReport",
           "tableTo": "Booking",
-          "columnsFrom": ["bookingUid"],
-          "columnsTo": ["uid"],
+          "columnsFrom": [
+            "bookingUid"
+          ],
+          "columnsTo": [
+            "uid"
+          ],
           "onDelete": "cascade",
           "onUpdate": "cascade"
         },
@@ -11927,8 +13325,12 @@
           "name": "WrongAssignmentReport_reportedById_users_id_fk",
           "tableFrom": "WrongAssignmentReport",
           "tableTo": "users",
-          "columnsFrom": ["reportedById"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "reportedById"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         },
@@ -11936,8 +13338,12 @@
           "name": "WrongAssignmentReport_teamId_Team_id_fk",
           "tableFrom": "WrongAssignmentReport",
           "tableTo": "Team",
-          "columnsFrom": ["teamId"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "teamId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         },
@@ -11945,8 +13351,12 @@
           "name": "WrongAssignmentReport_reviewedById_users_id_fk",
           "tableFrom": "WrongAssignmentReport",
           "tableTo": "users",
-          "columnsFrom": ["reviewedById"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "reviewedById"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "set null",
           "onUpdate": "cascade"
         }

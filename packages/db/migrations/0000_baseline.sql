@@ -26,25 +26,24 @@ CREATE TABLE `AccessToken` (
 --> statement-breakpoint
 CREATE UNIQUE INDEX `AccessToken_secret_key` ON `AccessToken` (`secret`);--> statement-breakpoint
 CREATE TABLE `Account` (
-	`id` text PRIMARY KEY NOT NULL,
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`userId` integer NOT NULL,
-	`type` text NOT NULL,
-	`provider` text NOT NULL,
-	`providerAccountId` text NOT NULL,
-	`providerEmail` text,
-	`refresh_token` text,
-	`access_token` text,
-	`expires_at` integer,
-	`token_type` text,
+	`providerId` text NOT NULL,
+	`accountId` text NOT NULL,
+	`accessToken` text,
+	`refreshToken` text,
+	`idToken` text,
+	`accessTokenExpiresAt` integer,
+	`refreshTokenExpiresAt` integer,
 	`scope` text,
-	`id_token` text,
-	`session_state` text,
+	`password` text,
+	`createdAt` integer NOT NULL,
+	`updatedAt` integer NOT NULL,
 	FOREIGN KEY (`userId`) REFERENCES `users`(`id`) ON UPDATE cascade ON DELETE cascade
 );
 --> statement-breakpoint
 CREATE INDEX `Account_userId_idx` ON `Account` (`userId`);--> statement-breakpoint
-CREATE INDEX `Account_type_idx` ON `Account` (`type`);--> statement-breakpoint
-CREATE UNIQUE INDEX `Account_provider_providerAccountId_key` ON `Account` (`provider`,`providerAccountId`);--> statement-breakpoint
+CREATE UNIQUE INDEX `Account_providerId_accountId_key` ON `Account` (`providerId`,`accountId`);--> statement-breakpoint
 CREATE TABLE `Agent` (
 	`id` text PRIMARY KEY NOT NULL,
 	`name` text NOT NULL,
@@ -1429,14 +1428,18 @@ CREATE TABLE `SelectedSlots` (
 --> statement-breakpoint
 CREATE UNIQUE INDEX `SelectedSlots_userId_slotUtcStartDate_slotUtcEndDate_uid_key` ON `SelectedSlots` (`userId`,`slotUtcStartDate`,`slotUtcEndDate`,`uid`);--> statement-breakpoint
 CREATE TABLE `Session` (
-	`id` text PRIMARY KEY NOT NULL,
-	`sessionToken` text NOT NULL,
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`token` text NOT NULL,
 	`userId` integer NOT NULL,
-	`expires` integer NOT NULL,
+	`expiresAt` integer NOT NULL,
+	`ipAddress` text,
+	`userAgent` text,
+	`createdAt` integer NOT NULL,
+	`updatedAt` integer NOT NULL,
 	FOREIGN KEY (`userId`) REFERENCES `users`(`id`) ON UPDATE cascade ON DELETE cascade
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX `Session_sessionToken_key` ON `Session` (`sessionToken`);--> statement-breakpoint
+CREATE UNIQUE INDEX `Session_token_key` ON `Session` (`token`);--> statement-breakpoint
 CREATE INDEX `Session_userId_idx` ON `Session` (`userId`);--> statement-breakpoint
 CREATE TABLE `Task` (
 	`id` text PRIMARY KEY NOT NULL,
@@ -1575,7 +1578,7 @@ CREATE TABLE `users` (
 	`username` text,
 	`name` text,
 	`email` text NOT NULL,
-	`emailVerified` integer,
+	`emailVerified` integer DEFAULT false NOT NULL,
 	`bio` text,
 	`avatarUrl` text,
 	`timeZone` text DEFAULT 'Europe/London' NOT NULL,
@@ -1585,6 +1588,7 @@ CREATE TABLE `users` (
 	`theme` text,
 	`appTheme` text,
 	`created` integer NOT NULL,
+	`updatedAt` integer NOT NULL,
 	`trialEndsAt` integer,
 	`lastActiveAt` integer,
 	`defaultScheduleId` integer,
@@ -1667,13 +1671,16 @@ CREATE TABLE `UserHolidaySettings` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `UserHolidaySettings_userId_key` ON `UserHolidaySettings` (`userId`);--> statement-breakpoint
-CREATE TABLE `UserPassword` (
-	`hash` text NOT NULL,
-	`userId` integer NOT NULL,
-	FOREIGN KEY (`userId`) REFERENCES `users`(`id`) ON UPDATE cascade ON DELETE cascade
+CREATE TABLE `Verification` (
+	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+	`identifier` text NOT NULL,
+	`value` text NOT NULL,
+	`expiresAt` integer NOT NULL,
+	`createdAt` integer NOT NULL,
+	`updatedAt` integer NOT NULL
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX `UserPassword_userId_key` ON `UserPassword` (`userId`);--> statement-breakpoint
+CREATE INDEX `Verification_identifier_idx` ON `Verification` (`identifier`);--> statement-breakpoint
 CREATE TABLE `VerificationToken` (
 	`id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 	`identifier` text NOT NULL,

@@ -1,0 +1,6 @@
+# Cloudflare Workers, local dev only. Copy to .dev.vars before `yarn dev:cf` / `yarn build:cf`.
+# In production, set these with `wrangler secret put <NAME>` instead.
+BETTER_AUTH_SECRET=
+BETTER_AUTH_URL=http://localhost:3000
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=

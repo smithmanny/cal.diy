@@ -1,10 +1,14 @@
 # Self-hosted Cal.diy: one container, one SQLite file. Runs on any machine Docker runs on,
 # including a Raspberry Pi (arm64 or armv7).
 #
+#   echo "BETTER_AUTH_SECRET=$(openssl rand -base64 32)" >> .env
 #   docker compose up -d --build
 #
-# Data lives in the `cal-data` volume; back it up by copying /data/cal.db* while stopped,
-# or with `sqlite3 /data/cal.db ".backup /data/backup.db"` while running.
+# See apps/start/.env.example for the other settings (public URL, Google sign-in).
+#
+# Data lives in the `cal-data` volume. To back it up, stop the container and copy all of
+# /data/cal.db* (the -wal and -shm files hold recent writes):
+#   docker compose stop && docker compose cp cal:/data ./backup && docker compose start
 
 services:
   cal:
@@ -18,6 +22,8 @@ services:
         required: false
     environment:
       DATABASE_URL: file:/data/cal.db
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET in .env (openssl rand -base64 32)}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
     volumes:
       - cal-data:/data
 
