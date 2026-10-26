@@ -27,6 +27,7 @@ import { Route as AuthedEventTypesIndexRouteImport } from './routes/_authed/even
 import { Route as AuthedEventTypesEventTypeIdRouteImport } from './routes/_authed/event-types/$eventTypeId'
 import { Route as AuthedSettingsIndexRouteImport } from './routes/_authed/settings/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as AuthedSettingsDeveloperApiKeysRouteImport } from './routes/_authed/settings/developer/api-keys'
 import { Route as AuthedSettingsMyAccountAppearanceRouteImport } from './routes/_authed/settings/my-account/appearance'
 import { Route as AuthedSettingsMyAccountCalendarsRouteImport } from './routes/_authed/settings/my-account/calendars'
 import { Route as AuthedSettingsMyAccountGeneralRouteImport } from './routes/_authed/settings/my-account/general'
@@ -130,6 +131,12 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthedSettingsDeveloperApiKeysRoute =
+  AuthedSettingsDeveloperApiKeysRouteImport.update({
+    id: '/developer/api-keys',
+    path: '/developer/api-keys',
+    getParentRoute: () => AuthedSettingsRoute,
+  } as any)
 const AuthedSettingsMyAccountAppearanceRoute =
   AuthedSettingsMyAccountAppearanceRouteImport.update({
     id: '/my-account/appearance',
@@ -215,6 +222,7 @@ export interface FileRoutesByFullPath {
   '/availability/': typeof AuthedAvailabilityIndexRoute
   '/event-types/': typeof AuthedEventTypesIndexRoute
   '/settings/': typeof AuthedSettingsIndexRoute
+  '/settings/developer/api-keys': typeof AuthedSettingsDeveloperApiKeysRoute
   '/settings/my-account/appearance': typeof AuthedSettingsMyAccountAppearanceRoute
   '/settings/my-account/calendars': typeof AuthedSettingsMyAccountCalendarsRoute
   '/settings/my-account/general': typeof AuthedSettingsMyAccountGeneralRoute
@@ -244,6 +252,7 @@ export interface FileRoutesByTo {
   '/availability': typeof AuthedAvailabilityIndexRoute
   '/event-types': typeof AuthedEventTypesIndexRoute
   '/settings': typeof AuthedSettingsIndexRoute
+  '/settings/developer/api-keys': typeof AuthedSettingsDeveloperApiKeysRoute
   '/settings/my-account/appearance': typeof AuthedSettingsMyAccountAppearanceRoute
   '/settings/my-account/calendars': typeof AuthedSettingsMyAccountCalendarsRoute
   '/settings/my-account/general': typeof AuthedSettingsMyAccountGeneralRoute
@@ -276,6 +285,7 @@ export interface FileRoutesById {
   '/_authed/availability/': typeof AuthedAvailabilityIndexRoute
   '/_authed/event-types/': typeof AuthedEventTypesIndexRoute
   '/_authed/settings/': typeof AuthedSettingsIndexRoute
+  '/_authed/settings/developer/api-keys': typeof AuthedSettingsDeveloperApiKeysRoute
   '/_authed/settings/my-account/appearance': typeof AuthedSettingsMyAccountAppearanceRoute
   '/_authed/settings/my-account/calendars': typeof AuthedSettingsMyAccountCalendarsRoute
   '/_authed/settings/my-account/general': typeof AuthedSettingsMyAccountGeneralRoute
@@ -308,6 +318,7 @@ export interface FileRouteTypes {
     | '/availability/'
     | '/event-types/'
     | '/settings/'
+    | '/settings/developer/api-keys'
     | '/settings/my-account/appearance'
     | '/settings/my-account/calendars'
     | '/settings/my-account/general'
@@ -337,6 +348,7 @@ export interface FileRouteTypes {
     | '/availability'
     | '/event-types'
     | '/settings'
+    | '/settings/developer/api-keys'
     | '/settings/my-account/appearance'
     | '/settings/my-account/calendars'
     | '/settings/my-account/general'
@@ -368,6 +380,7 @@ export interface FileRouteTypes {
     | '/_authed/availability/'
     | '/_authed/event-types/'
     | '/_authed/settings/'
+    | '/_authed/settings/developer/api-keys'
     | '/_authed/settings/my-account/appearance'
     | '/_authed/settings/my-account/calendars'
     | '/_authed/settings/my-account/general'
@@ -525,6 +538,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authed/settings/developer/api-keys': {
+      id: '/_authed/settings/developer/api-keys'
+      path: '/developer/api-keys'
+      fullPath: '/settings/developer/api-keys'
+      preLoaderRoute: typeof AuthedSettingsDeveloperApiKeysRouteImport
+      parentRoute: typeof AuthedSettingsRoute
+    }
     '/_authed/settings/my-account/appearance': {
       id: '/_authed/settings/my-account/appearance'
       path: '/my-account/appearance'
@@ -607,6 +627,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthedSettingsRouteChildren {
   AuthedSettingsIndexRoute: typeof AuthedSettingsIndexRoute
+  AuthedSettingsDeveloperApiKeysRoute: typeof AuthedSettingsDeveloperApiKeysRoute
   AuthedSettingsMyAccountAppearanceRoute: typeof AuthedSettingsMyAccountAppearanceRoute
   AuthedSettingsMyAccountCalendarsRoute: typeof AuthedSettingsMyAccountCalendarsRoute
   AuthedSettingsMyAccountGeneralRoute: typeof AuthedSettingsMyAccountGeneralRoute
@@ -620,6 +641,7 @@ interface AuthedSettingsRouteChildren {
 
 const AuthedSettingsRouteChildren: AuthedSettingsRouteChildren = {
   AuthedSettingsIndexRoute: AuthedSettingsIndexRoute,
+  AuthedSettingsDeveloperApiKeysRoute: AuthedSettingsDeveloperApiKeysRoute,
   AuthedSettingsMyAccountAppearanceRoute:
     AuthedSettingsMyAccountAppearanceRoute,
   AuthedSettingsMyAccountCalendarsRoute: AuthedSettingsMyAccountCalendarsRoute,

@@ -1,7 +1,15 @@
 import "@tanstack/react-start/server-only";
 
+import { apiKey } from "@better-auth/api-key";
 import type { Database } from "@calcom/db/database";
-import { account, session, twoFactor as twoFactorTable, user, verification } from "@calcom/db/schema";
+import {
+  account,
+  apiKey as apiKeyTable,
+  session,
+  twoFactor as twoFactorTable,
+  user,
+  verification,
+} from "@calcom/db/schema";
 import { isPasswordValid } from "@calcom/lib/auth/isPasswordValid";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
@@ -39,6 +47,12 @@ const PASSWORD_FIELD_BY_PATH: Record<string, string> = {
   "/reset-password": "newPassword",
   "/change-password": "newPassword",
 };
+
+function randomHex(bytes: number): string {
+  return Array.from(crypto.getRandomValues(new Uint8Array(bytes)), (byte) =>
+    byte.toString(16).padStart(2, "0")
+  ).join("");
+}
 
 function authEmailRecipient(target: { email: string; name?: string | null; locale?: unknown }) {
   return {
@@ -92,7 +106,7 @@ export function createAuth({
     secret,
     database: drizzleAdapter(db, {
       provider: "sqlite",
-      schema: { user, session, account, verification, twoFactor: twoFactorTable },
+      schema: { user, session, account, verification, twoFactor: twoFactorTable, apikey: apiKeyTable },
     }),
     advanced: {
       // Cal's users.id (and every foreign key to it) is an integer, so all auth ids are serial too.
@@ -203,6 +217,15 @@ export function createAuth({
     },
     plugins: [
       twoFactor({ issuer: "Cal.diy", backupCodeOptions: { amount: 10, length: 10 } }),
+      apiKey({
+        // Cal's key format: "cal_" + 32 hex characters. The prefix is stored for display only and
+        // left out of the hash, which keeps keys issued by Cal valid after the data import.
+        customKeyGenerator: () => randomHex(16),
+        startingCharactersConfig: { shouldStore: true, charactersLength: 6 },
+        // Cal's API v2 allows 120 requests a minute per key.
+        rateLimit: { enabled: true, timeWindow: 60_000, maxRequests: 120 },
+        keyExpiration: { defaultExpiresIn: null },
+      }),
       // Must stay last so it sees the cookies every other plugin sets.
       tanstackStartCookies(),
     ],

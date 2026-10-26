@@ -183,7 +183,6 @@ export const userRelations = relations(t.user, ({ one, many }) => ({
   availability: many(t.availability, { relationName: "AvailabilityToUser" }),
   webhooks: many(t.webhook, { relationName: "UserToWebhook" }),
   destinationCalendar: one(t.destinationCalendar),
-  apiKeys: many(t.apiKey, { relationName: "ApiKeyToUser" }),
   accounts: many(t.account, { relationName: "AccountToUser" }),
   sessions: many(t.session, { relationName: "SessionToUser" }),
   Feedback: many(t.feedback, { relationName: "FeedbackToUser" }),
@@ -271,7 +270,6 @@ export const teamRelations = relations(t.team, ({ one, many }) => ({
   orgUsers: many(t.user, { relationName: "scope" }),
   inviteTokens: many(t.verificationToken, { relationName: "TeamToVerificationToken" }),
   webhooks: many(t.webhook, { relationName: "TeamToWebhook" }),
-  apiKeys: many(t.apiKey, { relationName: "ApiKeyToTeam" }),
   credentials: many(t.credential, { relationName: "CredentialToTeam" }),
   accessCodes: many(t.accessCode, { relationName: "AccessCodeToTeam" }),
   organizationSettings: one(t.organizationSettings),
@@ -550,10 +548,7 @@ export const webhookRelations = relations(t.webhook, ({ one, many }) => ({
   scheduledTriggers: many(t.webhookScheduledTriggers, { relationName: "WebhookToWebhookScheduledTriggers" }),
 }));
 
-export const apiKeyRelations = relations(t.apiKey, ({ one, many }) => ({
-  user: one(t.user, { fields: [t.apiKey.userId], references: [t.user.id], relationName: "ApiKeyToUser" }),
-  team: one(t.team, { fields: [t.apiKey.teamId], references: [t.team.id], relationName: "ApiKeyToTeam" }),
-  app: one(t.app, { fields: [t.apiKey.appId], references: [t.app.slug], relationName: "ApiKeyToApp" }),
+export const apiKeyRelations = relations(t.apiKey, ({ many }) => ({
   rateLimits: many(t.rateLimit, { relationName: "ApiKeyToRateLimit" }),
 }));
 
@@ -585,7 +580,6 @@ export const appRelations = relations(t.app, ({ many }) => ({
   credentials: many(t.credential, { relationName: "AppToCredential" }),
   payments: many(t.payment, { relationName: "AppToPayment" }),
   Webhook: many(t.webhook, { relationName: "AppToWebhook" }),
-  ApiKey: many(t.apiKey, { relationName: "ApiKeyToApp" }),
 }));
 
 export const feedbackRelations = relations(t.feedback, ({ one }) => ({

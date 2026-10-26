@@ -1,7 +1,8 @@
+import { createHash } from "node:crypto";
 import { base32 } from "@better-auth/utils/base32";
 import { createOTP } from "@better-auth/utils/otp";
 import type { Database } from "@calcom/db/database";
-import { account, eventType, schedule, user } from "@calcom/db/schema";
+import { account, apiKey, eventType, schedule, user } from "@calcom/db/schema";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createTestDb } from "../../test/testDb";
@@ -234,5 +235,58 @@ describe("createAuth account security", () => {
     expect(await signIn.json()).toMatchObject({ twoFactorRedirect: true });
     const pendingCookies = new Headers({ cookie: signIn.headers.get("set-cookie") ?? "" });
     await expect(auth.api.getSession({ headers: pendingCookies })).resolves.toBeNull();
+  });
+});
+
+describe("createAuth API keys", () => {
+  async function signedInHeaders(email: string) {
+    await signUp({ email, username: email.split("@")[0] });
+    const response = await auth.api.signInEmail({
+      body: { email, password: VALID_PASSWORD },
+      asResponse: true,
+    });
+    return new Headers({ cookie: response.headers.get("set-cookie") ?? "" });
+  }
+
+  it("issues Cal-style keys that verify by their secret", async () => {
+    const headers = await signedInHeaders("keys@example.com");
+    const created = await auth.api.createApiKey({ headers, body: { name: "Zapier", prefix: "cal_" } });
+    expect(created.key).toMatch(/^[0-9a-f]{32}$/);
+    expect(created.prefix).toBe("cal_");
+
+    const verified = await auth.api.verifyApiKey({ body: { key: created.key } });
+    expect(verified.valid).toBe(true);
+    const [owner] = await db.select({ id: user.id }).from(user).where(eq(user.email, "keys@example.com"));
+    expect(verified.key?.referenceId).toBe(String(owner.id));
+    expect((await auth.api.verifyApiKey({ body: { key: `${created.key}0` } })).valid).toBe(false);
+  });
+
+  it("stores the same digest Cal kept as hex, so imported keys keep working", async () => {
+    const headers = await signedInHeaders("digest@example.com");
+    const created = await auth.api.createApiKey({ headers, body: { name: "Old", prefix: "cal_" } });
+    const calHex = createHash("sha256").update(created.key).digest("hex");
+    const [stored] = await db.select({ key: apiKey.key }).from(apiKey);
+    expect(stored.key).toBe(Buffer.from(calHex, "hex").toString("base64url"));
+  });
+
+  it("answers plugin errors with their status over HTTP, not a 500", async () => {
+    const headers = await signedInHeaders("http@example.com");
+    headers.set("content-type", "application/json");
+    headers.set("origin", "http://localhost:3000");
+    const response = await auth.handler(
+      new Request("http://localhost:3000/api/auth/api-key/delete", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ keyId: "999999" }),
+      })
+    );
+    expect(response.status).toBe(404);
+  });
+
+  it("removes a user's keys with the user", async () => {
+    const headers = await signedInHeaders("gone@example.com");
+    await auth.api.createApiKey({ headers, body: { name: "Temp", prefix: "cal_" } });
+    await db.delete(user).where(eq(user.email, "gone@example.com"));
+    expect(await db.select({ id: apiKey.id }).from(apiKey)).toEqual([]);
   });
 });

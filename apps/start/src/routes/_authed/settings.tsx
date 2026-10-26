@@ -12,6 +12,7 @@ const TABS = [
   { to: "/settings/security/password", labelKey: "password" },
   { to: "/settings/security/two-factor-auth", labelKey: "two_factor_auth" },
   { to: "/settings/developer/webhooks", labelKey: "webhooks" },
+  { to: "/settings/developer/api-keys", labelKey: "api_keys" },
 ] as const;
 
 function SettingsLayout() {

@@ -1242,30 +1242,43 @@ export const webhook = sqliteTable(
   ]
 );
 
+// Better Auth `apiKey` plugin (@better-auth/api-key), replacing Cal's ApiKey shape. `key` holds
+// base64url(SHA-256) of the secret after "cal_", which is the same digest Cal stored as hex in
+// hashedKey, so the data import can carry existing keys over. referenceId is the owner's user id;
+// a trigger in the migration removes keys with their user, since it can't be a foreign key.
 export const apiKey = sqliteTable(
   "ApiKey",
   {
-    id: text("id").primaryKey().$defaultFn(cuid),
-    userId: integer("userId")
-      .notNull()
-      .references((): AnySQLiteColumn => user.id, { onDelete: "cascade", onUpdate: "cascade" }),
-    teamId: integer("teamId").references((): AnySQLiteColumn => team.id, {
-      onDelete: "cascade",
-      onUpdate: "cascade",
-    }),
-    note: text("note"),
+    // Serial like every Better Auth table here (advanced.database.generateId = "serial").
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    configId: text("configId").notNull().default("default"),
+    name: text("name"),
+    start: text("start"),
+    referenceId: text("referenceId").notNull(),
+    prefix: text("prefix"),
+    key: text("key").notNull().unique("ApiKey_key_key"),
+    refillInterval: integer("refillInterval"),
+    refillAmount: integer("refillAmount"),
+    lastRefillAt: integer("lastRefillAt", { mode: "timestamp_ms" }),
+    enabled: integer("enabled", { mode: "boolean" }).default(true),
+    rateLimitEnabled: integer("rateLimitEnabled", { mode: "boolean" }).default(true),
+    rateLimitTimeWindow: integer("rateLimitTimeWindow"),
+    rateLimitMax: integer("rateLimitMax"),
+    requestCount: integer("requestCount").default(0),
+    remaining: integer("remaining"),
+    lastRequest: integer("lastRequest", { mode: "timestamp_ms" }),
+    expiresAt: integer("expiresAt", { mode: "timestamp_ms" }),
     createdAt: integer("createdAt", { mode: "timestamp_ms" })
       .notNull()
       .$defaultFn(() => new Date()),
-    expiresAt: integer("expiresAt", { mode: "timestamp_ms" }),
-    lastUsedAt: integer("lastUsedAt", { mode: "timestamp_ms" }),
-    hashedKey: text("hashedKey").notNull().unique("ApiKey_hashedKey_key"),
-    appId: text("appId").references((): AnySQLiteColumn => app.slug, {
-      onDelete: "cascade",
-      onUpdate: "cascade",
-    }),
+    updatedAt: integer("updatedAt", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date())
+      .$onUpdate(() => new Date()),
+    permissions: text("permissions"),
+    metadata: text("metadata"),
   },
-  (t) => [index("ApiKey_userId_idx").on(t.userId)]
+  (t) => [index("ApiKey_referenceId_idx").on(t.referenceId), index("ApiKey_configId_idx").on(t.configId)]
 );
 
 export const rateLimit = sqliteTable(
@@ -1275,7 +1288,7 @@ export const rateLimit = sqliteTable(
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
     name: text("name").notNull(),
-    apiKeyId: text("apiKeyId")
+    apiKeyId: integer("apiKeyId")
       .notNull()
       .references((): AnySQLiteColumn => apiKey.id, { onDelete: "cascade", onUpdate: "cascade" }),
     ttl: integer("ttl").notNull(),

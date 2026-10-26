@@ -153,3 +153,24 @@ test("holidays the host takes off can't be booked, and can be switched back on",
   await guest.getByRole("button", { name: holiday }).click();
   await expect(guest.locator("ul li button").first()).toBeVisible();
 });
+
+test("API keys are shown once in Cal's format, listed by hint, and can be deleted", async ({ page }) => {
+  await signUp(page);
+  await page.goto("/settings/developer/api-keys");
+  await expect(page.getByText("Create your first API key")).toBeVisible();
+  await page.getByRole("button", { name: "Create an API key" }).click();
+  await page.getByLabel("Name this key").fill("Zapier");
+  await page.getByLabel("Expiration date").selectOption({ label: "Never expires" });
+  await page.getByRole("button", { name: "Create", exact: true }).click();
+
+  const key = (await page.getByTestId("new-api-key").textContent()) ?? "";
+  expect(key).toMatch(/^cal_[0-9a-f]{32}$/);
+  await page.getByRole("button", { name: "Done" }).click();
+  await expect(page.getByTestId("new-api-key")).toBeHidden();
+  await expect(page.getByTestId("api-keys")).toContainText("Zapier");
+  await expect(page.getByTestId("api-keys")).toContainText(`${key.slice(0, 10)}…`);
+  await expect(page.getByTestId("api-keys")).not.toContainText(key);
+
+  await page.getByTestId("api-keys").getByRole("button", { name: "Delete" }).click();
+  await expect(page.getByText("Create your first API key")).toBeVisible();
+});
