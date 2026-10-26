@@ -2,7 +2,7 @@ import type { Dayjs } from "@calcom/dayjs";
 import dayjs from "@calcom/dayjs";
 import { buildDateRanges, type DateRange, subtract } from "./date-ranges";
 import getSlots from "./slots";
-import type { DateOverride, WorkingHours } from "./types";
+import type { DateOverride, OutOfOfficeData, WorkingHours } from "./types";
 
 function rollingWindowEnd(event: SlotEventConfig, now: Dayjs, timeZone: string): Dayjs | null {
   if (event.periodType !== "ROLLING" || !event.periodDays) return null;
@@ -43,6 +43,8 @@ export type ComputeAvailableSlotsInput = {
   now?: Date;
   scheduleInterval?: number;
   travelSchedules?: TravelPeriod[];
+  /** Days the host is away (see outOfOfficeByDate); they get no slots. */
+  outOfOffice?: OutOfOfficeData;
 };
 
 /**
@@ -57,7 +59,8 @@ export function computeAvailableSlots(input: ComputeAvailableSlotsInput): Date[]
   const to = windowEnd ? dayjs.min(dayjs(input.to), windowEnd) : dayjs(input.to);
   if (!from.isBefore(to)) return [];
 
-  const { dateRanges } = buildDateRanges({
+  // Identical to dateRanges unless the host is out of office, in which case those days are gone.
+  const { oooExcludedDateRanges: dateRanges } = buildDateRanges({
     availability: input.availability,
     timeZone: input.scheduleTimeZone,
     dateFrom: from,
@@ -67,6 +70,7 @@ export function computeAvailableSlots(input: ComputeAvailableSlotsInput): Date[]
       startDate: dayjs(period.start),
       endDate: period.end ? dayjs(period.end) : undefined,
     })),
+    outOfOffice: input.outOfOffice,
   });
 
   const busyRanges: DateRange[] = input.busy.map((busy) => ({

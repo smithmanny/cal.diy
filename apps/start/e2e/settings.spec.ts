@@ -98,3 +98,34 @@ test("a low-contrast brand color gets Cal's warning", async ({ page }) => {
   await page.getByLabel("Brand color (light theme) (hex)").fill("#fde047");
   await expect(page.getByText("Light theme color doesn't pass contrast check")).toBeVisible();
 });
+
+test("out of office days show the host's reason and note instead of times", async ({ page, browser }) => {
+  const { username } = await signUp(page);
+  const { start, end } = nextMonthRange();
+  await page.goto("/settings/my-account/out-of-office");
+  await page.getByRole("button", { name: "Go Out of Office" }).click();
+  await page.getByLabel("Date", { exact: true }).fill(start);
+  await page.getByLabel("To", { exact: true }).fill(end);
+  await page.getByLabel("Reason").selectOption({ label: "🏝️ Vacation" });
+  await page.getByLabel("Notes").fill("Hiking in the Alps");
+  await page.getByText("Show note on public booking page").click();
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByRole("status")).toHaveText("Successfully created a new entry");
+  await expect(page.getByTestId("ooo-entries")).toContainText("Hiking in the Alps");
+
+  const guest = await (await newClientContext(browser, { timezoneId: "UTC" })).newPage();
+  await guest.goto(`/${username}/30min`);
+  await guest.getByRole("button", { name: "View next month" }).click();
+  await guest.locator("td button:not([disabled])").first().click();
+  await expect(guest.getByText(/is OOO$/)).toBeVisible();
+  await expect(guest.getByText("Vacation")).toBeVisible();
+  await expect(guest.getByText("Hiking in the Alps")).toBeVisible();
+  await expect(guest.locator("ul li button")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Delete" }).click();
+  await expect(page.getByRole("status")).toHaveText("Successfully deleted entry");
+  await guest.reload();
+  await guest.getByRole("button", { name: "View next month" }).click();
+  await guest.locator("td button:not([disabled])").first().click();
+  await expect(guest.locator("ul li button").first()).toBeVisible();
+});

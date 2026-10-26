@@ -41,6 +41,13 @@ const MESSAGE_KEYS = [
   "time_format",
   "12_hour_short",
   "24_hour_short",
+  "ooo_user_is_ooo",
+  "ooo_slots_book_with",
+  "ooo_reasons_unspecified",
+  "ooo_reasons_vacation",
+  "ooo_reasons_travel",
+  "ooo_reasons_sick_leave",
+  "ooo_reasons_public_holiday",
 ];
 
 // Same key as Cal's booker, so a returning visitor's choice carries over.
@@ -126,6 +133,7 @@ function BookerPage() {
                   locale={locale}
                   loading={slots.loading}
                   slotsByDate={slots.slotsByDate}
+                  outOfOffice={slots.outOfOffice}
                   errorKey={slots.errorKey}
                   onMoveMonth={slots.moveMonth}
                   onSelectSlot={setSelectedSlot}

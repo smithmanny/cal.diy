@@ -89,6 +89,22 @@ describe("computeAvailableSlots", () => {
     ]);
   });
 
+  it("offers nothing on days the host is out of office", () => {
+    const slots = computeAvailableSlots({
+      availability: [weekdays9to5],
+      scheduleTimeZone: "UTC",
+      event,
+      busy: [],
+      from: new Date("2026-11-02T00:00:00Z"),
+      to: new Date("2026-11-04T00:00:00Z"),
+      inviteeTimeZone: "UTC",
+      now: NOW,
+      outOfOffice: { "2026-11-03": { fromUser: { id: 1, displayName: "Hana" } } },
+    });
+    expect(iso(slots).some((slot) => slot.startsWith("2026-11-02"))).toBe(true);
+    expect(iso(slots).some((slot) => slot.startsWith("2026-11-03"))).toBe(false);
+  });
+
   it("removes busy time padded by both events' buffers", () => {
     const slots = computeAvailableSlots({
       availability: [weekdays9to5],

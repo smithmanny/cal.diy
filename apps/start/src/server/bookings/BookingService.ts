@@ -2,11 +2,14 @@ import "@tanstack/react-start/server-only";
 import type { JsonValue } from "@calcom/db/ids";
 import { cuid } from "@calcom/db/ids";
 import { type BusyInterval, computeAvailableSlots } from "@calcom/scheduling/available-slots";
+import { outOfOfficeByDate } from "@calcom/scheduling/out-of-office";
+import type { OutOfOfficeData } from "@calcom/scheduling/types";
 import { weekStartIndex } from "~/lib/time-format";
 import { pickMessages } from "../catalog";
 import { AppError } from "../errors";
 import type { EventTypeRepository } from "../event-types/EventTypeRepository";
 import { type EventLocation, eventLocationSchema } from "../event-types/types";
+import type { OutOfOfficeRepository } from "../out-of-office/OutOfOfficeRepository";
 import type { ScheduleRepository } from "../schedules/ScheduleRepository";
 import { isValidTimeZone } from "../schedules/scheduleMapper";
 import type { TravelScheduleRepository } from "../users/TravelScheduleRepository";
@@ -19,6 +22,7 @@ import type {
   CreateBookingInput,
   PublicEventDto,
   PublicHostDto,
+  SlotsDto,
   SlotsQuery,
 } from "./types";
 
@@ -31,6 +35,7 @@ type Deps = {
   >;
   bookingRepo: BookingRepository;
   travelScheduleRepo: Pick<TravelScheduleRepository, "findByUserId">;
+  oooRepo: Pick<OutOfOfficeRepository, "findOverlappingIncludeReasonAndUsers">;
   busyTimesProviders?: BusyTimesProvider[];
   listeners?: BookingListener[];
   runInBackground?: (promise: Promise<unknown>) => void;
@@ -123,15 +128,38 @@ export class BookingService {
     };
   }
 
-  async getAvailableSlots(query: SlotsQuery): Promise<string[]> {
+  async getAvailableSlots(query: SlotsQuery): Promise<SlotsDto> {
     const from = new Date(query.from);
     const to = new Date(query.to);
     if (!(from < to) || to.getTime() - from.getTime() > MAX_RANGE_MS)
       throw new AppError("something_went_wrong");
     if (!isValidTimeZone(query.timeZone)) throw new AppError("invalid_timezone");
     const { host, eventType } = await this.loadEvent(query.username, query.slug);
-    const slots = await this.computeSlots(host, eventType, from, to, query.timeZone, query.rescheduleUid);
-    return slots.map((slot) => slot.toISOString());
+    const { slots, outOfOffice } = await this.computeSlots(
+      host,
+      eventType,
+      from,
+      to,
+      query.timeZone,
+      query.rescheduleUid
+    );
+    return {
+      slots: slots.map((slot) => slot.toISOString()),
+      outOfOffice: Object.fromEntries(
+        Object.entries(outOfOffice).map(([date, day]) => [
+          date,
+          {
+            displayName: day.fromUser?.displayName ?? null,
+            reason: day.reason ?? null,
+            emoji: day.emoji ?? null,
+            notes: day.notes ?? null,
+            toUser: day.toUser?.username
+              ? { username: day.toUser.username, displayName: day.toUser.displayName }
+              : null,
+          },
+        ])
+      ),
+    };
   }
 
   async create(input: CreateBookingInput): Promise<{ uid: string; status: string }> {
@@ -144,7 +172,7 @@ export class BookingService {
 
     // The slot list is the source of truth for what may be booked (hours, buffers, notice, window).
     const dayAround = 24 * 60 * 60 * 1000;
-    const slots = await this.computeSlots(
+    const { slots } = await this.computeSlots(
       host,
       eventType,
       new Date(start.getTime() - dayAround),
@@ -341,22 +369,24 @@ export class BookingService {
     to: Date,
     inviteeTimeZone: string,
     excludeUid?: string
-  ): Promise<Date[]> {
+  ): Promise<{ slots: Date[]; outOfOffice: OutOfOfficeData }> {
     const scheduleId = eventType.scheduleId ?? host.defaultScheduleId;
     const schedule = scheduleId
       ? await this.deps.scheduleRepo.findByIdIncludeAvailability(scheduleId)
       : (await this.deps.scheduleRepo.findManyByUserIdIncludeAvailability(host.id))[0];
-    if (!schedule || schedule.userId !== host.id) return [];
+    if (!schedule || schedule.userId !== host.id) return { slots: [], outOfOffice: {} };
 
     // Like Cal, trips only move the default schedule; a dedicated schedule keeps its own time zone.
     const isDefaultSchedule = !scheduleId || scheduleId === host.defaultScheduleId;
-    const [travel, bookings, ...external] = await Promise.all([
+    const [travel, oooEntries, bookings, ...external] = await Promise.all([
       isDefaultSchedule ? this.deps.travelScheduleRepo.findByUserId(host.id) : Promise.resolve([]),
+      this.deps.oooRepo.findOverlappingIncludeReasonAndUsers(host.id, from, to),
       this.deps.bookingRepo.findBusyForUser({ userId: host.id, email: host.email, from, to, excludeUid }),
       ...(this.deps.busyTimesProviders ?? []).map((provider) => provider({ userId: host.id, from, to })),
     ]);
 
-    return computeAvailableSlots({
+    const outOfOffice = outOfOfficeByDate(oooEntries, schedule.availability, this.deps.now?.());
+    const slots = computeAvailableSlots({
       availability: schedule.availability,
       scheduleTimeZone: schedule.timeZone ?? host.timeZone,
       event: {
@@ -379,7 +409,9 @@ export class BookingService {
         start: trip.startDate,
         end: trip.endDate,
       })),
+      outOfOffice,
     });
+    return { slots, outOfOffice };
   }
 
   private resolveLocation(locations: EventLocation[], input: CreateBookingInput): string | null {

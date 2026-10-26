@@ -6,6 +6,7 @@ import { createTestDb } from "../../test/testDb";
 import { BookingRepository } from "../bookings/BookingRepository";
 import { BookingService } from "../bookings/BookingService";
 import { EventTypeRepository } from "../event-types/EventTypeRepository";
+import { OutOfOfficeRepository } from "../out-of-office/OutOfOfficeRepository";
 import { ScheduleRepository } from "../schedules/ScheduleRepository";
 import { ScheduleService } from "../schedules/ScheduleService";
 import { DEFAULT_WEEKLY_HOURS } from "../schedules/scheduleMapper";
@@ -142,6 +143,7 @@ describe("Google Calendar in the booking flow", () => {
       scheduleRepo,
       bookingRepo: new BookingRepository(db),
       travelScheduleRepo: new TravelScheduleRepository(db),
+      oooRepo: new OutOfOfficeRepository(db),
       busyTimesProviders: [({ userId, from, to }) => calendars.busyTimes(userId, from, to)],
       listeners: [(event) => calendars.onBookingEvent(event)],
       runInBackground: (promise) => void pending.push(promise),
@@ -149,13 +151,15 @@ describe("Google Calendar in the booking flow", () => {
   });
 
   const slots = () =>
-    bookings.getAvailableSlots({
-      username: "host",
-      slug: "intro",
-      from: "2030-01-07T00:00:00.000Z",
-      to: "2030-01-07T23:59:00.000Z",
-      timeZone: "UTC",
-    });
+    bookings
+      .getAvailableSlots({
+        username: "host",
+        slug: "intro",
+        from: "2030-01-07T00:00:00.000Z",
+        to: "2030-01-07T23:59:00.000Z",
+        timeZone: "UTC",
+      })
+      .then((result) => result.slots);
 
   it("hides slots that are busy in Google, then creates a Meet event and stores its link", async () => {
     google.busy = [{ start: "2030-01-07T10:00:00Z", end: "2030-01-07T11:00:00Z" }];

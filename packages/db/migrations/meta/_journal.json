@@ -15,6 +15,13 @@
       "when": 1793052035846,
       "tag": "0001_two_factor",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1793054607432,
+      "tag": "0002_seed_out_of_office_reasons",
+      "breakpoints": true
     }
   ]
 }

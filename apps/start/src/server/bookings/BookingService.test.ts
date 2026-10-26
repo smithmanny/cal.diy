@@ -4,6 +4,8 @@ import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createTestDb } from "../../test/testDb";
 import { EventTypeRepository } from "../event-types/EventTypeRepository";
+import { OutOfOfficeRepository } from "../out-of-office/OutOfOfficeRepository";
+import { OutOfOfficeService } from "../out-of-office/OutOfOfficeService";
 import { ScheduleRepository } from "../schedules/ScheduleRepository";
 import { ScheduleService } from "../schedules/ScheduleService";
 import { DEFAULT_WEEKLY_HOURS } from "../schedules/scheduleMapper";
@@ -64,12 +66,13 @@ beforeEach(async () => {
     scheduleRepo,
     bookingRepo: new BookingRepository(db),
     travelScheduleRepo: new TravelScheduleRepository(db),
+    oooRepo: new OutOfOfficeRepository(db),
     listeners: [async (event) => void events.push(event)],
     runInBackground: (promise) => void pending.push(promise),
   });
 });
 
-const slots = (slug = "intro") =>
+const daySlots = (slug = "intro") =>
   service.getAvailableSlots({
     username: "host",
     slug,
@@ -77,6 +80,7 @@ const slots = (slug = "intro") =>
     to: `${MONDAY}T23:59:00.000Z`,
     timeZone: "UTC",
   });
+const slots = (slug = "intro") => daySlots(slug).then((result) => result.slots);
 
 const book = (start: string, overrides: Record<string, unknown> = {}) =>
   service.create({
@@ -112,6 +116,33 @@ describe("BookingService", () => {
     // 9-17 in Tokyo is 00:00-08:00 UTC.
     expect((await slots())[0]).toBe(at("00:00"));
     expect(await slots()).not.toContain(at("10:00"));
+  });
+
+  it("offers no slots while the host is out of office, and says why", async () => {
+    const ooo = new OutOfOfficeService({
+      oooRepo: new OutOfOfficeRepository(db),
+      newUuid: () => crypto.randomUUID(),
+    });
+    const [vacation] = (await new OutOfOfficeRepository(db).findReasonsForUser(hostId)).filter(
+      (reason) => reason.reason === "ooo_reasons_vacation"
+    );
+    await ooo.createOrUpdate(hostId, {
+      startDate: MONDAY,
+      endDate: MONDAY,
+      reasonId: vacation.id,
+      notes: "Back tomorrow",
+      showNotePublicly: true,
+    });
+    const result = await daySlots();
+    expect(result.slots).toEqual([]);
+    expect(result.outOfOffice[MONDAY]).toEqual({
+      displayName: "Hana Host",
+      reason: "ooo_reasons_vacation",
+      emoji: "🏝️",
+      notes: "Back tomorrow",
+      toUser: null,
+    });
+    await expect(book(at("10:00"))).rejects.toMatchObject({ code: "booking_conflict_error" });
   });
 
   it("books a free slot, emits BOOKING_CREATED, and the slot disappears", async () => {

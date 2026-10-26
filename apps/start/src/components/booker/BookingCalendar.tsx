@@ -20,6 +20,7 @@ export function BookingCalendar({
   onChangeMonth,
   canGoBack,
   weekStartDay,
+  awayDates = new Map(),
   t,
 }: {
   year: number;
@@ -32,6 +33,8 @@ export function BookingCalendar({
   canGoBack: boolean;
   /** 0 = Sunday. */
   weekStartDay: number;
+  /** Days the host is out of office, with the reason's emoji; selectable so the booker can see why. */
+  awayDates?: Map<string, string | null>;
   t: TFunction;
 }) {
   const weekdays = weekdayNames(locale, "short", weekStartDay);
@@ -73,7 +76,8 @@ export function BookingCalendar({
               {week.map((date, index) => {
                 // biome-ignore lint/suspicious/noArrayIndexKey: padding cells are purely positional
                 if (!date) return <td key={`pad-${index}`} />;
-                const available = availableDates.has(date);
+                const away = awayDates.has(date);
+                const available = availableDates.has(date) || away;
                 const selected = date === selectedDate;
                 return (
                   <td key={date}>
@@ -83,8 +87,13 @@ export function BookingCalendar({
                       aria-pressed={selected}
                       aria-label={date}
                       onClick={() => onSelectDate(date)}
-                      className={`aspect-square w-full rounded-md font-medium transition-colors ${dayClass(selected, available)}`}>
+                      className={`relative aspect-square w-full rounded-md font-medium transition-colors ${away && !selected ? "bg-muted text-muted-foreground" : dayClass(selected, available)}`}>
                       {Number(date.slice(8))}
+                      {away && (
+                        <span aria-hidden className="absolute -top-1 -right-1 text-[10px]">
+                          {awayDates.get(date) ?? "🏝️"}
+                        </span>
+                      )}
                     </button>
                   </td>
                 );

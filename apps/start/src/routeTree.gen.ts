@@ -30,6 +30,7 @@ import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AuthedSettingsMyAccountAppearanceRouteImport } from './routes/_authed/settings/my-account/appearance'
 import { Route as AuthedSettingsMyAccountCalendarsRouteImport } from './routes/_authed/settings/my-account/calendars'
 import { Route as AuthedSettingsMyAccountGeneralRouteImport } from './routes/_authed/settings/my-account/general'
+import { Route as AuthedSettingsMyAccountOutOfOfficeRouteImport } from './routes/_authed/settings/my-account/out-of-office'
 import { Route as AuthedSettingsMyAccountProfileRouteImport } from './routes/_authed/settings/my-account/profile'
 import { Route as AuthedSettingsSecurityPasswordRouteImport } from './routes/_authed/settings/security/password'
 import { Route as AuthedSettingsSecurityTwoFactorAuthRouteImport } from './routes/_authed/settings/security/two-factor-auth'
@@ -147,6 +148,12 @@ const AuthedSettingsMyAccountGeneralRoute =
     path: '/my-account/general',
     getParentRoute: () => AuthedSettingsRoute,
   } as any)
+const AuthedSettingsMyAccountOutOfOfficeRoute =
+  AuthedSettingsMyAccountOutOfOfficeRouteImport.update({
+    id: '/my-account/out-of-office',
+    path: '/my-account/out-of-office',
+    getParentRoute: () => AuthedSettingsRoute,
+  } as any)
 const AuthedSettingsMyAccountProfileRoute =
   AuthedSettingsMyAccountProfileRouteImport.update({
     id: '/my-account/profile',
@@ -211,6 +218,7 @@ export interface FileRoutesByFullPath {
   '/settings/my-account/appearance': typeof AuthedSettingsMyAccountAppearanceRoute
   '/settings/my-account/calendars': typeof AuthedSettingsMyAccountCalendarsRoute
   '/settings/my-account/general': typeof AuthedSettingsMyAccountGeneralRoute
+  '/settings/my-account/out-of-office': typeof AuthedSettingsMyAccountOutOfOfficeRoute
   '/settings/my-account/profile': typeof AuthedSettingsMyAccountProfileRoute
   '/settings/security/password': typeof AuthedSettingsSecurityPasswordRoute
   '/settings/security/two-factor-auth': typeof AuthedSettingsSecurityTwoFactorAuthRoute
@@ -239,6 +247,7 @@ export interface FileRoutesByTo {
   '/settings/my-account/appearance': typeof AuthedSettingsMyAccountAppearanceRoute
   '/settings/my-account/calendars': typeof AuthedSettingsMyAccountCalendarsRoute
   '/settings/my-account/general': typeof AuthedSettingsMyAccountGeneralRoute
+  '/settings/my-account/out-of-office': typeof AuthedSettingsMyAccountOutOfOfficeRoute
   '/settings/my-account/profile': typeof AuthedSettingsMyAccountProfileRoute
   '/settings/security/password': typeof AuthedSettingsSecurityPasswordRoute
   '/settings/security/two-factor-auth': typeof AuthedSettingsSecurityTwoFactorAuthRoute
@@ -270,6 +279,7 @@ export interface FileRoutesById {
   '/_authed/settings/my-account/appearance': typeof AuthedSettingsMyAccountAppearanceRoute
   '/_authed/settings/my-account/calendars': typeof AuthedSettingsMyAccountCalendarsRoute
   '/_authed/settings/my-account/general': typeof AuthedSettingsMyAccountGeneralRoute
+  '/_authed/settings/my-account/out-of-office': typeof AuthedSettingsMyAccountOutOfOfficeRoute
   '/_authed/settings/my-account/profile': typeof AuthedSettingsMyAccountProfileRoute
   '/_authed/settings/security/password': typeof AuthedSettingsSecurityPasswordRoute
   '/_authed/settings/security/two-factor-auth': typeof AuthedSettingsSecurityTwoFactorAuthRoute
@@ -301,6 +311,7 @@ export interface FileRouteTypes {
     | '/settings/my-account/appearance'
     | '/settings/my-account/calendars'
     | '/settings/my-account/general'
+    | '/settings/my-account/out-of-office'
     | '/settings/my-account/profile'
     | '/settings/security/password'
     | '/settings/security/two-factor-auth'
@@ -329,6 +340,7 @@ export interface FileRouteTypes {
     | '/settings/my-account/appearance'
     | '/settings/my-account/calendars'
     | '/settings/my-account/general'
+    | '/settings/my-account/out-of-office'
     | '/settings/my-account/profile'
     | '/settings/security/password'
     | '/settings/security/two-factor-auth'
@@ -359,6 +371,7 @@ export interface FileRouteTypes {
     | '/_authed/settings/my-account/appearance'
     | '/_authed/settings/my-account/calendars'
     | '/_authed/settings/my-account/general'
+    | '/_authed/settings/my-account/out-of-office'
     | '/_authed/settings/my-account/profile'
     | '/_authed/settings/security/password'
     | '/_authed/settings/security/two-factor-auth'
@@ -533,6 +546,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedSettingsMyAccountGeneralRouteImport
       parentRoute: typeof AuthedSettingsRoute
     }
+    '/_authed/settings/my-account/out-of-office': {
+      id: '/_authed/settings/my-account/out-of-office'
+      path: '/my-account/out-of-office'
+      fullPath: '/settings/my-account/out-of-office'
+      preLoaderRoute: typeof AuthedSettingsMyAccountOutOfOfficeRouteImport
+      parentRoute: typeof AuthedSettingsRoute
+    }
     '/_authed/settings/my-account/profile': {
       id: '/_authed/settings/my-account/profile'
       path: '/my-account/profile'
@@ -590,6 +610,7 @@ interface AuthedSettingsRouteChildren {
   AuthedSettingsMyAccountAppearanceRoute: typeof AuthedSettingsMyAccountAppearanceRoute
   AuthedSettingsMyAccountCalendarsRoute: typeof AuthedSettingsMyAccountCalendarsRoute
   AuthedSettingsMyAccountGeneralRoute: typeof AuthedSettingsMyAccountGeneralRoute
+  AuthedSettingsMyAccountOutOfOfficeRoute: typeof AuthedSettingsMyAccountOutOfOfficeRoute
   AuthedSettingsMyAccountProfileRoute: typeof AuthedSettingsMyAccountProfileRoute
   AuthedSettingsSecurityPasswordRoute: typeof AuthedSettingsSecurityPasswordRoute
   AuthedSettingsSecurityTwoFactorAuthRoute: typeof AuthedSettingsSecurityTwoFactorAuthRoute
@@ -603,6 +624,8 @@ const AuthedSettingsRouteChildren: AuthedSettingsRouteChildren = {
     AuthedSettingsMyAccountAppearanceRoute,
   AuthedSettingsMyAccountCalendarsRoute: AuthedSettingsMyAccountCalendarsRoute,
   AuthedSettingsMyAccountGeneralRoute: AuthedSettingsMyAccountGeneralRoute,
+  AuthedSettingsMyAccountOutOfOfficeRoute:
+    AuthedSettingsMyAccountOutOfOfficeRoute,
   AuthedSettingsMyAccountProfileRoute: AuthedSettingsMyAccountProfileRoute,
   AuthedSettingsSecurityPasswordRoute: AuthedSettingsSecurityPasswordRoute,
   AuthedSettingsSecurityTwoFactorAuthRoute:

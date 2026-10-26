@@ -3,8 +3,10 @@ import { useState } from "react";
 import { dateKeyInTimeZone, formatLongDate, formatTime, localeUsesHour12 } from "~/lib/date-utils";
 import { useHour12 } from "~/lib/hour-cycle";
 import type { TFunction } from "~/lib/i18n";
+import type { OutOfOfficeDayDto } from "~/server/bookings/types";
 import { FormError } from "../AuthCard";
 import { BookingCalendar } from "./BookingCalendar";
+import { OutOfOfficeNotice } from "./OutOfOfficeNotice";
 import type { MonthCursor } from "./useMonthSlots";
 
 export function SlotPicker({
@@ -13,6 +15,7 @@ export function SlotPicker({
   locale,
   loading,
   slotsByDate,
+  outOfOffice,
   errorKey,
   onMoveMonth,
   onSelectSlot,
@@ -25,6 +28,7 @@ export function SlotPicker({
   locale: string;
   loading: boolean;
   slotsByDate: Map<string, string[]>;
+  outOfOffice: Record<string, OutOfOfficeDayDto>;
   errorKey: string | null;
   onMoveMonth: (delta: number) => void;
   onSelectSlot: (slot: string) => void;
@@ -50,6 +54,13 @@ export function SlotPicker({
         onSelectDate={setSelectedDate}
         canGoBack={monthKey > today.slice(0, 7)}
         weekStartDay={weekStartDay}
+        awayDates={
+          new Map(
+            Object.entries(outOfOffice)
+              .filter(([date]) => date >= today)
+              .map(([date, day]) => [date, day.emoji])
+          )
+        }
         onChangeMonth={(delta) => {
           setSelectedDate(null);
           onMoveMonth(delta);
@@ -58,10 +69,13 @@ export function SlotPicker({
       />
       <div className="flex flex-col gap-2">
         {loading && <p className="text-muted-foreground text-sm">{t("loading")}</p>}
-        {!loading && slotsByDate.size === 0 && (
+        {!loading && slotsByDate.size === 0 && Object.keys(outOfOffice).length === 0 && (
           <p className="text-muted-foreground text-sm">{t("no_available_slots")}</p>
         )}
-        {selectedDate && (
+        {selectedDate && outOfOffice[selectedDate] && (
+          <OutOfOfficeNotice day={outOfOffice[selectedDate]} t={t} />
+        )}
+        {selectedDate && !outOfOffice[selectedDate] && (
           <>
             <div className="flex items-center justify-between gap-2">
               <p className="font-medium text-sm">

@@ -76,3 +76,18 @@ export type BookingDetailsDto = {
   eventType: { title: string; slug: string; length: number } | null;
   attendees: { name: string; email: string; timeZone: string }[];
 };
+
+/** What the booker shows for a day the host is away. `reason` is a translation key. */
+export type OutOfOfficeDayDto = {
+  displayName: string | null;
+  reason: string | null;
+  emoji: string | null;
+  notes: string | null;
+  toUser: { username: string; displayName: string | null } | null;
+};
+
+export type SlotsDto = {
+  slots: string[];
+  /** Keyed by YYYY-MM-DD (UTC), like Cal. */
+  outOfOffice: Record<string, OutOfOfficeDayDto>;
+};
