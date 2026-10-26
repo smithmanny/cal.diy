@@ -4,7 +4,7 @@ import { type FormEvent, useState } from "react";
 import { AuthCard, FormError } from "~/components/AuthCard";
 import { TextField } from "~/components/TextField";
 import { authClient } from "~/lib/auth-client";
-import { AUTH_ERROR_MESSAGE_KEYS, authErrorKey } from "~/lib/auth-errors";
+import { AUTH_ERROR_MESSAGE_KEYS, AUTH_ERROR_VALUES, authErrorKey } from "~/lib/auth-errors";
 import { useT } from "~/lib/i18n";
 import { loadMessages } from "~/lib/messages";
 import { getAuthProviders } from "~/server/auth/providers";
@@ -80,7 +80,7 @@ function SignupPage() {
           hint={t("password_complexity_requirement")}
           required
         />
-        <FormError message={errorKey && t(errorKey, { passwordLength: 7 })} />
+        <FormError message={errorKey && t(errorKey, AUTH_ERROR_VALUES)} />
         <Button type="submit" disabled={pending || !hydrated}>
           {pending ? t("loading") : t("create_account")}
         </Button>

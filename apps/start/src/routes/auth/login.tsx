@@ -4,7 +4,7 @@ import { type FormEvent, useState } from "react";
 import { AuthCard, FormError } from "~/components/AuthCard";
 import { TextField } from "~/components/TextField";
 import { authClient } from "~/lib/auth-client";
-import { AUTH_ERROR_MESSAGE_KEYS, authErrorKey, safeCallbackUrl } from "~/lib/auth-errors";
+import { AUTH_ERROR_MESSAGE_KEYS, AUTH_ERROR_VALUES, authErrorKey, safeCallbackUrl } from "~/lib/auth-errors";
 import { useT } from "~/lib/i18n";
 import { loadMessages } from "~/lib/messages";
 import { getAuthProviders } from "~/server/auth/providers";
@@ -20,6 +20,12 @@ const MESSAGE_KEYS = [
   "dont_have_an_account",
   "create_account",
   "loading",
+  "forgot_password",
+  "2fa_code",
+  "2fa_enter_six_digit_code",
+  "backup_code",
+  "lost_access",
+  "back",
   ...AUTH_ERROR_MESSAGE_KEYS,
 ];
 
@@ -30,6 +36,7 @@ function LoginPage() {
   const t = useT();
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [secondFactor, setSecondFactor] = useState<"totp" | "backup" | null>(null);
   // Until React hydrates, a click would fall back to a native form submit and post the
   // credentials to this page instead of the auth API, so the button stays disabled.
   const hydrated = useHydrated();
@@ -39,7 +46,7 @@ function LoginPage() {
     const form = new FormData(event.currentTarget);
     setPending(true);
     setErrorKey(null);
-    const { error } = await authClient.signIn.email({
+    const { data, error } = await authClient.signIn.email({
       email: String(form.get("email")),
       password: String(form.get("password")),
     });
@@ -48,7 +55,61 @@ function LoginPage() {
       setErrorKey(authErrorKey(error));
       return;
     }
+    if (data && "twoFactorRedirect" in data && data.twoFactorRedirect) {
+      setSecondFactor("totp");
+      return;
+    }
     await navigate({ href: callbackUrl });
+  }
+
+  async function onSubmitCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const code = String(new FormData(event.currentTarget).get("code")).trim();
+    setPending(true);
+    setErrorKey(null);
+    const { error } =
+      secondFactor === "backup"
+        ? await authClient.twoFactor.verifyBackupCode({ code })
+        : await authClient.twoFactor.verifyTotp({ code });
+    setPending(false);
+    if (error) {
+      setErrorKey(authErrorKey(error));
+      return;
+    }
+    await navigate({ href: callbackUrl });
+  }
+
+  if (secondFactor) {
+    return (
+      <AuthCard
+        title={t("2fa_code")}
+        subtitle={secondFactor === "totp" ? t("2fa_enter_six_digit_code") : undefined}>
+        <form method="post" onSubmit={onSubmitCode} className="flex flex-col gap-4">
+          <TextField
+            key={secondFactor}
+            label={secondFactor === "totp" ? t("2fa_code") : t("backup_code")}
+            name="code"
+            autoComplete="one-time-code"
+            inputMode={secondFactor === "totp" ? "numeric" : "text"}
+            autoFocus
+            required
+          />
+          <FormError message={errorKey && t(errorKey, AUTH_ERROR_VALUES)} />
+          <Button type="submit" disabled={pending || !hydrated}>
+            {pending ? t("loading") : t("sign_in")}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              setErrorKey(null);
+              setSecondFactor(secondFactor === "totp" ? "backup" : "totp");
+            }}>
+            {secondFactor === "totp" ? t("lost_access") : t("back")}
+          </Button>
+        </form>
+      </AuthCard>
+    );
   }
 
   return (
@@ -72,7 +133,14 @@ function LoginPage() {
           autoComplete="current-password"
           required
         />
-        <FormError message={errorKey && t(errorKey)} />
+        {providers.email && (
+          <Link
+            to="/auth/forgot-password"
+            className="-mt-2 self-end text-muted-foreground text-sm underline-offset-4 hover:underline">
+            {t("forgot_password")}
+          </Link>
+        )}
+        <FormError message={errorKey && t(errorKey, AUTH_ERROR_VALUES)} />
         <Button type="submit" disabled={pending || !hydrated}>
           {pending ? t("loading") : t("sign_in")}
         </Button>

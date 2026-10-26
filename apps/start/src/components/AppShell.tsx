@@ -1,6 +1,7 @@
+import { Button } from "@coss/ui/components/button";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { CalendarDaysIcon, ClockIcon, LinkIcon, LogOutIcon, SettingsIcon, WebhookIcon } from "lucide-react";
-import type { ComponentType, ReactNode } from "react";
+import { type ComponentType, type ReactNode, useState } from "react";
 import { authClient } from "~/lib/auth-client";
 import { useT } from "~/lib/i18n";
 import type { SessionUser } from "~/server/auth/session";
@@ -19,6 +20,34 @@ const NAV_ITEMS: NavItem[] = [
 const navLinkClass =
   "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors hover:bg-accent hover:text-foreground";
 
+function VerifyEmailBanner({ email }: { email: string }) {
+  const t = useT();
+  const [sent, setSent] = useState(false);
+  return (
+    <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-warning/32 bg-warning/8 px-4 py-3 text-sm">
+      <span>{t("verify_email_banner_body")}</span>
+      {sent ? (
+        <span className="text-muted-foreground">{t("verification_email_sent")}</span>
+      ) : (
+        <HydratedFieldset>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={async () => {
+              const { error } = await authClient.sendVerificationEmail({
+                email,
+                callbackURL: "/event-types",
+              });
+              if (!error) setSent(true);
+            }}>
+            {t("resend_email")}
+          </Button>
+        </HydratedFieldset>
+      )}
+    </div>
+  );
+}
+
 export const APP_SHELL_MESSAGE_KEYS = [
   "event_types_page_title",
   "bookings",
@@ -26,6 +55,9 @@ export const APP_SHELL_MESSAGE_KEYS = [
   "webhooks",
   "settings",
   "sign_out",
+  "verify_email_banner_body",
+  "resend_email",
+  "verification_email_sent",
 ];
 
 export function AppShell({ user, children }: { user: SessionUser; children: ReactNode }) {
@@ -85,7 +117,10 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
           </HydratedFieldset>
         </div>
       </aside>
-      <main className="mx-auto w-full max-w-5xl flex-1 p-4 md:p-8">{children}</main>
+      <main className="mx-auto w-full max-w-5xl flex-1 p-4 md:p-8">
+        {user.needsEmailVerification && <VerifyEmailBanner email={user.email} />}
+        {children}
+      </main>
     </div>
   );
 }

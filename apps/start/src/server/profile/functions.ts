@@ -30,3 +30,11 @@ export const updateProfile = createServerFn({ method: "POST" })
     if (!locale) throw new AppError("something_went_wrong");
     await (await getUserRepository()).updateProfile(context.userId, { ...data, locale });
   });
+
+export const getSecurity = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const security = await (await getUserRepository()).findSecurity(context.userId);
+    if (!security) throw new AppError("not_found", 404);
+    return security;
+  });

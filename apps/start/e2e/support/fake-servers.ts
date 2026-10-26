@@ -89,3 +89,29 @@ export function startFakeGoogle(port: number): Server {
     });
   }).listen(port);
 }
+
+export type CapturedEmail = { to: string[]; subject: string; html: string; text: string };
+
+/** Stands in for Resend: keeps every email and lists them at GET /emails?to=<address>. */
+export function startFakeResend(port: number): Server {
+  const emails: CapturedEmail[] = [];
+  return createServer((req, res) => {
+    const url = new URL(req.url ?? "/", `http://localhost:${port}`);
+    if (req.method === "GET" && url.pathname === "/emails") {
+      const to = url.searchParams.get("to");
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify(emails.filter((email) => !to || email.to.includes(to))));
+      return;
+    }
+    let body = "";
+    req.on("data", (chunk) => {
+      body += chunk;
+    });
+    req.on("end", () => {
+      const { to, subject, html, text } = JSON.parse(body);
+      emails.push({ to, subject, html, text });
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ id: `email-${emails.length}` }));
+    });
+  }).listen(port);
+}

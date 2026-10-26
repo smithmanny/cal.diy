@@ -1382,6 +1382,24 @@ export const verification = sqliteTable(
   (t) => [index("Verification_identifier_idx").on(t.identifier)]
 );
 
+// Better Auth `twoFactor` plugin. Replaces users.twoFactorSecret/backupCodes, which Cal encrypted
+// with CALENDSO_ENCRYPTION_KEY; the data import re-encrypts them into this table.
+export const twoFactor = sqliteTable(
+  "TwoFactor",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: integer("userId")
+      .notNull()
+      .references((): AnySQLiteColumn => user.id, { onDelete: "cascade", onUpdate: "cascade" }),
+    secret: text("secret").notNull(),
+    backupCodes: text("backupCodes").notNull(),
+    verified: integer("verified", { mode: "boolean" }).notNull().default(true),
+    failedVerificationCount: integer("failedVerificationCount").notNull().default(0),
+    lockedUntil: integer("lockedUntil", { mode: "timestamp_ms" }),
+  },
+  (t) => [index("TwoFactor_userId_idx").on(t.userId), index("TwoFactor_secret_idx").on(t.secret)]
+);
+
 export const app = sqliteTable(
   "App",
   {

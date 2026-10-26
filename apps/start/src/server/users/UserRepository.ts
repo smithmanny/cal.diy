@@ -1,7 +1,7 @@
 import "@tanstack/react-start/server-only";
 
 import type { Database } from "@calcom/db/database";
-import { user } from "@calcom/db/schema";
+import { account, user } from "@calcom/db/schema";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 
 export class UserRepository {
@@ -62,6 +62,24 @@ export class UserRepository {
       .where(eq(user.id, userId))
       .limit(1);
     return found ?? null;
+  }
+
+  /** What the security settings need: whether a password exists, and the 2FA and verification state. */
+  async findSecurity(userId: number) {
+    const [found] = await this.db
+      .select({
+        email: user.email,
+        emailVerified: user.emailVerified,
+        twoFactorEnabled: user.twoFactorEnabled,
+        passwordAccountId: account.id,
+      })
+      .from(user)
+      .leftJoin(account, and(eq(account.userId, user.id), eq(account.providerId, "credential")))
+      .where(eq(user.id, userId))
+      .limit(1);
+    if (!found) return null;
+    const { passwordAccountId, ...rest } = found;
+    return { ...rest, hasPassword: passwordAccountId !== null };
   }
 
   async updateProfile(

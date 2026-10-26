@@ -2,6 +2,7 @@ import process from "node:process";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest, getRequestHeaders } from "@tanstack/react-start/server";
 import { DEFAULT_LOCALE, localeFromAcceptLanguage, matchLocale } from "~/lib/locales";
+import { isEmailEnabled } from "../emails/container";
 import { getAuth } from "./auth";
 
 export type SessionUser = {
@@ -10,6 +11,8 @@ export type SessionUser = {
   name: string | null;
   username: string | null;
   timeZone: string;
+  /** Unverified, and this instance can actually send the verification email. */
+  needsEmailVerification: boolean;
 };
 
 export type RequestContext = {
@@ -32,6 +35,7 @@ export const getRequestContext = createServerFn({ method: "GET" }).handler(
           name: session.user.name || null,
           username: session.user.username ?? null,
           timeZone: session.user.timeZone ?? "Europe/London",
+          needsEmailVerification: !session.user.emailVerified && isEmailEnabled(),
         }
       : null;
     const userLocale = session?.user.locale ? matchLocale(session.user.locale) : null;

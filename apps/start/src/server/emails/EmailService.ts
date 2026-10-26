@@ -4,7 +4,14 @@ import type { Messages } from "~/lib/i18n";
 import type { BookingEvent, BookingSnapshot } from "../bookings/events";
 import { buildIcs } from "./ics";
 import type { EmailSender } from "./sender";
-import { EMAIL_MESSAGE_KEYS, type EmailKind, renderBookingEmail } from "./templates";
+import {
+  AUTH_EMAIL_MESSAGE_KEYS,
+  type AuthEmailKind,
+  EMAIL_MESSAGE_KEYS,
+  type EmailKind,
+  renderAuthEmail,
+  renderBookingEmail,
+} from "./templates";
 
 type Deps = {
   send: EmailSender;
@@ -88,6 +95,17 @@ export class EmailService {
     for (const result of results) {
       if (result.status === "rejected") console.error(`Sending ${event.type} email failed`, result.reason);
     }
+  }
+
+  /** Password reset and email verification links; unlike booking emails, failures reach the caller. */
+  async sendAuthEmail(
+    kind: AuthEmailKind,
+    recipient: { email: string; name: string | null; locale: string | null },
+    url: string
+  ): Promise<void> {
+    const messages = await this.deps.loadMessages(recipient.locale ?? "en", AUTH_EMAIL_MESSAGE_KEYS);
+    const { subject, html, text } = renderAuthEmail(kind, recipient, url, messages);
+    await this.deps.send({ from: this.deps.from, to: recipient.email, subject, html, text });
   }
 
   private async sendOne(

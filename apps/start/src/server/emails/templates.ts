@@ -2,6 +2,7 @@ import { formatLongDate, formatTime } from "~/lib/date-utils";
 import type { Messages } from "~/lib/i18n";
 import { createT } from "~/lib/i18n";
 import type { BookingSnapshot } from "../bookings/events";
+import { emailButton, emailLayout, emailParagraph, htmlEscape } from "./layout";
 
 export type EmailKind =
   | "attendee_scheduled"
@@ -78,9 +79,6 @@ export const EMAIL_MESSAGE_KEYS = [
   "confirm_or_reject_request",
 ];
 
-const htmlEscape = (text: string) =>
-  text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-
 export function renderBookingEmail(
   kind: EmailKind,
   booking: BookingSnapshot,
@@ -132,17 +130,67 @@ export function renderBookingEmail(
     ...visible.map(([label, value]) => `${label}: ${value}`),
     ...(action ? ["", `${action}: ${manageUrl}`] : []),
   ].join("\n");
-  const html = `<!doctype html><html><body style="margin:0;background:#f4f4f5;font-family:system-ui,sans-serif;color:#111">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:32px 16px">
-<table role="presentation" width="100%" style="max-width:560px;background:#fff;border:1px solid #e5e7eb;border-radius:12px" cellpadding="0" cellspacing="0">
-<tr><td style="padding:32px"><h1 style="margin:0 0 24px;font-size:20px">${htmlEscape(t(content.headingKey))}</h1>
-${visible
-  .map(
-    ([label, value]) =>
-      `<p style="margin:0 0 4px;font-size:13px;color:#6b7280">${htmlEscape(label)}</p><p style="margin:0 0 16px;font-size:15px;white-space:pre-line">${htmlEscape(value)}</p>`
-  )
-  .join("\n")}
-${action ? `<p style="margin:24px 0 0"><a href="${htmlEscape(manageUrl)}" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:10px 16px;border-radius:8px;font-size:14px">${htmlEscape(action)}</a></p>` : ""}
-</td></tr></table></td></tr></table></body></html>`;
+  const html = emailLayout(
+    t(content.headingKey),
+    `${visible
+      .map(
+        ([label, value]) =>
+          `<p style="margin:0 0 4px;font-size:13px;color:#6b7280">${htmlEscape(label)}</p><p style="margin:0 0 16px;font-size:15px;white-space:pre-line">${htmlEscape(value)}</p>`
+      )
+      .join("\n")}${action ? emailButton(action, manageUrl) : ""}`
+  );
   return { subject, html, text };
+}
+
+export type AuthEmailKind = "reset_password" | "verify_email";
+
+export const AUTH_EMAIL_MESSAGE_KEYS = [
+  "hi_user_name",
+  "reset_password_subject",
+  "someone_requested_password_reset",
+  "change_password",
+  "password_reset_instructions",
+  "verify_email_subject",
+  "verify_email_email_header",
+  "verify_email_email_body",
+  "verify_email_button",
+  "verify_email_email_link_text",
+  "happy_scheduling",
+];
+
+export function renderAuthEmail(
+  kind: AuthEmailKind,
+  recipient: { name: string | null },
+  url: string,
+  messages: Messages
+): { subject: string; html: string; text: string } {
+  const t = createT(messages);
+  const greeting = t("hi_user_name", { name: recipient.name ?? "" }).trim();
+  const appName = "Cal.diy";
+  const content =
+    kind === "reset_password"
+      ? {
+          subject: t("reset_password_subject", { appName }),
+          heading: t("change_password"),
+          lines: [greeting, t("someone_requested_password_reset")],
+          button: t("change_password"),
+          after: [t("password_reset_instructions")],
+        }
+      : {
+          subject: t("verify_email_subject", { appName }),
+          heading: t("verify_email_email_header"),
+          lines: [greeting, t("verify_email_email_body")],
+          button: t("verify_email_button"),
+          after: [t("verify_email_email_link_text"), url, t("happy_scheduling")],
+        };
+  const html = emailLayout(
+    content.heading,
+    [
+      ...content.lines.map(emailParagraph),
+      emailButton(content.button, url),
+      `<div style="margin-top:24px">${content.after.map(emailParagraph).join("")}</div>`,
+    ].join("\n")
+  );
+  const text = [...content.lines, "", `${content.button}: ${url}`, "", ...content.after].join("\n");
+  return { subject: content.subject, html, text };
 }

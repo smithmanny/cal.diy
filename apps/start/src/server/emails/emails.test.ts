@@ -4,7 +4,12 @@ import { pickMessages } from "../catalog";
 import { EmailService } from "./EmailService";
 import { buildIcs } from "./ics";
 import { createResendSender, type EmailMessage } from "./sender";
-import { EMAIL_MESSAGE_KEYS, renderBookingEmail } from "./templates";
+import {
+  AUTH_EMAIL_MESSAGE_KEYS,
+  EMAIL_MESSAGE_KEYS,
+  renderAuthEmail,
+  renderBookingEmail,
+} from "./templates";
 
 const booking: BookingSnapshot = {
   uid: "uid-1",
@@ -79,6 +84,41 @@ describe("renderBookingEmail", () => {
     expect(email.html).toContain("&lt;b&gt;bring slides&lt;/b&gt;");
     expect(email.html).toContain("https://cal.test/booking/uid-1");
     expect(email.text).toContain("bring slides");
+  });
+});
+
+describe("renderAuthEmail", () => {
+  it("renders a localized reset email with the link and an escaped name", async () => {
+    const email = renderAuthEmail(
+      "reset_password",
+      { name: "<Greta>" },
+      "https://cal.test/api/auth/reset-password/tok?callbackURL=%2Fauth%2Freset-password",
+      await pickMessages("en", AUTH_EMAIL_MESSAGE_KEYS)
+    );
+    expect(email.subject).toBe("Cal.diy: Reset password instructions");
+    expect(email.html).toContain("Hi &lt;Greta&gt;");
+    expect(email.html).toContain(
+      'href="https://cal.test/api/auth/reset-password/tok?callbackURL=%2Fauth%2Freset-password"'
+    );
+    expect(email.text).toContain("https://cal.test/api/auth/reset-password/tok");
+  });
+
+  it("translates the verification email", async () => {
+    const english = renderAuthEmail(
+      "verify_email",
+      { name: null },
+      "https://cal.test/v",
+      await pickMessages("en", AUTH_EMAIL_MESSAGE_KEYS)
+    );
+    const german = renderAuthEmail(
+      "verify_email",
+      { name: null },
+      "https://cal.test/v",
+      await pickMessages("de", AUTH_EMAIL_MESSAGE_KEYS)
+    );
+    expect(english.subject).toBe("Cal.diy: Verify your account");
+    expect(german.subject).not.toBe(english.subject);
+    expect(german.html).toContain("https://cal.test/v");
   });
 });
 

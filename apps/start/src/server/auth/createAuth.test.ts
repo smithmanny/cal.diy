@@ -1,3 +1,5 @@
+import { base32 } from "@better-auth/utils/base32";
+import { createOTP } from "@better-auth/utils/otp";
 import type { Database } from "@calcom/db/database";
 import { account, eventType, schedule, user } from "@calcom/db/schema";
 import { eq } from "drizzle-orm";
@@ -18,6 +20,7 @@ beforeEach(async () => {
     secret: "test-secret-that-is-long-enough-123",
     clientIpHeaders: ["x-cal-client-ip"],
     rateLimit: false,
+    sendAuthEmail: null,
   });
 });
 
@@ -131,5 +134,105 @@ describe("createAuth", () => {
 
     const session = await auth.api.getSession({ headers: new Headers({ cookie: cookie ?? "" }) });
     expect(session?.user).toMatchObject({ email: "login@example.com", username: "login" });
+  });
+});
+
+describe("createAuth account security", () => {
+  type SentEmail = { kind: string; email: string; url: string };
+  let sent: SentEmail[];
+
+  beforeEach(() => {
+    sent = [];
+    auth = createAuth({
+      db,
+      baseURL: "http://localhost:3000",
+      secret: "test-secret-that-is-long-enough-123",
+      clientIpHeaders: ["x-cal-client-ip"],
+      rateLimit: false,
+      sendAuthEmail: async (kind, recipient, url) => {
+        sent.push({ kind, email: recipient.email, url });
+      },
+    });
+  });
+
+  async function sessionHeaders(email: string, password = VALID_PASSWORD) {
+    const response = await auth.api.signInEmail({ body: { email, password }, asResponse: true });
+    return new Headers({ cookie: response.headers.get("set-cookie") ?? "" });
+  }
+
+  it("emails a verification link on sign-up", async () => {
+    await signUp({ email: "verify@example.com", username: "verify" });
+    expect(sent).toEqual([
+      {
+        kind: "verify_email",
+        email: "verify@example.com",
+        url: expect.stringContaining("/api/auth/verify-email?token="),
+      },
+    ]);
+  });
+
+  it("resets a password from the emailed link, applying Cal's password rule", async () => {
+    await signUp({ email: "reset@example.com", username: "reset" });
+    await auth.api.requestPasswordReset({
+      body: { email: "reset@example.com", redirectTo: "/auth/reset-password" },
+    });
+    const resetEmail = sent.find((email) => email.kind === "reset_password");
+    const token = new URL(resetEmail?.url ?? "").pathname.split("/").pop() ?? "";
+    expect(token).not.toBe("");
+
+    await expect(
+      auth.api.resetPassword({ body: { token, newPassword: "alllowercase" } })
+    ).rejects.toMatchObject({ body: { code: AUTH_ERROR_CODES.invalidPassword } });
+
+    await auth.api.resetPassword({ body: { token, newPassword: "NewSecret456" } });
+    await expect(sessionHeaders("reset@example.com")).resolves.toBeDefined();
+    await expect(
+      auth.api.signInEmail({ body: { email: "reset@example.com", password: VALID_PASSWORD } })
+    ).rejects.toMatchObject({ body: { code: "INVALID_EMAIL_OR_PASSWORD" } });
+  });
+
+  it("doesn't reveal whether an email has an account when asked for a reset", async () => {
+    await expect(
+      auth.api.requestPasswordReset({
+        body: { email: "nobody@example.com", redirectTo: "/auth/reset-password" },
+      })
+    ).resolves.toMatchObject({ status: true });
+    expect(sent).toEqual([]);
+  });
+
+  it("applies Cal's password rule when changing a password", async () => {
+    await signUp({ email: "change@example.com", username: "change" });
+    const headers = await sessionHeaders("change@example.com");
+    await expect(
+      auth.api.changePassword({ headers, body: { currentPassword: VALID_PASSWORD, newPassword: "short" } })
+    ).rejects.toMatchObject({ body: { code: AUTH_ERROR_CODES.invalidPassword } });
+    await auth.api.changePassword({
+      headers,
+      body: { currentPassword: VALID_PASSWORD, newPassword: "Changed789" },
+    });
+    await expect(sessionHeaders("change@example.com", "Changed789")).resolves.toBeDefined();
+  });
+
+  it("requires a TOTP code at sign-in once two-factor auth is verified", async () => {
+    await signUp({ email: "totp@example.com", username: "totp" });
+    const headers = await sessionHeaders("totp@example.com");
+    const enabled = await auth.api.enableTwoFactor({ headers, body: { password: VALID_PASSWORD } });
+    if (enabled.method !== "totp") throw new Error(`Expected TOTP setup, got ${enabled.method}`);
+    expect(enabled.backupCodes).toHaveLength(10);
+
+    // The URI carries the secret base32-encoded, as authenticator apps expect.
+    const encoded = new URL(enabled.totpURI).searchParams.get("secret") ?? "";
+    const code = await createOTP(new TextDecoder().decode(base32.decode(encoded))).totp();
+    await auth.api.verifyTOTP({ headers, body: { code } });
+    const [row] = await db.select({ twoFactorEnabled: user.twoFactorEnabled }).from(user);
+    expect(row.twoFactorEnabled).toBe(true);
+
+    const signIn = await auth.api.signInEmail({
+      body: { email: "totp@example.com", password: VALID_PASSWORD },
+      asResponse: true,
+    });
+    expect(await signIn.json()).toMatchObject({ twoFactorRedirect: true });
+    const pendingCookies = new Headers({ cookie: signIn.headers.get("set-cookie") ?? "" });
+    await expect(auth.api.getSession({ headers: pendingCookies })).resolves.toBeNull();
   });
 });

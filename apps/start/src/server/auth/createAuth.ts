@@ -1,14 +1,17 @@
 import "@tanstack/react-start/server-only";
 
 import type { Database } from "@calcom/db/database";
-import { account, session, user, verification } from "@calcom/db/schema";
+import { account, session, twoFactor as twoFactorTable, user, verification } from "@calcom/db/schema";
 import { isPasswordValid } from "@calcom/lib/auth/isPasswordValid";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, createAuthMiddleware } from "better-auth/api";
+import { twoFactor } from "better-auth/plugins/two-factor";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
+import { MIN_PASSWORD_LENGTH } from "~/lib/auth-errors";
 import { RESERVED_USERNAMES } from "~/lib/reserved-usernames";
 import { pickMessages } from "../catalog";
+import type { AuthEmailKind } from "../emails/templates";
 import { EventTypeRepository } from "../event-types/EventTypeRepository";
 import { EventTypeService } from "../event-types/EventTypeService";
 import { ScheduleRepository } from "../schedules/ScheduleRepository";
@@ -30,6 +33,21 @@ function validTimeZone(value: unknown): string | null {
   }
 }
 
+// Every endpoint that sets a password must apply Cal's rule, not just sign-up.
+const PASSWORD_FIELD_BY_PATH: Record<string, string> = {
+  "/sign-up/email": "password",
+  "/reset-password": "newPassword",
+  "/change-password": "newPassword",
+};
+
+function authEmailRecipient(target: { email: string; name?: string | null; locale?: unknown }) {
+  return {
+    email: target.email,
+    name: target.name ?? null,
+    locale: typeof target.locale === "string" ? target.locale : null,
+  };
+}
+
 export type AuthConfig = {
   db: Database;
   baseURL: string;
@@ -38,7 +56,15 @@ export type AuthConfig = {
   /** Headers the runtime guarantees hold the real client IP; rate limiting is keyed on it. */
   clientIpHeaders: string[];
   rateLimit: boolean;
+  /** Sends reset and verification links; null when no email provider is configured. */
+  sendAuthEmail: AuthEmailSender | null;
 };
+
+export type AuthEmailSender = (
+  kind: AuthEmailKind,
+  recipient: { email: string; name: string | null; locale: string | null },
+  url: string
+) => Promise<void>;
 
 // Error codes are i18n keys from packages/i18n/locales/en/common.json; the client translates them.
 export const AUTH_ERROR_CODES = {
@@ -46,7 +72,15 @@ export const AUTH_ERROR_CODES = {
   usernameTaken: "username_already_taken",
 } as const;
 
-export function createAuth({ db, baseURL, secret, google, clientIpHeaders, rateLimit }: AuthConfig) {
+export function createAuth({
+  db,
+  baseURL,
+  secret,
+  google,
+  clientIpHeaders,
+  rateLimit,
+  sendAuthEmail,
+}: AuthConfig) {
   const users = new UserRepository(db);
   const scheduleRepo = new ScheduleRepository(db);
   const schedules = new ScheduleService({ scheduleRepo, userRepo: users });
@@ -56,7 +90,10 @@ export function createAuth({ db, baseURL, secret, google, clientIpHeaders, rateL
     appName: "Cal.diy",
     baseURL,
     secret,
-    database: drizzleAdapter(db, { provider: "sqlite", schema: { user, session, account, verification } }),
+    database: drizzleAdapter(db, {
+      provider: "sqlite",
+      schema: { user, session, account, verification, twoFactor: twoFactorTable },
+    }),
     advanced: {
       // Cal's users.id (and every foreign key to it) is an integer, so all auth ids are serial too.
       database: { generateId: "serial" },
@@ -78,8 +115,24 @@ export function createAuth({ db, baseURL, secret, google, clientIpHeaders, rateL
     emailAndPassword: {
       enabled: true,
       autoSignIn: true,
-      minPasswordLength: 7,
+      minPasswordLength: MIN_PASSWORD_LENGTH,
+      revokeSessionsOnPasswordReset: true,
+      sendResetPassword: sendAuthEmail
+        ? async ({ user: target, url }) => {
+            await sendAuthEmail("reset_password", authEmailRecipient(target), url);
+          }
+        : undefined,
     },
+    emailVerification: sendAuthEmail
+      ? {
+          // Cal doesn't block unverified users; it asks them to verify, so sign-in stays open.
+          sendOnSignUp: true,
+          autoSignInAfterVerification: true,
+          sendVerificationEmail: async ({ user: target, url }) => {
+            await sendAuthEmail("verify_email", authEmailRecipient(target), url);
+          },
+        }
+      : undefined,
     socialProviders: google ? { google: { ...google, prompt: "select_account" } } : {},
     account: {
       // Google sign-in for an existing email/password user links instead of failing.
@@ -87,8 +140,9 @@ export function createAuth({ db, baseURL, secret, google, clientIpHeaders, rateL
     },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
-        if (ctx.path !== "/sign-up/email") return;
-        const password: unknown = ctx.body?.password;
+        const field = PASSWORD_FIELD_BY_PATH[ctx.path];
+        if (!field) return;
+        const password: unknown = ctx.body?.[field];
         // Same rule as the old signup flow; Better Auth only checks length.
         if (typeof password !== "string" || !isPasswordValid(password)) {
           throw new APIError("BAD_REQUEST", {
@@ -144,7 +198,11 @@ export function createAuth({ db, baseURL, secret, google, clientIpHeaders, rateL
         },
       },
     },
-    plugins: [tanstackStartCookies()],
+    plugins: [
+      twoFactor({ issuer: "Cal.diy", backupCodeOptions: { amount: 10, length: 10 } }),
+      // Must stay last so it sees the cookies every other plugin sets.
+      tanstackStartCookies(),
+    ],
   });
 }
 

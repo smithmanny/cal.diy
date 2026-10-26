@@ -1,14 +1,19 @@
 import "@tanstack/react-start/server-only";
 
 import process from "node:process";
+import { IS_PRODUCTION_BUILD } from "../build";
 import { pickMessages } from "../catalog";
 import { EmailService } from "./EmailService";
-import { createResendSender, type EmailSender } from "./sender";
+import { createResendSender, type EmailSender, RESEND_EMAILS_URL } from "./sender";
 import { createSmtpSender } from "#runtime";
 
 /** Resend (HTTP, any runtime) if RESEND_API_KEY is set, otherwise SMTP via Cal's EMAIL_SERVER_* on Node. */
 function createSender(): EmailSender | null {
-  if (process.env.RESEND_API_KEY) return createResendSender(process.env.RESEND_API_KEY);
+  if (process.env.RESEND_API_KEY) {
+    // Overridable in development only, so browser tests can capture emails without real delivery.
+    const endpoint = (!IS_PRODUCTION_BUILD && process.env.RESEND_API_URL) || RESEND_EMAILS_URL;
+    return createResendSender(process.env.RESEND_API_KEY, fetch, endpoint);
+  }
   return createSmtpSender();
 }
 

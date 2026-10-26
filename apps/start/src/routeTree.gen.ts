@@ -15,7 +15,9 @@ import { Route as UsernameIndexRouteImport } from './routes/$username/index'
 import { Route as UsernameSlugRouteImport } from './routes/$username/$slug'
 import { Route as AuthedSettingsRouteImport } from './routes/_authed/settings'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as AuthForgotPasswordRouteImport } from './routes/auth/forgot-password'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
+import { Route as AuthResetPasswordRouteImport } from './routes/auth/reset-password'
 import { Route as AuthSignupRouteImport } from './routes/auth/signup'
 import { Route as BookingUidRouteImport } from './routes/booking/$uid'
 import { Route as AuthedAvailabilityIndexRouteImport } from './routes/_authed/availability/index'
@@ -27,6 +29,8 @@ import { Route as AuthedSettingsIndexRouteImport } from './routes/_authed/settin
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AuthedSettingsMyAccountCalendarsRouteImport } from './routes/_authed/settings/my-account/calendars'
 import { Route as AuthedSettingsMyAccountProfileRouteImport } from './routes/_authed/settings/my-account/profile'
+import { Route as AuthedSettingsSecurityPasswordRouteImport } from './routes/_authed/settings/security/password'
+import { Route as AuthedSettingsSecurityTwoFactorAuthRouteImport } from './routes/_authed/settings/security/two-factor-auth'
 import { Route as ApiIntegrationsGooglecalendarAddRouteImport } from './routes/api/integrations/googlecalendar/add'
 import { Route as ApiIntegrationsGooglecalendarCallbackRouteImport } from './routes/api/integrations/googlecalendar/callback'
 import { Route as AuthedSettingsDeveloperWebhooksIndexRouteImport } from './routes/_authed/settings/developer/webhooks/index'
@@ -61,9 +65,19 @@ const ApiHealthRoute = ApiHealthRouteImport.update({
   path: '/api/health',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
+  id: '/auth/forgot-password',
+  path: '/auth/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthLoginRoute = AuthLoginRouteImport.update({
   id: '/auth/login',
   path: '/auth/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
+  id: '/auth/reset-password',
+  path: '/auth/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthSignupRoute = AuthSignupRouteImport.update({
@@ -125,6 +139,18 @@ const AuthedSettingsMyAccountProfileRoute =
     path: '/my-account/profile',
     getParentRoute: () => AuthedSettingsRoute,
   } as any)
+const AuthedSettingsSecurityPasswordRoute =
+  AuthedSettingsSecurityPasswordRouteImport.update({
+    id: '/security/password',
+    path: '/security/password',
+    getParentRoute: () => AuthedSettingsRoute,
+  } as any)
+const AuthedSettingsSecurityTwoFactorAuthRoute =
+  AuthedSettingsSecurityTwoFactorAuthRouteImport.update({
+    id: '/security/two-factor-auth',
+    path: '/security/two-factor-auth',
+    getParentRoute: () => AuthedSettingsRoute,
+  } as any)
 const ApiIntegrationsGooglecalendarAddRoute =
   ApiIntegrationsGooglecalendarAddRouteImport.update({
     id: '/api/integrations/googlecalendar/add',
@@ -155,7 +181,9 @@ export interface FileRoutesByFullPath {
   '/$username/$slug': typeof UsernameSlugRoute
   '/settings': typeof AuthedSettingsRouteWithChildren
   '/api/health': typeof ApiHealthRoute
+  '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
   '/booking/$uid': typeof BookingUidRoute
   '/$username/': typeof UsernameIndexRoute
@@ -168,6 +196,8 @@ export interface FileRoutesByFullPath {
   '/settings/': typeof AuthedSettingsIndexRoute
   '/settings/my-account/calendars': typeof AuthedSettingsMyAccountCalendarsRoute
   '/settings/my-account/profile': typeof AuthedSettingsMyAccountProfileRoute
+  '/settings/security/password': typeof AuthedSettingsSecurityPasswordRoute
+  '/settings/security/two-factor-auth': typeof AuthedSettingsSecurityTwoFactorAuthRoute
   '/api/integrations/googlecalendar/add': typeof ApiIntegrationsGooglecalendarAddRoute
   '/api/integrations/googlecalendar/callback': typeof ApiIntegrationsGooglecalendarCallbackRoute
   '/settings/developer/webhooks/$webhookId': typeof AuthedSettingsDeveloperWebhooksWebhookIdRoute
@@ -177,7 +207,9 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$username/$slug': typeof UsernameSlugRoute
   '/api/health': typeof ApiHealthRoute
+  '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
   '/booking/$uid': typeof BookingUidRoute
   '/$username': typeof UsernameIndexRoute
@@ -190,6 +222,8 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthedSettingsIndexRoute
   '/settings/my-account/calendars': typeof AuthedSettingsMyAccountCalendarsRoute
   '/settings/my-account/profile': typeof AuthedSettingsMyAccountProfileRoute
+  '/settings/security/password': typeof AuthedSettingsSecurityPasswordRoute
+  '/settings/security/two-factor-auth': typeof AuthedSettingsSecurityTwoFactorAuthRoute
   '/api/integrations/googlecalendar/add': typeof ApiIntegrationsGooglecalendarAddRoute
   '/api/integrations/googlecalendar/callback': typeof ApiIntegrationsGooglecalendarCallbackRoute
   '/settings/developer/webhooks/$webhookId': typeof AuthedSettingsDeveloperWebhooksWebhookIdRoute
@@ -202,7 +236,9 @@ export interface FileRoutesById {
   '/$username/$slug': typeof UsernameSlugRoute
   '/_authed/settings': typeof AuthedSettingsRouteWithChildren
   '/api/health': typeof ApiHealthRoute
+  '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
   '/booking/$uid': typeof BookingUidRoute
   '/$username/': typeof UsernameIndexRoute
@@ -215,6 +251,8 @@ export interface FileRoutesById {
   '/_authed/settings/': typeof AuthedSettingsIndexRoute
   '/_authed/settings/my-account/calendars': typeof AuthedSettingsMyAccountCalendarsRoute
   '/_authed/settings/my-account/profile': typeof AuthedSettingsMyAccountProfileRoute
+  '/_authed/settings/security/password': typeof AuthedSettingsSecurityPasswordRoute
+  '/_authed/settings/security/two-factor-auth': typeof AuthedSettingsSecurityTwoFactorAuthRoute
   '/api/integrations/googlecalendar/add': typeof ApiIntegrationsGooglecalendarAddRoute
   '/api/integrations/googlecalendar/callback': typeof ApiIntegrationsGooglecalendarCallbackRoute
   '/_authed/settings/developer/webhooks/$webhookId': typeof AuthedSettingsDeveloperWebhooksWebhookIdRoute
@@ -227,7 +265,9 @@ export interface FileRouteTypes {
     | '/$username/$slug'
     | '/settings'
     | '/api/health'
+    | '/auth/forgot-password'
     | '/auth/login'
+    | '/auth/reset-password'
     | '/auth/signup'
     | '/booking/$uid'
     | '/$username/'
@@ -240,6 +280,8 @@ export interface FileRouteTypes {
     | '/settings/'
     | '/settings/my-account/calendars'
     | '/settings/my-account/profile'
+    | '/settings/security/password'
+    | '/settings/security/two-factor-auth'
     | '/api/integrations/googlecalendar/add'
     | '/api/integrations/googlecalendar/callback'
     | '/settings/developer/webhooks/$webhookId'
@@ -249,7 +291,9 @@ export interface FileRouteTypes {
     | '/'
     | '/$username/$slug'
     | '/api/health'
+    | '/auth/forgot-password'
     | '/auth/login'
+    | '/auth/reset-password'
     | '/auth/signup'
     | '/booking/$uid'
     | '/$username'
@@ -262,6 +306,8 @@ export interface FileRouteTypes {
     | '/settings'
     | '/settings/my-account/calendars'
     | '/settings/my-account/profile'
+    | '/settings/security/password'
+    | '/settings/security/two-factor-auth'
     | '/api/integrations/googlecalendar/add'
     | '/api/integrations/googlecalendar/callback'
     | '/settings/developer/webhooks/$webhookId'
@@ -273,7 +319,9 @@ export interface FileRouteTypes {
     | '/$username/$slug'
     | '/_authed/settings'
     | '/api/health'
+    | '/auth/forgot-password'
     | '/auth/login'
+    | '/auth/reset-password'
     | '/auth/signup'
     | '/booking/$uid'
     | '/$username/'
@@ -286,6 +334,8 @@ export interface FileRouteTypes {
     | '/_authed/settings/'
     | '/_authed/settings/my-account/calendars'
     | '/_authed/settings/my-account/profile'
+    | '/_authed/settings/security/password'
+    | '/_authed/settings/security/two-factor-auth'
     | '/api/integrations/googlecalendar/add'
     | '/api/integrations/googlecalendar/callback'
     | '/_authed/settings/developer/webhooks/$webhookId'
@@ -297,7 +347,9 @@ export interface RootRouteChildren {
   AuthedRoute: typeof AuthedRouteWithChildren
   UsernameSlugRoute: typeof UsernameSlugRoute
   ApiHealthRoute: typeof ApiHealthRoute
+  AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute
   AuthLoginRoute: typeof AuthLoginRoute
+  AuthResetPasswordRoute: typeof AuthResetPasswordRoute
   AuthSignupRoute: typeof AuthSignupRoute
   BookingUidRoute: typeof BookingUidRoute
   UsernameIndexRoute: typeof UsernameIndexRoute
@@ -350,11 +402,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiHealthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/forgot-password': {
+      id: '/auth/forgot-password'
+      path: '/auth/forgot-password'
+      fullPath: '/auth/forgot-password'
+      preLoaderRoute: typeof AuthForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth/login': {
       id: '/auth/login'
       path: '/auth/login'
       fullPath: '/auth/login'
       preLoaderRoute: typeof AuthLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/reset-password': {
+      id: '/auth/reset-password'
+      path: '/auth/reset-password'
+      fullPath: '/auth/reset-password'
+      preLoaderRoute: typeof AuthResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/signup': {
@@ -434,6 +500,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedSettingsMyAccountProfileRouteImport
       parentRoute: typeof AuthedSettingsRoute
     }
+    '/_authed/settings/security/password': {
+      id: '/_authed/settings/security/password'
+      path: '/security/password'
+      fullPath: '/settings/security/password'
+      preLoaderRoute: typeof AuthedSettingsSecurityPasswordRouteImport
+      parentRoute: typeof AuthedSettingsRoute
+    }
+    '/_authed/settings/security/two-factor-auth': {
+      id: '/_authed/settings/security/two-factor-auth'
+      path: '/security/two-factor-auth'
+      fullPath: '/settings/security/two-factor-auth'
+      preLoaderRoute: typeof AuthedSettingsSecurityTwoFactorAuthRouteImport
+      parentRoute: typeof AuthedSettingsRoute
+    }
     '/api/integrations/googlecalendar/add': {
       id: '/api/integrations/googlecalendar/add'
       path: '/api/integrations/googlecalendar/add'
@@ -469,6 +549,8 @@ interface AuthedSettingsRouteChildren {
   AuthedSettingsIndexRoute: typeof AuthedSettingsIndexRoute
   AuthedSettingsMyAccountCalendarsRoute: typeof AuthedSettingsMyAccountCalendarsRoute
   AuthedSettingsMyAccountProfileRoute: typeof AuthedSettingsMyAccountProfileRoute
+  AuthedSettingsSecurityPasswordRoute: typeof AuthedSettingsSecurityPasswordRoute
+  AuthedSettingsSecurityTwoFactorAuthRoute: typeof AuthedSettingsSecurityTwoFactorAuthRoute
   AuthedSettingsDeveloperWebhooksWebhookIdRoute: typeof AuthedSettingsDeveloperWebhooksWebhookIdRoute
   AuthedSettingsDeveloperWebhooksIndexRoute: typeof AuthedSettingsDeveloperWebhooksIndexRoute
 }
@@ -477,6 +559,9 @@ const AuthedSettingsRouteChildren: AuthedSettingsRouteChildren = {
   AuthedSettingsIndexRoute: AuthedSettingsIndexRoute,
   AuthedSettingsMyAccountCalendarsRoute: AuthedSettingsMyAccountCalendarsRoute,
   AuthedSettingsMyAccountProfileRoute: AuthedSettingsMyAccountProfileRoute,
+  AuthedSettingsSecurityPasswordRoute: AuthedSettingsSecurityPasswordRoute,
+  AuthedSettingsSecurityTwoFactorAuthRoute:
+    AuthedSettingsSecurityTwoFactorAuthRoute,
   AuthedSettingsDeveloperWebhooksWebhookIdRoute:
     AuthedSettingsDeveloperWebhooksWebhookIdRoute,
   AuthedSettingsDeveloperWebhooksIndexRoute:
@@ -513,7 +598,9 @@ const rootRouteChildren: RootRouteChildren = {
   AuthedRoute: AuthedRouteWithChildren,
   UsernameSlugRoute: UsernameSlugRoute,
   ApiHealthRoute: ApiHealthRoute,
+  AuthForgotPasswordRoute: AuthForgotPasswordRoute,
   AuthLoginRoute: AuthLoginRoute,
+  AuthResetPasswordRoute: AuthResetPasswordRoute,
   AuthSignupRoute: AuthSignupRoute,
   BookingUidRoute: BookingUidRoute,
   UsernameIndexRoute: UsernameIndexRoute,

@@ -1,5 +1,7 @@
 import process from "node:process";
-import { expect, type Page } from "@playwright/test";
+import { type APIRequestContext, expect, type Page } from "@playwright/test";
+import type { CapturedEmail } from "./fake-servers";
+import { FAKE_RESEND_PORT } from "./global-setup";
 
 export const PASSWORD = "Secret123";
 
@@ -49,4 +51,24 @@ export async function bookFirstSlot(
   await expect(page).toHaveURL(/\/booking\//);
   await expect(page.getByRole("heading", { level: 1, name: /scheduled|submitted/i })).toBeVisible();
   return { uid: page.url().split("/booking/")[1], date: date ?? "", time };
+}
+
+/** The first link in the newest email to `to` whose subject matches, from the fake Resend. */
+export async function linkFromLatestEmail(
+  request: APIRequestContext,
+  to: string,
+  subject: RegExp
+): Promise<string> {
+  let link = "";
+  await expect
+    .poll(async () => {
+      const emails: CapturedEmail[] = await (
+        await request.get(`http://localhost:${FAKE_RESEND_PORT}/emails?to=${encodeURIComponent(to)}`)
+      ).json();
+      const email = emails.filter((candidate) => subject.test(candidate.subject)).at(-1);
+      link = email?.html.match(/href="([^"]+)"/)?.[1]?.replaceAll("&amp;", "&") ?? "";
+      return link;
+    })
+    .not.toBe("");
+  return link;
 }
