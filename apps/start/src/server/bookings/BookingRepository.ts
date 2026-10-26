@@ -5,6 +5,7 @@ import type { BookingStatus } from "@calcom/db/enums";
 import type { JsonValue } from "@calcom/db/ids";
 import { attendee, booking, eventType, user } from "@calcom/db/schema";
 import { and, asc, desc, eq, exists, gt, inArray, lt, ne, notExists, or, type SQL, sql } from "drizzle-orm";
+import { appearanceColumns } from "../users/UserRepository";
 
 const detailColumns = {
   id: booking.id,
@@ -147,6 +148,7 @@ export class BookingRepository {
               username: user.username,
               timeZone: user.timeZone,
               locale: user.locale,
+              ...appearanceColumns,
             })
             .from(user)
             .where(eq(user.id, found.userId))

@@ -24,3 +24,13 @@
   --font-cal: "Cal Sans", "Inter var", system-ui, sans-serif;
   --font-heading: var(--font-cal);
 }
+
+/* Host brand colors on public pages (see ThemeScope); more specific than the theme's own tokens. */
+[data-brand] {
+  --primary: var(--brand-color);
+  --primary-foreground: var(--brand-text);
+}
+.dark[data-brand] {
+  --primary: var(--brand-color-dark);
+  --primary-foreground: var(--brand-text-dark);
+}

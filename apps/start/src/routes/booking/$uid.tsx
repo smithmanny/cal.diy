@@ -6,6 +6,8 @@ import { useState } from "react";
 import { FormError } from "~/components/AuthCard";
 import { LOCATION_LABEL_KEYS } from "~/components/booker/locationLabels";
 import { HydratedFieldset } from "~/components/HydratedFieldset";
+import { PoweredBy } from "~/components/PoweredBy";
+import { ThemeScope } from "~/components/ThemeScope";
 import { formatLongDate, formatTime } from "~/lib/date-utils";
 import { errorMessageKey } from "~/lib/errors";
 import { useT } from "~/lib/i18n";
@@ -13,6 +15,7 @@ import { loadMessages } from "~/lib/messages";
 import { cancelBookingByUid, getBookingByUid } from "~/server/bookings/functions";
 
 const MESSAGE_KEYS = [
+  "powered_by",
   ...Object.values(LOCATION_LABEL_KEYS),
   "meeting_is_scheduled",
   "emailed_you_and_any_other_attendees",
@@ -106,90 +109,96 @@ function BookingPage() {
   ];
 
   return (
-    <main className="flex min-h-screen items-start justify-center bg-muted/40 px-4 py-12">
-      <HydratedFieldset className="flex w-full max-w-xl flex-col gap-6 rounded-xl border bg-background p-6">
-        <header className="flex flex-col items-center gap-2 text-center">
-          <Icon className={`size-10 ${isCancelled ? "text-destructive" : "text-success"}`} />
-          <h1 className="font-heading text-xl">{heading}</h1>
-          {isPending && booking.host && (
-            <p className="text-muted-foreground text-sm">
-              {t("user_needs_to_confirm_or_reject_booking", {
-                user: booking.host.name ?? booking.host.email,
-              })}
-            </p>
-          )}
-          {!isCancelled && !isPending && booking.emailsEnabled && (
-            <p className="text-muted-foreground text-sm">{t("emailed_you_and_any_other_attendees")}</p>
-          )}
-        </header>
-        <dl className="grid grid-cols-[6rem_1fr] gap-x-4 gap-y-3 border-t pt-6 text-sm">
-          {rows.map(([label, value]) =>
-            value ? (
-              <div key={label} className="contents">
-                <dt className="font-medium">{label}</dt>
-                <dd className="whitespace-pre-line break-words">
-                  {isUrl(value) ? (
-                    <a href={value} className="underline" target="_blank" rel="noreferrer">
-                      {value}
-                    </a>
-                  ) : (
-                    value
-                  )}
-                </dd>
-              </div>
-            ) : null
-          )}
-          {isCancelled && booking.cancellationReason && (
-            <>
-              <dt className="font-medium">{t("cancellation_reason")}</dt>
-              <dd>{booking.cancellationReason}</dd>
-            </>
-          )}
-        </dl>
-        {!isCancelled && !isPast && booking.host?.username && booking.eventType && (
-          <footer className="flex flex-col gap-3 border-t pt-6 text-center text-sm">
-            {cancelling ? (
-              <div className="flex flex-col gap-3 text-left">
-                <label className="flex flex-col gap-1.5 font-medium">
-                  {t("cancellation_reason")}
-                  <Textarea
-                    rows={3}
-                    maxLength={1000}
-                    placeholder={t("cancellation_reason_placeholder")}
-                    value={reason}
-                    onChange={(event) => setReason(event.target.value)}
-                  />
-                </label>
-                <FormError message={errorKey && t(errorKey)} />
-                <div className="flex justify-end gap-2">
-                  <Button variant="ghost" onClick={() => setCancelling(false)}>
-                    {t("back")}
-                  </Button>
-                  <Button variant="destructive" disabled={pending} onClick={cancel}>
-                    {t("cancel_event")}
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <p>
-                {t("need_to_reschedule_or_cancel")}{" "}
-                <Link
-                  to="/$username/$slug"
-                  params={{ username: booking.host.username, slug: booking.eventType.slug }}
-                  search={{ rescheduleUid: booking.uid }}
-                  className="font-medium underline">
-                  {t("reschedule")}
-                </Link>{" "}
-                ·{" "}
-                <button type="button" className="font-medium underline" onClick={() => setCancelling(true)}>
-                  {t("cancel")}
-                </button>
+    <ThemeScope
+      theme={booking.host?.appearance.theme ?? null}
+      brandColor={booking.host?.appearance.brandColor}
+      darkBrandColor={booking.host?.appearance.darkBrandColor}>
+      <main className="flex min-h-screen flex-col items-center bg-muted/40 px-4 py-12">
+        <HydratedFieldset className="flex w-full max-w-xl flex-col gap-6 rounded-xl border bg-background p-6">
+          <header className="flex flex-col items-center gap-2 text-center">
+            <Icon className={`size-10 ${isCancelled ? "text-destructive" : "text-success"}`} />
+            <h1 className="font-heading text-xl">{heading}</h1>
+            {isPending && booking.host && (
+              <p className="text-muted-foreground text-sm">
+                {t("user_needs_to_confirm_or_reject_booking", {
+                  user: booking.host.name ?? booking.host.email,
+                })}
               </p>
             )}
-          </footer>
-        )}
-      </HydratedFieldset>
-    </main>
+            {!isCancelled && !isPending && booking.emailsEnabled && (
+              <p className="text-muted-foreground text-sm">{t("emailed_you_and_any_other_attendees")}</p>
+            )}
+          </header>
+          <dl className="grid grid-cols-[6rem_1fr] gap-x-4 gap-y-3 border-t pt-6 text-sm">
+            {rows.map(([label, value]) =>
+              value ? (
+                <div key={label} className="contents">
+                  <dt className="font-medium">{label}</dt>
+                  <dd className="whitespace-pre-line break-words">
+                    {isUrl(value) ? (
+                      <a href={value} className="underline" target="_blank" rel="noreferrer">
+                        {value}
+                      </a>
+                    ) : (
+                      value
+                    )}
+                  </dd>
+                </div>
+              ) : null
+            )}
+            {isCancelled && booking.cancellationReason && (
+              <>
+                <dt className="font-medium">{t("cancellation_reason")}</dt>
+                <dd>{booking.cancellationReason}</dd>
+              </>
+            )}
+          </dl>
+          {!isCancelled && !isPast && booking.host?.username && booking.eventType && (
+            <footer className="flex flex-col gap-3 border-t pt-6 text-center text-sm">
+              {cancelling ? (
+                <div className="flex flex-col gap-3 text-left">
+                  <label className="flex flex-col gap-1.5 font-medium">
+                    {t("cancellation_reason")}
+                    <Textarea
+                      rows={3}
+                      maxLength={1000}
+                      placeholder={t("cancellation_reason_placeholder")}
+                      value={reason}
+                      onChange={(event) => setReason(event.target.value)}
+                    />
+                  </label>
+                  <FormError message={errorKey && t(errorKey)} />
+                  <div className="flex justify-end gap-2">
+                    <Button variant="ghost" onClick={() => setCancelling(false)}>
+                      {t("back")}
+                    </Button>
+                    <Button variant="destructive" disabled={pending} onClick={cancel}>
+                      {t("cancel_event")}
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <p>
+                  {t("need_to_reschedule_or_cancel")}{" "}
+                  <Link
+                    to="/$username/$slug"
+                    params={{ username: booking.host.username, slug: booking.eventType.slug }}
+                    search={{ rescheduleUid: booking.uid }}
+                    className="font-medium underline">
+                    {t("reschedule")}
+                  </Link>{" "}
+                  ·{" "}
+                  <button type="button" className="font-medium underline" onClick={() => setCancelling(true)}>
+                    {t("cancel")}
+                  </button>
+                </p>
+              )}
+            </footer>
+          )}
+        </HydratedFieldset>
+        <PoweredBy hidden={booking.host?.appearance.hideBranding ?? false} t={t} />
+      </main>
+    </ThemeScope>
   );
 }
 

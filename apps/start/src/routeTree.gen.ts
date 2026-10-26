@@ -27,6 +27,7 @@ import { Route as AuthedEventTypesIndexRouteImport } from './routes/_authed/even
 import { Route as AuthedEventTypesEventTypeIdRouteImport } from './routes/_authed/event-types/$eventTypeId'
 import { Route as AuthedSettingsIndexRouteImport } from './routes/_authed/settings/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as AuthedSettingsMyAccountAppearanceRouteImport } from './routes/_authed/settings/my-account/appearance'
 import { Route as AuthedSettingsMyAccountCalendarsRouteImport } from './routes/_authed/settings/my-account/calendars'
 import { Route as AuthedSettingsMyAccountGeneralRouteImport } from './routes/_authed/settings/my-account/general'
 import { Route as AuthedSettingsMyAccountProfileRouteImport } from './routes/_authed/settings/my-account/profile'
@@ -128,6 +129,12 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthedSettingsMyAccountAppearanceRoute =
+  AuthedSettingsMyAccountAppearanceRouteImport.update({
+    id: '/my-account/appearance',
+    path: '/my-account/appearance',
+    getParentRoute: () => AuthedSettingsRoute,
+  } as any)
 const AuthedSettingsMyAccountCalendarsRoute =
   AuthedSettingsMyAccountCalendarsRouteImport.update({
     id: '/my-account/calendars',
@@ -201,6 +208,7 @@ export interface FileRoutesByFullPath {
   '/availability/': typeof AuthedAvailabilityIndexRoute
   '/event-types/': typeof AuthedEventTypesIndexRoute
   '/settings/': typeof AuthedSettingsIndexRoute
+  '/settings/my-account/appearance': typeof AuthedSettingsMyAccountAppearanceRoute
   '/settings/my-account/calendars': typeof AuthedSettingsMyAccountCalendarsRoute
   '/settings/my-account/general': typeof AuthedSettingsMyAccountGeneralRoute
   '/settings/my-account/profile': typeof AuthedSettingsMyAccountProfileRoute
@@ -228,6 +236,7 @@ export interface FileRoutesByTo {
   '/availability': typeof AuthedAvailabilityIndexRoute
   '/event-types': typeof AuthedEventTypesIndexRoute
   '/settings': typeof AuthedSettingsIndexRoute
+  '/settings/my-account/appearance': typeof AuthedSettingsMyAccountAppearanceRoute
   '/settings/my-account/calendars': typeof AuthedSettingsMyAccountCalendarsRoute
   '/settings/my-account/general': typeof AuthedSettingsMyAccountGeneralRoute
   '/settings/my-account/profile': typeof AuthedSettingsMyAccountProfileRoute
@@ -258,6 +267,7 @@ export interface FileRoutesById {
   '/_authed/availability/': typeof AuthedAvailabilityIndexRoute
   '/_authed/event-types/': typeof AuthedEventTypesIndexRoute
   '/_authed/settings/': typeof AuthedSettingsIndexRoute
+  '/_authed/settings/my-account/appearance': typeof AuthedSettingsMyAccountAppearanceRoute
   '/_authed/settings/my-account/calendars': typeof AuthedSettingsMyAccountCalendarsRoute
   '/_authed/settings/my-account/general': typeof AuthedSettingsMyAccountGeneralRoute
   '/_authed/settings/my-account/profile': typeof AuthedSettingsMyAccountProfileRoute
@@ -288,6 +298,7 @@ export interface FileRouteTypes {
     | '/availability/'
     | '/event-types/'
     | '/settings/'
+    | '/settings/my-account/appearance'
     | '/settings/my-account/calendars'
     | '/settings/my-account/general'
     | '/settings/my-account/profile'
@@ -315,6 +326,7 @@ export interface FileRouteTypes {
     | '/availability'
     | '/event-types'
     | '/settings'
+    | '/settings/my-account/appearance'
     | '/settings/my-account/calendars'
     | '/settings/my-account/general'
     | '/settings/my-account/profile'
@@ -344,6 +356,7 @@ export interface FileRouteTypes {
     | '/_authed/availability/'
     | '/_authed/event-types/'
     | '/_authed/settings/'
+    | '/_authed/settings/my-account/appearance'
     | '/_authed/settings/my-account/calendars'
     | '/_authed/settings/my-account/general'
     | '/_authed/settings/my-account/profile'
@@ -499,6 +512,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authed/settings/my-account/appearance': {
+      id: '/_authed/settings/my-account/appearance'
+      path: '/my-account/appearance'
+      fullPath: '/settings/my-account/appearance'
+      preLoaderRoute: typeof AuthedSettingsMyAccountAppearanceRouteImport
+      parentRoute: typeof AuthedSettingsRoute
+    }
     '/_authed/settings/my-account/calendars': {
       id: '/_authed/settings/my-account/calendars'
       path: '/my-account/calendars'
@@ -567,6 +587,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthedSettingsRouteChildren {
   AuthedSettingsIndexRoute: typeof AuthedSettingsIndexRoute
+  AuthedSettingsMyAccountAppearanceRoute: typeof AuthedSettingsMyAccountAppearanceRoute
   AuthedSettingsMyAccountCalendarsRoute: typeof AuthedSettingsMyAccountCalendarsRoute
   AuthedSettingsMyAccountGeneralRoute: typeof AuthedSettingsMyAccountGeneralRoute
   AuthedSettingsMyAccountProfileRoute: typeof AuthedSettingsMyAccountProfileRoute
@@ -578,6 +599,8 @@ interface AuthedSettingsRouteChildren {
 
 const AuthedSettingsRouteChildren: AuthedSettingsRouteChildren = {
   AuthedSettingsIndexRoute: AuthedSettingsIndexRoute,
+  AuthedSettingsMyAccountAppearanceRoute:
+    AuthedSettingsMyAccountAppearanceRoute,
   AuthedSettingsMyAccountCalendarsRoute: AuthedSettingsMyAccountCalendarsRoute,
   AuthedSettingsMyAccountGeneralRoute: AuthedSettingsMyAccountGeneralRoute,
   AuthedSettingsMyAccountProfileRoute: AuthedSettingsMyAccountProfileRoute,

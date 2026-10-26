@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { DEFAULT_BRAND_COLOR, DEFAULT_DARK_BRAND_COLOR } from "~/lib/brand-color";
+import { toThemePreference } from "~/lib/theme";
 import { WEEK_DAY_NAMES } from "~/lib/time-format";
 import { AppError } from "../errors";
 import { authMiddleware } from "../middleware";
@@ -10,6 +12,8 @@ import { travelPeriod } from "./travel";
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
+const themeSchema = z.enum(["light", "dark"]).nullable();
+const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 export const getGeneralSettings = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
@@ -75,4 +79,39 @@ export const deleteTravelSchedule = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const { travelSchedules } = await getSettingsRepositories();
     await travelSchedules.deleteByIdAndUserId(data.id, context.userId);
+  });
+
+export const getAppearance = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const { users } = await getSettingsRepositories();
+    const appearance = await users.findAppearance(context.userId);
+    if (!appearance) throw new AppError("not_found", 404);
+    return {
+      theme: toThemePreference(appearance.theme),
+      appTheme: toThemePreference(appearance.appTheme),
+      brandColor: appearance.brandColor ?? DEFAULT_BRAND_COLOR,
+      darkBrandColor: appearance.darkBrandColor ?? DEFAULT_DARK_BRAND_COLOR,
+      hideBranding: appearance.hideBranding,
+    };
+  });
+
+export const updateAppearance = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(
+    z.object({
+      theme: themeSchema,
+      appTheme: themeSchema,
+      brandColor: hexColor,
+      darkBrandColor: hexColor,
+      hideBranding: z.boolean(),
+    })
+  )
+  .handler(async ({ context, data }) => {
+    const { users } = await getSettingsRepositories();
+    await users.updateAppearance(context.userId, {
+      ...data,
+      brandColor: data.brandColor.toLowerCase(),
+      darkBrandColor: data.darkBrandColor.toLowerCase(),
+    });
   });

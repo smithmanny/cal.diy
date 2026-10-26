@@ -112,6 +112,7 @@ export function createAuth({
         locale: { type: "string", required: false, input: false },
         timeFormat: { type: "number", required: false, input: false },
         weekStart: { type: "string", required: false, input: false },
+        appTheme: { type: "string", required: false, input: false },
       },
     },
     emailAndPassword: {

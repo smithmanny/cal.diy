@@ -6,6 +6,8 @@ import { LOCATION_LABEL_KEYS } from "~/components/booker/locationLabels";
 import { SlotPicker } from "~/components/booker/SlotPicker";
 import { useMonthSlots } from "~/components/booker/useMonthSlots";
 import { HydratedFieldset } from "~/components/HydratedFieldset";
+import { PoweredBy } from "~/components/PoweredBy";
+import { ThemeScope } from "~/components/ThemeScope";
 import { HourCycleProvider } from "~/lib/hour-cycle";
 import { useT } from "~/lib/i18n";
 import { loadMessages } from "~/lib/messages";
@@ -13,6 +15,7 @@ import { NOINDEX_META } from "~/lib/seo";
 import { createBooking, getPublicEvent } from "~/server/bookings/functions";
 
 const MESSAGE_KEYS = [
+  "powered_by",
   ...Object.values(LOCATION_LABEL_KEYS),
   "minutes",
   "timezone",
@@ -92,44 +95,50 @@ function BookerPage() {
 
   return (
     <HourCycleProvider hour12={hour12}>
-      <main className="flex min-h-screen items-start justify-center bg-muted/40 px-4 py-8 md:items-center">
-        <HydratedFieldset className="grid w-full max-w-5xl overflow-hidden rounded-xl border bg-background md:grid-cols-[18rem_1fr]">
-          <BookerSidebar
-            event={event}
-            rescheduling={Boolean(rescheduleUid)}
-            timeZone={slots.timeZone}
-            onTimeZoneChange={slots.setTimeZone}
-            t={t}
-          />
-          <section className="p-6">
-            {selectedSlot && slots.timeZone ? (
-              <BookingForm
-                slot={selectedSlot}
-                timeZone={slots.timeZone}
-                locale={locale}
-                locations={event.eventType.locations}
-                onBack={() => setSelectedSlot(null)}
-                onSubmit={book}
-                t={t}
-              />
-            ) : (
-              <SlotPicker
-                cursor={slots.cursor}
-                timeZone={slots.timeZone}
-                locale={locale}
-                loading={slots.loading}
-                slotsByDate={slots.slotsByDate}
-                errorKey={slots.errorKey}
-                onMoveMonth={slots.moveMonth}
-                onSelectSlot={setSelectedSlot}
-                weekStartDay={event.host.weekStartDay}
-                onHour12Change={setHour12}
-                t={t}
-              />
-            )}
-          </section>
-        </HydratedFieldset>
-      </main>
+      <ThemeScope
+        theme={event.host.appearance.theme}
+        brandColor={event.host.appearance.brandColor}
+        darkBrandColor={event.host.appearance.darkBrandColor}>
+        <main className="flex min-h-screen flex-col items-center justify-center bg-muted/40 px-4 py-8">
+          <HydratedFieldset className="grid w-full max-w-5xl overflow-hidden rounded-xl border bg-background md:grid-cols-[18rem_1fr]">
+            <BookerSidebar
+              event={event}
+              rescheduling={Boolean(rescheduleUid)}
+              timeZone={slots.timeZone}
+              onTimeZoneChange={slots.setTimeZone}
+              t={t}
+            />
+            <section className="p-6">
+              {selectedSlot && slots.timeZone ? (
+                <BookingForm
+                  slot={selectedSlot}
+                  timeZone={slots.timeZone}
+                  locale={locale}
+                  locations={event.eventType.locations}
+                  onBack={() => setSelectedSlot(null)}
+                  onSubmit={book}
+                  t={t}
+                />
+              ) : (
+                <SlotPicker
+                  cursor={slots.cursor}
+                  timeZone={slots.timeZone}
+                  locale={locale}
+                  loading={slots.loading}
+                  slotsByDate={slots.slotsByDate}
+                  errorKey={slots.errorKey}
+                  onMoveMonth={slots.moveMonth}
+                  onSelectSlot={setSelectedSlot}
+                  weekStartDay={event.host.weekStartDay}
+                  onHour12Change={setHour12}
+                  t={t}
+                />
+              )}
+            </section>
+          </HydratedFieldset>
+          <PoweredBy hidden={event.host.appearance.hideBranding} t={t} />
+        </main>
+      </ThemeScope>
     </HourCycleProvider>
   );
 }

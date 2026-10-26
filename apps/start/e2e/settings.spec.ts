@@ -67,3 +67,34 @@ test("a trip moves the host's working hours into the travel time zone", async ({
   await host.getByTestId("travel-schedules").getByRole("button", { name: "Delete" }).click();
   await expect(host.getByTestId("travel-schedules")).toBeHidden();
 });
+
+test("appearance settings theme the dashboard and brand the booking page", async ({ page, browser }) => {
+  const { username } = await signUp(page);
+  const guest = await (await newClientContext(browser)).newPage();
+  await guest.goto(`/${username}/30min`);
+  await expect(guest.getByText("powered by")).toBeVisible();
+
+  await page.goto("/settings/my-account/appearance");
+  await page.getByRole("group", { name: "Dashboard theme" }).getByLabel("Dark").check();
+  await page.getByRole("group", { name: "Booking page theme" }).getByLabel("Light").check();
+  await page.getByLabel("Brand color (light theme) (hex)").fill("#1d4ed8");
+  await page.getByText("Disable Cal.diy branding").click();
+  await page.getByRole("button", { name: "Update" }).click();
+  await expect(page.getByRole("status")).toHaveText("Settings updated successfully");
+  await expect(page.locator("div.dark").first()).toBeVisible();
+
+  await guest.goto(`/${username}/30min`);
+  await expect(guest.getByText("powered by")).toHaveCount(0);
+  await guest.getByRole("button", { name: "View next month" }).click();
+  const day = guest.locator("td button:not([disabled])").first();
+  await day.click();
+  await expect(day).toHaveCSS("background-color", "rgb(29, 78, 216)");
+  await expect(guest.locator("div.dark")).toHaveCount(0);
+});
+
+test("a low-contrast brand color gets Cal's warning", async ({ page }) => {
+  await signUp(page);
+  await page.goto("/settings/my-account/appearance");
+  await page.getByLabel("Brand color (light theme) (hex)").fill("#fde047");
+  await expect(page.getByText("Light theme color doesn't pass contrast check")).toBeVisible();
+});

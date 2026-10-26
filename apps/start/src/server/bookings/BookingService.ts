@@ -14,6 +14,7 @@ import type { UserRepository } from "../users/UserRepository";
 import type { BookingRepository } from "./BookingRepository";
 import type { BookingEvent, BookingListener, BookingSnapshot } from "./events";
 import type {
+  AppearanceDto,
   BookingDetailsDto,
   CreateBookingInput,
   PublicEventDto,
@@ -46,8 +47,24 @@ function parseLocations(value: unknown): EventLocation[] {
   });
 }
 
+type AppearanceRow = {
+  theme: string | null;
+  brandColor: string | null;
+  darkBrandColor: string | null;
+  hideBranding: boolean;
+};
+
+function toAppearance(row: AppearanceRow): AppearanceDto {
+  return {
+    theme: row.theme === "light" || row.theme === "dark" ? row.theme : null,
+    brandColor: row.brandColor,
+    darkBrandColor: row.darkBrandColor,
+    hideBranding: row.hideBranding,
+  };
+}
+
 function publicHost(
-  host: {
+  host: AppearanceRow & {
     name: string | null;
     avatarUrl: string | null;
     weekStart: string;
@@ -61,6 +78,7 @@ function publicHost(
     avatarUrl: host.avatarUrl,
     weekStartDay: weekStartIndex(host.weekStart),
     allowSEOIndexing: host.allowSEOIndexing ?? true,
+    appearance: toAppearance(host),
   };
 }
 
@@ -206,7 +224,12 @@ export class BookingService {
       rescheduled: Boolean(found.rescheduled),
       notes: typeof responses.notes === "string" ? responses.notes : null,
       host: found.host
-        ? { name: found.host.name, email: found.host.email, username: found.host.username }
+        ? {
+            name: found.host.name,
+            email: found.host.email,
+            username: found.host.username,
+            appearance: toAppearance(found.host),
+          }
         : null,
       eventType: found.eventType
         ? { title: found.eventType.title, slug: found.eventType.slug, length: found.eventType.length }

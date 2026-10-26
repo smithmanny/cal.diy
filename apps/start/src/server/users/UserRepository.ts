@@ -4,6 +4,13 @@ import type { Database } from "@calcom/db/database";
 import { account, user } from "@calcom/db/schema";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 
+export const appearanceColumns = {
+  theme: user.theme,
+  brandColor: user.brandColor,
+  darkBrandColor: user.darkBrandColor,
+  hideBranding: user.hideBranding,
+};
+
 export class UserRepository {
   constructor(private readonly db: Database) {}
 
@@ -46,6 +53,7 @@ export class UserRepository {
         allowSEOIndexing: user.allowSEOIndexing,
         allowDynamicBooking: user.allowDynamicBooking,
         requiresBookerEmailVerification: user.requiresBookerEmailVerification,
+        ...appearanceColumns,
       })
       .from(user)
       .where(and(eq(user.username, username.toLowerCase()), isNull(user.organizationId)))
@@ -91,6 +99,28 @@ export class UserRepository {
       allowDynamicBooking: boolean;
       allowSEOIndexing: boolean;
       requiresBookerEmailVerification: boolean;
+    }
+  ): Promise<void> {
+    await this.db.update(user).set(data).where(eq(user.id, userId));
+  }
+
+  async findAppearance(userId: number) {
+    const [found] = await this.db
+      .select({ ...appearanceColumns, appTheme: user.appTheme })
+      .from(user)
+      .where(eq(user.id, userId))
+      .limit(1);
+    return found ?? null;
+  }
+
+  async updateAppearance(
+    userId: number,
+    data: {
+      theme: string | null;
+      appTheme: string | null;
+      brandColor: string;
+      darkBrandColor: string;
+      hideBranding: boolean;
     }
   ): Promise<void> {
     await this.db.update(user).set(data).where(eq(user.id, userId));

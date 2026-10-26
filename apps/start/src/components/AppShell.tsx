@@ -7,6 +7,7 @@ import { HourCycleProvider } from "~/lib/hour-cycle";
 import { useT } from "~/lib/i18n";
 import type { SessionUser } from "~/server/auth/session";
 import { HydratedFieldset } from "./HydratedFieldset";
+import { ThemeScope } from "./ThemeScope";
 
 type NavItem = { to: string; labelKey: string; icon: ComponentType<{ className?: string }> };
 
@@ -88,7 +89,7 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
   );
 
   return (
-    <div className="flex min-h-screen flex-col md:flex-row">
+    <ThemeScope theme={user.appTheme} className="flex flex-col md:flex-row">
       <aside className="flex flex-col gap-4 border-b bg-sidebar p-3 md:sticky md:top-0 md:h-screen md:w-60 md:border-r md:border-b-0">
         <div className="flex items-center justify-between">
           <Link to="/event-types" className="px-2 font-heading text-xl">
@@ -122,7 +123,7 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
         {user.needsEmailVerification && <VerifyEmailBanner email={user.email} />}
         <HourCycleProvider hour12={user.hour12}>{children}</HourCycleProvider>
       </main>
-    </div>
+    </ThemeScope>
   );
 }
 

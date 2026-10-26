@@ -32,6 +32,14 @@ export type CreateBookingInput = z.infer<typeof createBookingSchema>;
 
 export type PublicEventLocation = { type: string; address?: string };
 
+/** How the host's public pages look; see ThemeScope. */
+export type AppearanceDto = {
+  theme: "light" | "dark" | null;
+  brandColor: string | null;
+  darkBrandColor: string | null;
+  hideBranding: boolean;
+};
+
 export type PublicHostDto = {
   name: string | null;
   username: string;
@@ -39,6 +47,7 @@ export type PublicHostDto = {
   /** 0 = Sunday; the booker's calendar starts its weeks here, as the host chose. */
   weekStartDay: number;
   allowSEOIndexing: boolean;
+  appearance: AppearanceDto;
 };
 
 export type PublicEventDto = {
@@ -63,7 +72,7 @@ export type BookingDetailsDto = {
   cancellationReason: string | null;
   rescheduled: boolean;
   notes: string | null;
-  host: { name: string | null; email: string; username: string | null } | null;
+  host: { name: string | null; email: string; username: string | null; appearance: AppearanceDto } | null;
   eventType: { title: string; slug: string; length: number } | null;
   attendees: { name: string; email: string; timeZone: string }[];
 };

@@ -3,6 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequest, getRequestHeaders } from "@tanstack/react-start/server";
 import { hour12FromTimeFormat } from "~/lib/date-utils";
 import { DEFAULT_LOCALE, localeFromAcceptLanguage, matchLocale } from "~/lib/locales";
+import { type ThemePreference, toThemePreference } from "~/lib/theme";
 import { weekStartIndex } from "~/lib/time-format";
 import { isEmailEnabled } from "../emails/container";
 import { getAuth } from "./auth";
@@ -17,6 +18,7 @@ export type SessionUser = {
   hour12: boolean | undefined;
   /** 0 = Sunday. */
   weekStartDay: number;
+  appTheme: ThemePreference;
   /** Unverified, and this instance can actually send the verification email. */
   needsEmailVerification: boolean;
 };
@@ -43,6 +45,7 @@ export const getRequestContext = createServerFn({ method: "GET" }).handler(
           timeZone: session.user.timeZone ?? "Europe/London",
           hour12: hour12FromTimeFormat(session.user.timeFormat),
           weekStartDay: weekStartIndex(session.user.weekStart),
+          appTheme: toThemePreference(session.user.appTheme),
           needsEmailVerification: !session.user.emailVerified && isEmailEnabled(),
         }
       : null;
