@@ -13,5 +13,7 @@
       "migrations_dir": "../../packages/db/migrations"
     }
   ],
+  // Static files (incl. translation catalogs) are readable from server code through this binding.
+  "assets": { "binding": "ASSETS" },
   "observability": { "enabled": true }
 }

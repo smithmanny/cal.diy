@@ -1,12 +1,14 @@
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { cloudflare } from "@cloudflare/vite-plugin";
+import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
+import { copyLocalesPlugin } from "./scripts/copy-locales.ts";
 
 // One codebase, two runtimes: Cloudflare Workers (D1) or Node in Docker (SQLite file).
-// The only runtime-specific module is the DB driver, swapped in via the `#db-driver` alias.
+// Runtime-specific code (DB driver, static file reads) lives in src/server/runtime/, swapped in via `#runtime`.
 const target = process.env.DEPLOY_TARGET === "cloudflare" ? "cloudflare" : "node";
 
 export default defineConfig(({ command, mode }) => {
@@ -21,7 +23,7 @@ export default defineConfig(({ command, mode }) => {
   return {
     resolve: {
       alias: {
-        "#db-driver": fileURLToPath(new URL(`./src/server/db/${target}.ts`, import.meta.url)),
+        "#runtime": fileURLToPath(new URL(`./src/server/runtime/${target}.ts`, import.meta.url)),
         "~": fileURLToPath(new URL("./src", import.meta.url)),
       },
     },
@@ -33,6 +35,8 @@ export default defineConfig(({ command, mode }) => {
         ? { noExternal: true, external: ["@libsql/client"] }
         : undefined,
     plugins: [
+      copyLocalesPlugin(),
+      tailwindcss(),
       ...(target === "cloudflare" ? [cloudflare({ viteEnvironment: { name: "ssr" } })] : []),
       tanstackStart(),
       react(),

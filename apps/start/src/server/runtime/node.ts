@@ -1,10 +1,14 @@
+import "@tanstack/react-start/server-only";
+
+import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import process from "node:process";
 import type { Database } from "@calcom/db/database";
 import { createLibsqlDatabase, migrateLibsqlDatabase } from "@calcom/db/drivers/libsql";
 
-// The server is bundled into dist/, so resolve from the working directory (apps/start).
+// The server is bundled into dist/, so resolve from the working directory (apps/start, or /app in Docker).
 const DEFAULT_MIGRATIONS_DIR = resolve(process.cwd(), "../../packages/db/migrations");
+const STATIC_DIR = resolve(process.cwd(), process.env.NODE_ENV === "production" ? "dist/client" : "public");
 
 let dbPromise: Promise<Database> | undefined;
 
@@ -27,4 +31,15 @@ export function getDb(): Promise<Database> {
     throw error;
   });
   return dbPromise;
+}
+
+/** Reads a file from the static assets (public/) bundle, or null when it doesn't exist. */
+export async function readStaticAsset(path: string): Promise<string | null> {
+  const file = resolve(STATIC_DIR, path);
+  if (!file.startsWith(STATIC_DIR)) return null;
+  try {
+    return await readFile(file, "utf8");
+  } catch {
+    return null;
+  }
 }

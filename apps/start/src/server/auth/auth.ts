@@ -1,3 +1,5 @@
+import "@tanstack/react-start/server-only";
+
 import process from "node:process";
 import { getDb } from "../db";
 import { type Auth, createAuth } from "./createAuth";

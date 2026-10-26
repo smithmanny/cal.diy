@@ -1,13 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
-
-function Home() {
-  return (
-    <main>
-      <h1>Cal.diy</h1>
-    </main>
-  );
-}
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/")({
-  component: Home,
+  beforeLoad: ({ context }) => {
+    throw redirect(
+      context.user ? { to: "/event-types" } : { to: "/auth/login", search: { callbackUrl: "/event-types" } }
+    );
+  },
 });

@@ -1,3 +1,5 @@
+import "@tanstack/react-start/server-only";
+
 import type { Database } from "@calcom/db/database";
 import { account, session, user, verification } from "@calcom/db/schema";
 import { isPasswordValid } from "@calcom/lib/auth/isPasswordValid";
@@ -7,6 +9,20 @@ import { APIError, createAuthMiddleware } from "better-auth/api";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { UserRepository } from "../users/UserRepository";
 import { findAvailableUsername, normalizeUsername, usernameFromEmail } from "./username";
+
+const DEFAULT_TIME_ZONE = "Europe/London";
+
+// The time zone comes from the browser at signup; anything that isn't a real IANA zone would break
+// every availability calculation for this user later.
+function validTimeZone(value: unknown): string | null {
+  if (typeof value !== "string" || !value) return null;
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: value });
+    return value;
+  } catch {
+    return null;
+  }
+}
 
 export type AuthConfig = {
   db: Database;
@@ -39,6 +55,7 @@ export function createAuth({ db, baseURL, secret, google }: AuthConfig) {
       additionalFields: {
         username: { type: "string", required: false, input: true },
         timeZone: { type: "string", required: false, input: true },
+        locale: { type: "string", required: false, input: false },
       },
     },
     emailAndPassword: {
@@ -68,6 +85,7 @@ export function createAuth({ db, baseURL, secret, google }: AuthConfig) {
       user: {
         create: {
           before: async (newUser) => {
+            const timeZone = validTimeZone(newUser.timeZone) ?? DEFAULT_TIME_ZONE;
             const requested = typeof newUser.username === "string" ? normalizeUsername(newUser.username) : "";
             if (requested) {
               const username = requested;
@@ -78,7 +96,7 @@ export function createAuth({ db, baseURL, secret, google }: AuthConfig) {
                   code: AUTH_ERROR_CODES.usernameTaken,
                 });
               }
-              return { data: { ...newUser, username } };
+              return { data: { ...newUser, username, timeZone } };
             }
             // OAuth sign-ups have no username field, and every user needs one for their booking links.
             return {

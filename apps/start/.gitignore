@@ -6,3 +6,4 @@ worker-configuration.d.ts
 .dev.vars
 .env
 .env.local
+public/locales

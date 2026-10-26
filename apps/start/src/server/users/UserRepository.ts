@@ -1,3 +1,5 @@
+import "@tanstack/react-start/server-only";
+
 import type { Database } from "@calcom/db/database";
 import { user } from "@calcom/db/schema";
 import { and, eq, inArray, isNull } from "drizzle-orm";

@@ -1,0 +1,26 @@
+@import "tailwindcss";
+@import "../../../packages/config/theme/tokens.css";
+@import "../../../packages/coss-ui/src/styles/globals.css";
+
+@source "./";
+@source "../../../packages/coss-ui/src";
+
+@font-face {
+  font-family: "Cal Sans";
+  src: url("/fonts/cal.ttf");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Inter var";
+  font-weight: 100 900;
+  font-display: swap;
+  font-style: normal;
+  src: url("/fonts/Inter-roman.var.woff2") format("woff2");
+}
+
+:root {
+  --font-sans: "Inter var", system-ui, sans-serif;
+  --font-cal: "Cal Sans", "Inter var", system-ui, sans-serif;
+  --font-heading: var(--font-cal);
+}
