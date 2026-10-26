@@ -1,6 +1,7 @@
 import "@tanstack/react-start/server-only";
 
 import { env, waitUntil } from "cloudflare:workers";
+import process from "node:process";
 import type { Database } from "@calcom/db/database";
 import { createD1Database } from "@calcom/db/drivers/d1";
 
@@ -20,4 +21,11 @@ export async function readStaticAsset(path: string): Promise<string | null> {
 /** Keeps the Worker alive until `promise` settles, without delaying the response. */
 export function runInBackground(promise: Promise<unknown>): void {
   waitUntil(promise.catch((error) => console.error("Background task failed", error)));
+}
+
+/** Workers can't open SMTP connections; use RESEND_API_KEY for email on Cloudflare. */
+export function createSmtpSender(): null {
+  if (process.env.EMAIL_SERVER_HOST)
+    console.warn("EMAIL_SERVER_HOST is ignored on Cloudflare Workers; set RESEND_API_KEY instead.");
+  return null;
 }

@@ -29,7 +29,9 @@ const snapshot: BookingSnapshot = {
     timeZone: "America/New_York",
     locale: "en",
   },
-  attendees: [{ name: "Greta", email: "greta@example.com", timeZone: "Europe/Berlin", phoneNumber: null }],
+  attendees: [
+    { name: "Greta", email: "greta@example.com", timeZone: "Europe/Berlin", phoneNumber: null, locale: "de" },
+  ],
 };
 
 describe("webhook payload", () => {
@@ -46,7 +48,7 @@ describe("webhook payload", () => {
         utcOffset: -300,
         language: { locale: "en" },
       },
-      attendees: [{ email: "greta@example.com", utcOffset: 60 }],
+      attendees: [{ email: "greta@example.com", utcOffset: 60, language: { locale: "de" } }],
       uid: "uid-1",
       eventTitle: "Intro",
       length: 30,

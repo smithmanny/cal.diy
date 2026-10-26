@@ -1,7 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { authMiddleware } from "../middleware";
 // Only referenced inside handlers, so this server-only module stays out of the client bundle.
+import { isEmailEnabled } from "../emails/container";
+import { authMiddleware } from "../middleware";
 import { getBookingService } from "./container";
 import { createBookingSchema, slotsQuerySchema } from "./types";
 
@@ -30,7 +31,11 @@ export const createBooking = createServerFn({ method: "POST" })
 
 export const getBookingByUid = createServerFn({ method: "GET" })
   .validator(uidSchema)
-  .handler(async ({ data }) => (await getBookingService()).getBooking(data.uid));
+  .handler(async ({ data }) => ({
+    ...(await (await getBookingService()).getBooking(data.uid)),
+    // The confirmation page only promises an email when one is actually sent.
+    emailsEnabled: isEmailEnabled(),
+  }));
 
 export const cancelBookingByUid = createServerFn({ method: "POST" })
   .validator(

@@ -56,7 +56,7 @@ export function buildBookingPayload(booking: BookingSnapshot, extra: Record<stri
       email: attendee.email,
       timeZone: attendee.timeZone,
       phoneNumber: attendee.phoneNumber,
-      language: { locale: "en" },
+      language: { locale: attendee.locale ?? "en" },
       utcOffset: utcOffset(attendee.timeZone, booking.startTime),
     })),
     location: booking.location,

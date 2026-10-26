@@ -170,6 +170,7 @@ export class BookingRepository {
           email: attendee.email,
           timeZone: attendee.timeZone,
           phoneNumber: attendee.phoneNumber,
+          locale: attendee.locale,
         })
         .from(attendee)
         .where(eq(attendee.bookingId, found.id))

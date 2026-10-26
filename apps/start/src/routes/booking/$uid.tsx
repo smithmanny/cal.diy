@@ -118,7 +118,7 @@ function BookingPage() {
               })}
             </p>
           )}
-          {!isCancelled && !isPending && (
+          {!isCancelled && !isPending && booking.emailsEnabled && (
             <p className="text-muted-foreground text-sm">{t("emailed_you_and_any_other_attendees")}</p>
           )}
         </header>

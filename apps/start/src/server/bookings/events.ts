@@ -21,7 +21,13 @@ export type BookingSnapshot = {
     timeZone: string;
     locale: string;
   };
-  attendees: { name: string; email: string; timeZone: string; phoneNumber: string | null }[];
+  attendees: {
+    name: string;
+    email: string;
+    timeZone: string;
+    phoneNumber: string | null;
+    locale: string | null;
+  }[];
 };
 
 export type BookingEventType =

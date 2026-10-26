@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import process from "node:process";
 import type { Database } from "@calcom/db/database";
 import { createLibsqlDatabase, migrateLibsqlDatabase } from "@calcom/db/drivers/libsql";
+import type { EmailMessage, EmailSender } from "../emails/sender";
 
 // The server is bundled into dist/, so resolve from the working directory (apps/start, or /app in Docker).
 const DEFAULT_MIGRATIONS_DIR = resolve(process.cwd(), "../../packages/db/migrations");
@@ -47,4 +48,37 @@ export async function readStaticAsset(path: string): Promise<string | null> {
 /** The Node process outlives the request, so the work just continues after the response. */
 export function runInBackground(promise: Promise<unknown>): void {
   void promise.catch((error) => console.error("Background task failed", error));
+}
+
+/** SMTP using Cal's EMAIL_SERVER_* variables; Node only, as Workers can't open SMTP sockets. */
+export function createSmtpSender(): EmailSender | null {
+  const host = process.env.EMAIL_SERVER_HOST;
+  if (!host) return null;
+  const port = Number(process.env.EMAIL_SERVER_PORT ?? 587);
+  const transportPromise = import("nodemailer").then(({ createTransport }) =>
+    createTransport({
+      host,
+      port,
+      secure: port === 465,
+      auth: process.env.EMAIL_SERVER_USER
+        ? { user: process.env.EMAIL_SERVER_USER, pass: process.env.EMAIL_SERVER_PASSWORD }
+        : undefined,
+    })
+  );
+  return async (message: EmailMessage) => {
+    const transport = await transportPromise;
+    await transport.sendMail({
+      from: message.from,
+      to: message.to,
+      replyTo: message.replyTo,
+      subject: message.subject,
+      html: message.html,
+      text: message.text,
+      attachments: message.attachments?.map((a) => ({
+        filename: a.filename,
+        content: a.content,
+        contentType: a.contentType,
+      })),
+    });
+  };
 }
