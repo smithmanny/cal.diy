@@ -9,6 +9,7 @@ import { EventTypeRepository } from "../event-types/EventTypeRepository";
 import { ScheduleRepository } from "../schedules/ScheduleRepository";
 import { ScheduleService } from "../schedules/ScheduleService";
 import { DEFAULT_WEEKLY_HOURS } from "../schedules/scheduleMapper";
+import { TravelScheduleRepository } from "../users/TravelScheduleRepository";
 import { UserRepository } from "../users/UserRepository";
 import { CalendarRepository } from "./CalendarRepository";
 import { CalendarService } from "./CalendarService";
@@ -140,6 +141,7 @@ describe("Google Calendar in the booking flow", () => {
       eventTypeRepo: new EventTypeRepository(db),
       scheduleRepo,
       bookingRepo: new BookingRepository(db),
+      travelScheduleRepo: new TravelScheduleRepository(db),
       busyTimesProviders: [({ userId, from, to }) => calendars.busyTimes(userId, from, to)],
       listeners: [(event) => calendars.onBookingEvent(event)],
       runInBackground: (promise) => void pending.push(promise),

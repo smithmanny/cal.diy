@@ -2,16 +2,24 @@ import "@tanstack/react-start/server-only";
 import type { JsonValue } from "@calcom/db/ids";
 import { cuid } from "@calcom/db/ids";
 import { type BusyInterval, computeAvailableSlots } from "@calcom/scheduling/available-slots";
+import { weekStartIndex } from "~/lib/time-format";
 import { pickMessages } from "../catalog";
 import { AppError } from "../errors";
 import type { EventTypeRepository } from "../event-types/EventTypeRepository";
 import { type EventLocation, eventLocationSchema } from "../event-types/types";
 import type { ScheduleRepository } from "../schedules/ScheduleRepository";
 import { isValidTimeZone } from "../schedules/scheduleMapper";
+import type { TravelScheduleRepository } from "../users/TravelScheduleRepository";
 import type { UserRepository } from "../users/UserRepository";
 import type { BookingRepository } from "./BookingRepository";
 import type { BookingEvent, BookingListener, BookingSnapshot } from "./events";
-import type { BookingDetailsDto, CreateBookingInput, PublicEventDto, SlotsQuery } from "./types";
+import type {
+  BookingDetailsDto,
+  CreateBookingInput,
+  PublicEventDto,
+  PublicHostDto,
+  SlotsQuery,
+} from "./types";
 
 type Deps = {
   userRepo: Pick<UserRepository, "findByUsername">;
@@ -21,6 +29,7 @@ type Deps = {
     "findByIdIncludeAvailability" | "findManyByUserIdIncludeAvailability"
   >;
   bookingRepo: BookingRepository;
+  travelScheduleRepo: Pick<TravelScheduleRepository, "findByUserId">;
   busyTimesProviders?: BusyTimesProvider[];
   listeners?: BookingListener[];
   runInBackground?: (promise: Promise<unknown>) => void;
@@ -37,6 +46,24 @@ function parseLocations(value: unknown): EventLocation[] {
   });
 }
 
+function publicHost(
+  host: {
+    name: string | null;
+    avatarUrl: string | null;
+    weekStart: string;
+    allowSEOIndexing: boolean | null;
+  },
+  username: string
+): PublicHostDto {
+  return {
+    name: host.name,
+    username,
+    avatarUrl: host.avatarUrl,
+    weekStartDay: weekStartIndex(host.weekStart),
+    allowSEOIndexing: host.allowSEOIndexing ?? true,
+  };
+}
+
 /** External calendars (e.g. Google) report busy time through this. */
 export type BusyTimesProvider = (input: { userId: number; from: Date; to: Date }) => Promise<BusyInterval[]>;
 
@@ -48,7 +75,7 @@ export class BookingService {
     if (!host?.username) throw new AppError("user_not_found", 404);
     const eventTypes = await this.deps.eventTypeRepo.findManyVisibleByUserId(host.id);
     return {
-      host: { name: host.name, username: host.username, avatarUrl: host.avatarUrl },
+      host: publicHost(host, host.username),
       eventTypes: eventTypes.map(({ title, slug, length, description }) => ({
         title,
         slug,
@@ -61,7 +88,7 @@ export class BookingService {
   async getPublicEvent(username: string, slug: string): Promise<PublicEventDto> {
     const { host, eventType } = await this.loadEvent(username, slug);
     return {
-      host: { name: host.name, username: host.username ?? username, avatarUrl: host.avatarUrl },
+      host: publicHost(host, host.username ?? username),
       eventType: {
         title: eventType.title,
         slug: eventType.slug,
@@ -298,7 +325,10 @@ export class BookingService {
       : (await this.deps.scheduleRepo.findManyByUserIdIncludeAvailability(host.id))[0];
     if (!schedule || schedule.userId !== host.id) return [];
 
-    const [bookings, ...external] = await Promise.all([
+    // Like Cal, trips only move the default schedule; a dedicated schedule keeps its own time zone.
+    const isDefaultSchedule = !scheduleId || scheduleId === host.defaultScheduleId;
+    const [travel, bookings, ...external] = await Promise.all([
+      isDefaultSchedule ? this.deps.travelScheduleRepo.findByUserId(host.id) : Promise.resolve([]),
       this.deps.bookingRepo.findBusyForUser({ userId: host.id, email: host.email, from, to, excludeUid }),
       ...(this.deps.busyTimesProviders ?? []).map((provider) => provider({ userId: host.id, from, to })),
     ]);
@@ -321,6 +351,11 @@ export class BookingService {
       to,
       inviteeTimeZone,
       now: this.deps.now?.(),
+      travelSchedules: travel.map((trip) => ({
+        timeZone: trip.timeZone,
+        start: trip.startDate,
+        end: trip.endDate,
+      })),
     });
   }
 

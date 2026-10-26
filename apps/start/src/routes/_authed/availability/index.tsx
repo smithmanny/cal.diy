@@ -111,7 +111,7 @@ function AvailabilityListPage() {
                   {schedule.name}
                   {schedule.isDefault && <Badge variant="secondary">{t("default")}</Badge>}
                 </span>
-                {summarizeWeeklyHours(schedule.weeklyHours, locale).map((line) => (
+                {summarizeWeeklyHours(schedule.weeklyHours, locale, user.hour12).map((line) => (
                   <span key={line} className="text-muted-foreground text-sm">
                     {line}
                   </span>

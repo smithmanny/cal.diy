@@ -42,6 +42,10 @@ export class UserRepository {
         locale: user.locale,
         defaultScheduleId: user.defaultScheduleId,
         avatarUrl: user.avatarUrl,
+        weekStart: user.weekStart,
+        allowSEOIndexing: user.allowSEOIndexing,
+        allowDynamicBooking: user.allowDynamicBooking,
+        requiresBookerEmailVerification: user.requiresBookerEmailVerification,
       })
       .from(user)
       .where(and(eq(user.username, username.toLowerCase()), isNull(user.organizationId)))
@@ -62,6 +66,34 @@ export class UserRepository {
       .where(eq(user.id, userId))
       .limit(1);
     return found ?? null;
+  }
+
+  async findGeneralSettings(userId: number) {
+    const [found] = await this.db
+      .select({
+        timeFormat: user.timeFormat,
+        weekStart: user.weekStart,
+        allowDynamicBooking: user.allowDynamicBooking,
+        allowSEOIndexing: user.allowSEOIndexing,
+        requiresBookerEmailVerification: user.requiresBookerEmailVerification,
+      })
+      .from(user)
+      .where(eq(user.id, userId))
+      .limit(1);
+    return found ?? null;
+  }
+
+  async updateGeneralSettings(
+    userId: number,
+    data: {
+      timeFormat: number;
+      weekStart: string;
+      allowDynamicBooking: boolean;
+      allowSEOIndexing: boolean;
+      requiresBookerEmailVerification: boolean;
+    }
+  ): Promise<void> {
+    await this.db.update(user).set(data).where(eq(user.id, userId));
   }
 
   /** What the security settings need: whether a password exists, and the 2FA and verification state. */

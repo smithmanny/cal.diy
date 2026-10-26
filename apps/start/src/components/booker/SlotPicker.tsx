@@ -1,6 +1,7 @@
 import { Button } from "@coss/ui/components/button";
 import { useState } from "react";
-import { dateKeyInTimeZone, formatLongDate, formatTime } from "~/lib/date-utils";
+import { dateKeyInTimeZone, formatLongDate, formatTime, localeUsesHour12 } from "~/lib/date-utils";
+import { useHour12 } from "~/lib/hour-cycle";
 import type { TFunction } from "~/lib/i18n";
 import { FormError } from "../AuthCard";
 import { BookingCalendar } from "./BookingCalendar";
@@ -15,6 +16,8 @@ export function SlotPicker({
   errorKey,
   onMoveMonth,
   onSelectSlot,
+  weekStartDay,
+  onHour12Change,
   t,
 }: {
   cursor: MonthCursor | null;
@@ -25,9 +28,12 @@ export function SlotPicker({
   errorKey: string | null;
   onMoveMonth: (delta: number) => void;
   onSelectSlot: (slot: string) => void;
+  weekStartDay: number;
+  onHour12Change: (hour12: boolean) => void;
   t: TFunction;
 }) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const hour12 = useHour12() ?? localeUsesHour12(locale);
   if (!cursor || !timeZone) return <p className="text-muted-foreground text-sm">{t("loading")}</p>;
 
   const today = dateKeyInTimeZone(new Date(), timeZone);
@@ -43,6 +49,7 @@ export function SlotPicker({
         selectedDate={selectedDate}
         onSelectDate={setSelectedDate}
         canGoBack={monthKey > today.slice(0, 7)}
+        weekStartDay={weekStartDay}
         onChangeMonth={(delta) => {
           setSelectedDate(null);
           onMoveMonth(delta);
@@ -56,14 +63,31 @@ export function SlotPicker({
         )}
         {selectedDate && (
           <>
-            <p className="font-medium text-sm">
-              {formatLongDate(`${selectedDate}T12:00:00Z`, "UTC", locale)}
-            </p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-medium text-sm">
+                {formatLongDate(`${selectedDate}T12:00:00Z`, "UTC", locale)}
+              </p>
+              <div
+                role="group"
+                aria-label={t("time_format")}
+                className="flex rounded-md border p-0.5 text-xs">
+                {[true, false].map((option) => (
+                  <button
+                    key={String(option)}
+                    type="button"
+                    aria-pressed={hour12 === option}
+                    onClick={() => onHour12Change(option)}
+                    className={`rounded px-1.5 py-0.5 ${hour12 === option ? "bg-accent font-medium" : "text-muted-foreground"}`}>
+                    {option ? t("12_hour_short") : t("24_hour_short")}
+                  </button>
+                ))}
+              </div>
+            </div>
             <ul className="flex max-h-96 flex-col gap-2 overflow-y-auto">
               {(slotsByDate.get(selectedDate) ?? []).map((slot) => (
                 <li key={slot}>
                   <Button variant="outline" className="w-full" onClick={() => onSelectSlot(slot)}>
-                    {formatTime(slot, timeZone, locale)}
+                    {formatTime(slot, timeZone, locale, hour12)}
                   </Button>
                 </li>
               ))}

@@ -102,8 +102,8 @@ function BookingsPage() {
               <div className="w-48 shrink-0 text-sm">
                 <div className="font-medium">{formatLongDate(booking.startTime, user.timeZone, locale)}</div>
                 <div className="text-muted-foreground">
-                  {formatTime(booking.startTime, user.timeZone, locale)} -{" "}
-                  {formatTime(booking.endTime, user.timeZone, locale)}
+                  {formatTime(booking.startTime, user.timeZone, locale, user.hour12)} -{" "}
+                  {formatTime(booking.endTime, user.timeZone, locale, user.hour12)}
                 </div>
                 {booking.status === "PENDING" && <Badge variant="warning">{t("unconfirmed")}</Badge>}
                 {booking.status === "REJECTED" && <Badge variant="error">{t("rejected")}</Badge>}

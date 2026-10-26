@@ -7,6 +7,7 @@ import { EventTypeRepository } from "../event-types/EventTypeRepository";
 import { ScheduleRepository } from "../schedules/ScheduleRepository";
 import { ScheduleService } from "../schedules/ScheduleService";
 import { DEFAULT_WEEKLY_HOURS } from "../schedules/scheduleMapper";
+import { TravelScheduleRepository } from "../users/TravelScheduleRepository";
 import { UserRepository } from "../users/UserRepository";
 import { BookingRepository } from "./BookingRepository";
 import { BookingService } from "./BookingService";
@@ -62,6 +63,7 @@ beforeEach(async () => {
     eventTypeRepo: new EventTypeRepository(db),
     scheduleRepo,
     bookingRepo: new BookingRepository(db),
+    travelScheduleRepo: new TravelScheduleRepository(db),
     listeners: [async (event) => void events.push(event)],
     runInBackground: (promise) => void pending.push(promise),
   });
@@ -98,6 +100,18 @@ describe("BookingService", () => {
   it("hides links and phone numbers from the public event details", async () => {
     const { eventType: details } = await service.getPublicEvent("host", "intro");
     expect(details.locations).toEqual([{ type: "phone" }, { type: "link" }]);
+  });
+
+  it("follows the host to another time zone during a trip", async () => {
+    await new TravelScheduleRepository(db).create({
+      userId: hostId,
+      timeZone: "Asia/Tokyo",
+      startDate: new Date("2030-01-06T15:00:00Z"), // Monday 00:00 in Tokyo
+      endDate: new Date("2030-01-07T14:59:59Z"),
+    });
+    // 9-17 in Tokyo is 00:00-08:00 UTC.
+    expect((await slots())[0]).toBe(at("00:00"));
+    expect(await slots()).not.toContain(at("10:00"));
   });
 
   it("books a free slot, emits BOOKING_CREATED, and the slot disappears", async () => {

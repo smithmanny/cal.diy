@@ -32,8 +32,17 @@ export type CreateBookingInput = z.infer<typeof createBookingSchema>;
 
 export type PublicEventLocation = { type: string; address?: string };
 
+export type PublicHostDto = {
+  name: string | null;
+  username: string;
+  avatarUrl: string | null;
+  /** 0 = Sunday; the booker's calendar starts its weeks here, as the host chose. */
+  weekStartDay: number;
+  allowSEOIndexing: boolean;
+};
+
 export type PublicEventDto = {
-  host: { name: string | null; username: string; avatarUrl: string | null };
+  host: PublicHostDto;
   eventType: {
     title: string;
     slug: string;

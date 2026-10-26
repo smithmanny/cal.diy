@@ -56,6 +56,39 @@ describe("computeAvailableSlots", () => {
     ]);
   });
 
+  it("moves working hours to the travel time zone for the days of a trip", () => {
+    const slots = computeAvailableSlots({
+      availability: [weekdays9to5],
+      scheduleTimeZone: "America/New_York",
+      event,
+      busy: [],
+      from: new Date("2026-11-02T00:00:00Z"),
+      to: new Date("2026-11-04T00:00:00Z"),
+      inviteeTimeZone: "UTC",
+      now: NOW,
+      // In London on Tuesday only.
+      travelSchedules: [
+        {
+          timeZone: "Europe/London",
+          start: new Date("2026-11-03T00:00:00Z"),
+          end: new Date("2026-11-03T23:59:59Z"),
+        },
+      ],
+    });
+    // Monday 9-5 New York is 14:00-22:00 UTC; Tuesday 9-5 London is 09:00-17:00 UTC.
+    expect(iso(slots)[0]).toBe("2026-11-02T14:00:00.000Z");
+    expect(iso(slots).filter((slot) => slot.startsWith("2026-11-03"))).toEqual([
+      "2026-11-03T09:00:00.000Z",
+      "2026-11-03T10:00:00.000Z",
+      "2026-11-03T11:00:00.000Z",
+      "2026-11-03T12:00:00.000Z",
+      "2026-11-03T13:00:00.000Z",
+      "2026-11-03T14:00:00.000Z",
+      "2026-11-03T15:00:00.000Z",
+      "2026-11-03T16:00:00.000Z",
+    ]);
+  });
+
   it("removes busy time padded by both events' buffers", () => {
     const slots = computeAvailableSlots({
       availability: [weekdays9to5],

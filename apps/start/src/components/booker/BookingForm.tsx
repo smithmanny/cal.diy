@@ -3,8 +3,9 @@ import { Input } from "@coss/ui/components/input";
 import { Textarea } from "@coss/ui/components/textarea";
 import { ArrowLeftIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
-import { formatLongDate, formatTime } from "~/lib/date-utils";
+import { formatLongDate, formatTime, localeUsesHour12 } from "~/lib/date-utils";
 import { errorMessageKey } from "~/lib/errors";
+import { useHour12 } from "~/lib/hour-cycle";
 import type { TFunction } from "~/lib/i18n";
 import type { CreateBookingInput, PublicEventLocation } from "~/server/bookings/types";
 import { FormError } from "../AuthCard";
@@ -30,6 +31,7 @@ export function BookingForm({
   t: TFunction;
 }) {
   const [locationType, setLocationType] = useState(locations[0]?.type ?? "");
+  const hour12 = useHour12() ?? localeUsesHour12(locale);
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -60,7 +62,7 @@ export function BookingForm({
         {t("back")}
       </Button>
       <p className="font-medium">
-        {formatLongDate(slot, timeZone, locale)}, {formatTime(slot, timeZone, locale)}
+        {formatLongDate(slot, timeZone, locale)}, {formatTime(slot, timeZone, locale, hour12)}
       </p>
       <label className="flex flex-col gap-1.5 font-medium text-sm">
         {t("your_name")}

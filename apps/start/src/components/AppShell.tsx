@@ -3,6 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { CalendarDaysIcon, ClockIcon, LinkIcon, LogOutIcon, SettingsIcon, WebhookIcon } from "lucide-react";
 import { type ComponentType, type ReactNode, useState } from "react";
 import { authClient } from "~/lib/auth-client";
+import { HourCycleProvider } from "~/lib/hour-cycle";
 import { useT } from "~/lib/i18n";
 import type { SessionUser } from "~/server/auth/session";
 import { HydratedFieldset } from "./HydratedFieldset";
@@ -119,7 +120,7 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
       </aside>
       <main className="mx-auto w-full max-w-5xl flex-1 p-4 md:p-8">
         {user.needsEmailVerification && <VerifyEmailBanner email={user.email} />}
-        {children}
+        <HourCycleProvider hour12={user.hour12}>{children}</HourCycleProvider>
       </main>
     </div>
   );

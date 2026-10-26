@@ -1,3 +1,4 @@
+import { useHour12 } from "~/lib/hour-cycle";
 import { formatTimeOfDay, TIME_OPTIONS } from "~/lib/time-format";
 
 const selectClass =
@@ -14,6 +15,7 @@ export function TimeSelect({
   locale: string;
   label: string;
 }) {
+  const hour12 = useHour12();
   const options = TIME_OPTIONS.includes(value) ? TIME_OPTIONS : [...TIME_OPTIONS, value].sort();
   return (
     <select
@@ -23,7 +25,7 @@ export function TimeSelect({
       onChange={(event) => onChange(event.target.value)}>
       {options.map((time) => (
         <option key={time} value={time}>
-          {formatTimeOfDay(time, locale)}
+          {formatTimeOfDay(time, locale, hour12)}
         </option>
       ))}
     </select>

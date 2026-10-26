@@ -110,6 +110,8 @@ export function createAuth({
         username: { type: "string", required: false, input: true },
         timeZone: { type: "string", required: false, input: true },
         locale: { type: "string", required: false, input: false },
+        timeFormat: { type: "number", required: false, input: false },
+        weekStart: { type: "string", required: false, input: false },
       },
     },
     emailAndPassword: {

@@ -1,0 +1,69 @@
+import type { Page } from "@playwright/test";
+import { signUp } from "./support/helpers";
+import { expect, newClientContext, test } from "./support/test";
+
+/** The first bookable time shown next month, in the visitor's time zone. */
+async function firstSlotNextMonth(page: Page, username: string): Promise<string> {
+  await page.goto(`/${username}/30min`);
+  await page.getByRole("button", { name: "View next month" }).click();
+  await page.locator("td button:not([disabled])").first().click();
+  return page.locator("ul li button").first().innerText();
+}
+
+function nextMonthRange(): { start: string; end: string } {
+  const now = new Date();
+  const first = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+  const last = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 2, 0));
+  return { start: first.toISOString().slice(0, 10), end: last.toISOString().slice(0, 10) };
+}
+
+test("general settings reach the dashboard and the public booking page", async ({ page, browser }) => {
+  const { username } = await signUp(page);
+  await page.goto("/settings/my-account/general");
+  await page.getByLabel("Time format").selectOption({ label: "24-hour" });
+  await page.getByLabel("Start of week").selectOption({ label: "Monday" });
+  await page.getByText("Allow search engine indexing").click();
+  await page.getByRole("button", { name: "Update" }).click();
+  await expect(page.getByRole("status")).toHaveText("Settings updated successfully");
+
+  await page.goto("/availability");
+  await expect(page.getByText(/09:00 - 17:00/).first()).toBeVisible();
+
+  const guest = await (await newClientContext(browser, { locale: "en-US" })).newPage();
+  await guest.goto(`/${username}/30min`);
+  await expect(guest.locator("thead th").first()).toHaveText(/mon/i);
+  await expect(guest.locator('meta[name="robots"]')).toHaveAttribute("content", "noindex,nofollow");
+});
+
+test("guests can switch the booking page between 12- and 24-hour times", async ({ page, browser }) => {
+  const { username } = await signUp(page);
+  const guest = await (await newClientContext(browser, { locale: "en-US" })).newPage();
+  const twelveHour = await firstSlotNextMonth(guest, username);
+  expect(twelveHour).toMatch(/AM|PM/);
+  await guest.getByRole("button", { name: "24h" }).click();
+  await expect(guest.locator("ul li button").first()).not.toContainText(/AM|PM/);
+  // The choice is remembered for the next visit.
+  expect(await firstSlotNextMonth(guest, username)).not.toMatch(/AM|PM/);
+});
+
+test("a trip moves the host's working hours into the travel time zone", async ({ browser }) => {
+  const host = await (await newClientContext(browser, { timezoneId: "Europe/London" })).newPage();
+  const { username } = await signUp(host);
+  const guestContext = await newClientContext(browser, { timezoneId: "Asia/Tokyo", locale: "en-US" });
+  const guest = await guestContext.newPage();
+  expect(await firstSlotNextMonth(guest, username)).not.toBe("9:00 AM");
+
+  const { start, end } = nextMonthRange();
+  await host.goto("/settings/my-account/general");
+  await host.getByRole("button", { name: "Schedule timezone change" }).click();
+  await host.getByLabel("Date", { exact: true }).fill(start);
+  await host.getByLabel("To", { exact: true }).fill(end);
+  await host.getByLabel("Timezone", { exact: true }).selectOption("Asia/Tokyo");
+  await host.getByRole("button", { name: "Add" }).click();
+  await expect(host.getByTestId("travel-schedules")).toContainText("Asia/Tokyo");
+
+  expect(await firstSlotNextMonth(guest, username)).toBe("9:00 AM");
+
+  await host.getByTestId("travel-schedules").getByRole("button", { name: "Delete" }).click();
+  await expect(host.getByTestId("travel-schedules")).toBeHidden();
+});

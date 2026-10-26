@@ -4,6 +4,15 @@ import { buildDateRanges, type DateRange, subtract } from "./date-ranges";
 import getSlots from "./slots";
 import type { DateOverride, WorkingHours } from "./types";
 
+function rollingWindowEnd(event: SlotEventConfig, now: Dayjs, timeZone: string): Dayjs | null {
+  if (event.periodType !== "ROLLING" || !event.periodDays) return null;
+  const today = now.tz(timeZone);
+  const last = event.periodCountCalendarDays
+    ? today.add(event.periodDays, "day")
+    : today.businessDaysAdd(event.periodDays);
+  return last.endOf("day");
+}
+
 /** An interval the host is busy, with the buffers of the event that made them busy (0 for external calendars). */
 export type BusyInterval = { start: Date; end: Date; beforeBuffer?: number; afterBuffer?: number };
 
@@ -18,6 +27,9 @@ export type SlotEventConfig = {
   periodCountCalendarDays: boolean;
 };
 
+/** A period the host works from another time zone; their weekly hours follow them there. */
+export type TravelPeriod = { timeZone: string; start: Date; end: Date | null };
+
 export type ComputeAvailableSlotsInput = {
   /** Working hours and date overrides of the schedule the event uses. */
   availability: (WorkingHours | DateOverride)[];
@@ -30,16 +42,8 @@ export type ComputeAvailableSlotsInput = {
   inviteeTimeZone: string;
   now?: Date;
   scheduleInterval?: number;
+  travelSchedules?: TravelPeriod[];
 };
-
-function rollingWindowEnd(event: SlotEventConfig, now: Dayjs, timeZone: string): Dayjs | null {
-  if (event.periodType !== "ROLLING" || !event.periodDays) return null;
-  const today = now.tz(timeZone);
-  const last = event.periodCountCalendarDays
-    ? today.add(event.periodDays, "day")
-    : today.businessDaysAdd(event.periodDays);
-  return last.endOf("day");
-}
 
 /**
  * Bookable start times between `from` and `to`, following Cal's rules: schedule hours and overrides,
@@ -58,7 +62,11 @@ export function computeAvailableSlots(input: ComputeAvailableSlotsInput): Date[]
     timeZone: input.scheduleTimeZone,
     dateFrom: from,
     dateTo: to,
-    travelSchedules: [],
+    travelSchedules: (input.travelSchedules ?? []).map((period) => ({
+      timeZone: period.timeZone,
+      startDate: dayjs(period.start),
+      endDate: period.end ? dayjs(period.end) : undefined,
+    })),
   });
 
   const busyRanges: DateRange[] = input.busy.map((busy) => ({

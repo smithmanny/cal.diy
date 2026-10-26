@@ -5,6 +5,7 @@ import { loadMessages } from "~/lib/messages";
 
 const TABS = [
   { to: "/settings/my-account/profile", labelKey: "profile" },
+  { to: "/settings/my-account/general", labelKey: "general" },
   { to: "/settings/my-account/calendars", labelKey: "calendars" },
   { to: "/settings/security/password", labelKey: "password" },
   { to: "/settings/security/two-factor-auth", labelKey: "two_factor_auth" },

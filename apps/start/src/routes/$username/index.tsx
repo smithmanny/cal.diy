@@ -2,6 +2,7 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { ClockIcon } from "lucide-react";
 import { useT } from "~/lib/i18n";
 import { loadMessages } from "~/lib/messages";
+import { NOINDEX_META } from "~/lib/seo";
 import { getPublicProfile } from "~/server/bookings/functions";
 
 const MESSAGE_KEYS = ["minutes", "no_event_types_have_been_setup"];
@@ -51,6 +52,11 @@ export const Route = createFileRoute("/$username/")({
     ]);
     return { messages, profile };
   },
-  head: ({ loaderData }) => ({ meta: [{ title: loaderData?.profile.host.name ?? "Cal.diy" }] }),
+  head: ({ loaderData }) => ({
+    meta: [
+      { title: loaderData?.profile.host.name ?? "Cal.diy" },
+      ...(loaderData && !loaderData.profile.host.allowSEOIndexing ? [NOINDEX_META] : []),
+    ],
+  }),
   component: ProfilePage,
 });

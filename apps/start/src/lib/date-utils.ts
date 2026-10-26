@@ -11,10 +11,22 @@ export function dateKeyInTimeZone(date: Date | string, timeZone: string): string
   }).format(new Date(date));
 }
 
-export function formatTime(date: Date | string, timeZone: string, locale: string): string {
-  return new Intl.DateTimeFormat(locale, { timeZone, hour: "numeric", minute: "2-digit" }).format(
+/** `hour12` undefined follows the locale (e.g. 12-hour in en-US, 24-hour in de). */
+export function formatTime(date: Date | string, timeZone: string, locale: string, hour12?: boolean): string {
+  return new Intl.DateTimeFormat(locale, { timeZone, hour: "numeric", minute: "2-digit", hour12 }).format(
     new Date(date)
   );
+}
+
+export function localeUsesHour12(locale: string): boolean {
+  return new Intl.DateTimeFormat(locale, { hour: "numeric" }).resolvedOptions().hour12 ?? false;
+}
+
+/** Cal stores the preference as 12 or 24; anything else means "follow the locale". */
+export function hour12FromTimeFormat(timeFormat: number | null | undefined): boolean | undefined {
+  if (timeFormat === 12) return true;
+  if (timeFormat === 24) return false;
+  return undefined;
 }
 
 export function formatLongDate(date: Date | string, timeZone: string, locale: string): string {
@@ -44,10 +56,12 @@ export function monthRangeInTimeZone(
 }
 
 /** Weeks (Sunday first) covering the month; null pads days outside it. */
-export function monthGrid(year: number, month: number): (string | null)[][] {
+/** Weeks of YYYY-MM-DD cells (null for padding), each starting on `weekStartDay` (0 = Sunday). */
+export function monthGrid(year: number, month: number, weekStartDay = 0): (string | null)[][] {
   const first = new Date(Date.UTC(year, month - 1, 1));
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  const cells: (string | null)[] = Array.from({ length: first.getUTCDay() }, () => null);
+  const leading = (first.getUTCDay() - weekStartDay + 7) % 7;
+  const cells: (string | null)[] = Array.from({ length: leading }, () => null);
   for (let day = 1; day <= daysInMonth; day++) {
     cells.push(`${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`);
   }

@@ -28,6 +28,7 @@ import { Route as AuthedEventTypesEventTypeIdRouteImport } from './routes/_authe
 import { Route as AuthedSettingsIndexRouteImport } from './routes/_authed/settings/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AuthedSettingsMyAccountCalendarsRouteImport } from './routes/_authed/settings/my-account/calendars'
+import { Route as AuthedSettingsMyAccountGeneralRouteImport } from './routes/_authed/settings/my-account/general'
 import { Route as AuthedSettingsMyAccountProfileRouteImport } from './routes/_authed/settings/my-account/profile'
 import { Route as AuthedSettingsSecurityPasswordRouteImport } from './routes/_authed/settings/security/password'
 import { Route as AuthedSettingsSecurityTwoFactorAuthRouteImport } from './routes/_authed/settings/security/two-factor-auth'
@@ -133,6 +134,12 @@ const AuthedSettingsMyAccountCalendarsRoute =
     path: '/my-account/calendars',
     getParentRoute: () => AuthedSettingsRoute,
   } as any)
+const AuthedSettingsMyAccountGeneralRoute =
+  AuthedSettingsMyAccountGeneralRouteImport.update({
+    id: '/my-account/general',
+    path: '/my-account/general',
+    getParentRoute: () => AuthedSettingsRoute,
+  } as any)
 const AuthedSettingsMyAccountProfileRoute =
   AuthedSettingsMyAccountProfileRouteImport.update({
     id: '/my-account/profile',
@@ -195,6 +202,7 @@ export interface FileRoutesByFullPath {
   '/event-types/': typeof AuthedEventTypesIndexRoute
   '/settings/': typeof AuthedSettingsIndexRoute
   '/settings/my-account/calendars': typeof AuthedSettingsMyAccountCalendarsRoute
+  '/settings/my-account/general': typeof AuthedSettingsMyAccountGeneralRoute
   '/settings/my-account/profile': typeof AuthedSettingsMyAccountProfileRoute
   '/settings/security/password': typeof AuthedSettingsSecurityPasswordRoute
   '/settings/security/two-factor-auth': typeof AuthedSettingsSecurityTwoFactorAuthRoute
@@ -221,6 +229,7 @@ export interface FileRoutesByTo {
   '/event-types': typeof AuthedEventTypesIndexRoute
   '/settings': typeof AuthedSettingsIndexRoute
   '/settings/my-account/calendars': typeof AuthedSettingsMyAccountCalendarsRoute
+  '/settings/my-account/general': typeof AuthedSettingsMyAccountGeneralRoute
   '/settings/my-account/profile': typeof AuthedSettingsMyAccountProfileRoute
   '/settings/security/password': typeof AuthedSettingsSecurityPasswordRoute
   '/settings/security/two-factor-auth': typeof AuthedSettingsSecurityTwoFactorAuthRoute
@@ -250,6 +259,7 @@ export interface FileRoutesById {
   '/_authed/event-types/': typeof AuthedEventTypesIndexRoute
   '/_authed/settings/': typeof AuthedSettingsIndexRoute
   '/_authed/settings/my-account/calendars': typeof AuthedSettingsMyAccountCalendarsRoute
+  '/_authed/settings/my-account/general': typeof AuthedSettingsMyAccountGeneralRoute
   '/_authed/settings/my-account/profile': typeof AuthedSettingsMyAccountProfileRoute
   '/_authed/settings/security/password': typeof AuthedSettingsSecurityPasswordRoute
   '/_authed/settings/security/two-factor-auth': typeof AuthedSettingsSecurityTwoFactorAuthRoute
@@ -279,6 +289,7 @@ export interface FileRouteTypes {
     | '/event-types/'
     | '/settings/'
     | '/settings/my-account/calendars'
+    | '/settings/my-account/general'
     | '/settings/my-account/profile'
     | '/settings/security/password'
     | '/settings/security/two-factor-auth'
@@ -305,6 +316,7 @@ export interface FileRouteTypes {
     | '/event-types'
     | '/settings'
     | '/settings/my-account/calendars'
+    | '/settings/my-account/general'
     | '/settings/my-account/profile'
     | '/settings/security/password'
     | '/settings/security/two-factor-auth'
@@ -333,6 +345,7 @@ export interface FileRouteTypes {
     | '/_authed/event-types/'
     | '/_authed/settings/'
     | '/_authed/settings/my-account/calendars'
+    | '/_authed/settings/my-account/general'
     | '/_authed/settings/my-account/profile'
     | '/_authed/settings/security/password'
     | '/_authed/settings/security/two-factor-auth'
@@ -493,6 +506,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedSettingsMyAccountCalendarsRouteImport
       parentRoute: typeof AuthedSettingsRoute
     }
+    '/_authed/settings/my-account/general': {
+      id: '/_authed/settings/my-account/general'
+      path: '/my-account/general'
+      fullPath: '/settings/my-account/general'
+      preLoaderRoute: typeof AuthedSettingsMyAccountGeneralRouteImport
+      parentRoute: typeof AuthedSettingsRoute
+    }
     '/_authed/settings/my-account/profile': {
       id: '/_authed/settings/my-account/profile'
       path: '/my-account/profile'
@@ -548,6 +568,7 @@ declare module '@tanstack/react-router' {
 interface AuthedSettingsRouteChildren {
   AuthedSettingsIndexRoute: typeof AuthedSettingsIndexRoute
   AuthedSettingsMyAccountCalendarsRoute: typeof AuthedSettingsMyAccountCalendarsRoute
+  AuthedSettingsMyAccountGeneralRoute: typeof AuthedSettingsMyAccountGeneralRoute
   AuthedSettingsMyAccountProfileRoute: typeof AuthedSettingsMyAccountProfileRoute
   AuthedSettingsSecurityPasswordRoute: typeof AuthedSettingsSecurityPasswordRoute
   AuthedSettingsSecurityTwoFactorAuthRoute: typeof AuthedSettingsSecurityTwoFactorAuthRoute
@@ -558,6 +579,7 @@ interface AuthedSettingsRouteChildren {
 const AuthedSettingsRouteChildren: AuthedSettingsRouteChildren = {
   AuthedSettingsIndexRoute: AuthedSettingsIndexRoute,
   AuthedSettingsMyAccountCalendarsRoute: AuthedSettingsMyAccountCalendarsRoute,
+  AuthedSettingsMyAccountGeneralRoute: AuthedSettingsMyAccountGeneralRoute,
   AuthedSettingsMyAccountProfileRoute: AuthedSettingsMyAccountProfileRoute,
   AuthedSettingsSecurityPasswordRoute: AuthedSettingsSecurityPasswordRoute,
   AuthedSettingsSecurityTwoFactorAuthRoute:

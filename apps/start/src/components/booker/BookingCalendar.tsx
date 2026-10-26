@@ -19,6 +19,7 @@ export function BookingCalendar({
   onSelectDate,
   onChangeMonth,
   canGoBack,
+  weekStartDay,
   t,
 }: {
   year: number;
@@ -29,9 +30,11 @@ export function BookingCalendar({
   onSelectDate: (date: string) => void;
   onChangeMonth: (delta: number) => void;
   canGoBack: boolean;
+  /** 0 = Sunday. */
+  weekStartDay: number;
   t: TFunction;
 }) {
-  const weekdays = weekdayNames(locale);
+  const weekdays = weekdayNames(locale, "short", weekStartDay);
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
@@ -65,7 +68,7 @@ export function BookingCalendar({
           </tr>
         </thead>
         <tbody>
-          {monthGrid(year, month).map((week) => (
+          {monthGrid(year, month, weekStartDay).map((week) => (
             <tr key={week.find(Boolean)}>
               {week.map((date, index) => {
                 // biome-ignore lint/suspicious/noArrayIndexKey: padding cells are purely positional
