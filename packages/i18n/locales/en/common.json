@@ -4775,5 +4775,7 @@
   "cannot_delete_default_schedule": "You can't delete your default schedule. Make another schedule the default first.",
   "invalid_timezone": "Please choose a valid time zone",
   "not_found": "Not found",
+  "google_calendar": "Google Calendar",
+  "google_calendar_not_configured": "Google Calendar isn't set up on this server yet. An admin needs to set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.",
   "ADD_NEW_STRINGS_ABOVE_THIS_LINE_TO_PREVENT_MERGE_CONFLICTS": "↑↑↑↑↑↑↑↑↑↑↑↑↑ Add your new strings above here ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑"
 }

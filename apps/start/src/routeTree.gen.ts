@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as UsernameIndexRouteImport } from './routes/$username/index'
 import { Route as UsernameSlugRouteImport } from './routes/$username/$slug'
+import { Route as AuthedSettingsRouteImport } from './routes/_authed/settings'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthSignupRouteImport } from './routes/auth/signup'
@@ -22,7 +23,12 @@ import { Route as AuthedAvailabilityScheduleIdRouteImport } from './routes/_auth
 import { Route as AuthedBookingsStatusRouteImport } from './routes/_authed/bookings/$status'
 import { Route as AuthedEventTypesIndexRouteImport } from './routes/_authed/event-types/index'
 import { Route as AuthedEventTypesEventTypeIdRouteImport } from './routes/_authed/event-types/$eventTypeId'
+import { Route as AuthedSettingsIndexRouteImport } from './routes/_authed/settings/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as AuthedSettingsMyAccountCalendarsRouteImport } from './routes/_authed/settings/my-account/calendars'
+import { Route as AuthedSettingsMyAccountProfileRouteImport } from './routes/_authed/settings/my-account/profile'
+import { Route as ApiIntegrationsGooglecalendarAddRouteImport } from './routes/api/integrations/googlecalendar/add'
+import { Route as ApiIntegrationsGooglecalendarCallbackRouteImport } from './routes/api/integrations/googlecalendar/callback'
 import { Route as AuthedSettingsDeveloperWebhooksIndexRouteImport } from './routes/_authed/settings/developer/webhooks/index'
 import { Route as AuthedSettingsDeveloperWebhooksWebhookIdRouteImport } from './routes/_authed/settings/developer/webhooks/$webhookId'
 
@@ -44,6 +50,11 @@ const UsernameSlugRoute = UsernameSlugRouteImport.update({
   id: '/$username/$slug',
   path: '/$username/$slug',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthedSettingsRoute = AuthedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthedRoute,
 } as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
@@ -92,27 +103,57 @@ const AuthedEventTypesEventTypeIdRoute =
     path: '/event-types/$eventTypeId',
     getParentRoute: () => AuthedRoute,
   } as any)
+const AuthedSettingsIndexRoute = AuthedSettingsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthedSettingsRoute,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthedSettingsMyAccountCalendarsRoute =
+  AuthedSettingsMyAccountCalendarsRouteImport.update({
+    id: '/my-account/calendars',
+    path: '/my-account/calendars',
+    getParentRoute: () => AuthedSettingsRoute,
+  } as any)
+const AuthedSettingsMyAccountProfileRoute =
+  AuthedSettingsMyAccountProfileRouteImport.update({
+    id: '/my-account/profile',
+    path: '/my-account/profile',
+    getParentRoute: () => AuthedSettingsRoute,
+  } as any)
+const ApiIntegrationsGooglecalendarAddRoute =
+  ApiIntegrationsGooglecalendarAddRouteImport.update({
+    id: '/api/integrations/googlecalendar/add',
+    path: '/api/integrations/googlecalendar/add',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiIntegrationsGooglecalendarCallbackRoute =
+  ApiIntegrationsGooglecalendarCallbackRouteImport.update({
+    id: '/api/integrations/googlecalendar/callback',
+    path: '/api/integrations/googlecalendar/callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthedSettingsDeveloperWebhooksIndexRoute =
   AuthedSettingsDeveloperWebhooksIndexRouteImport.update({
-    id: '/settings/developer/webhooks/',
-    path: '/settings/developer/webhooks/',
-    getParentRoute: () => AuthedRoute,
+    id: '/developer/webhooks/',
+    path: '/developer/webhooks/',
+    getParentRoute: () => AuthedSettingsRoute,
   } as any)
 const AuthedSettingsDeveloperWebhooksWebhookIdRoute =
   AuthedSettingsDeveloperWebhooksWebhookIdRouteImport.update({
-    id: '/settings/developer/webhooks/$webhookId',
-    path: '/settings/developer/webhooks/$webhookId',
-    getParentRoute: () => AuthedRoute,
+    id: '/developer/webhooks/$webhookId',
+    path: '/developer/webhooks/$webhookId',
+    getParentRoute: () => AuthedSettingsRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$username/$slug': typeof UsernameSlugRoute
+  '/settings': typeof AuthedSettingsRouteWithChildren
   '/api/health': typeof ApiHealthRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
@@ -124,6 +165,11 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/availability/': typeof AuthedAvailabilityIndexRoute
   '/event-types/': typeof AuthedEventTypesIndexRoute
+  '/settings/': typeof AuthedSettingsIndexRoute
+  '/settings/my-account/calendars': typeof AuthedSettingsMyAccountCalendarsRoute
+  '/settings/my-account/profile': typeof AuthedSettingsMyAccountProfileRoute
+  '/api/integrations/googlecalendar/add': typeof ApiIntegrationsGooglecalendarAddRoute
+  '/api/integrations/googlecalendar/callback': typeof ApiIntegrationsGooglecalendarCallbackRoute
   '/settings/developer/webhooks/$webhookId': typeof AuthedSettingsDeveloperWebhooksWebhookIdRoute
   '/settings/developer/webhooks/': typeof AuthedSettingsDeveloperWebhooksIndexRoute
 }
@@ -141,6 +187,11 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/availability': typeof AuthedAvailabilityIndexRoute
   '/event-types': typeof AuthedEventTypesIndexRoute
+  '/settings': typeof AuthedSettingsIndexRoute
+  '/settings/my-account/calendars': typeof AuthedSettingsMyAccountCalendarsRoute
+  '/settings/my-account/profile': typeof AuthedSettingsMyAccountProfileRoute
+  '/api/integrations/googlecalendar/add': typeof ApiIntegrationsGooglecalendarAddRoute
+  '/api/integrations/googlecalendar/callback': typeof ApiIntegrationsGooglecalendarCallbackRoute
   '/settings/developer/webhooks/$webhookId': typeof AuthedSettingsDeveloperWebhooksWebhookIdRoute
   '/settings/developer/webhooks': typeof AuthedSettingsDeveloperWebhooksIndexRoute
 }
@@ -149,6 +200,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authed': typeof AuthedRouteWithChildren
   '/$username/$slug': typeof UsernameSlugRoute
+  '/_authed/settings': typeof AuthedSettingsRouteWithChildren
   '/api/health': typeof ApiHealthRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
@@ -160,6 +212,11 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/_authed/availability/': typeof AuthedAvailabilityIndexRoute
   '/_authed/event-types/': typeof AuthedEventTypesIndexRoute
+  '/_authed/settings/': typeof AuthedSettingsIndexRoute
+  '/_authed/settings/my-account/calendars': typeof AuthedSettingsMyAccountCalendarsRoute
+  '/_authed/settings/my-account/profile': typeof AuthedSettingsMyAccountProfileRoute
+  '/api/integrations/googlecalendar/add': typeof ApiIntegrationsGooglecalendarAddRoute
+  '/api/integrations/googlecalendar/callback': typeof ApiIntegrationsGooglecalendarCallbackRoute
   '/_authed/settings/developer/webhooks/$webhookId': typeof AuthedSettingsDeveloperWebhooksWebhookIdRoute
   '/_authed/settings/developer/webhooks/': typeof AuthedSettingsDeveloperWebhooksIndexRoute
 }
@@ -168,6 +225,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/$username/$slug'
+    | '/settings'
     | '/api/health'
     | '/auth/login'
     | '/auth/signup'
@@ -179,6 +237,11 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/availability/'
     | '/event-types/'
+    | '/settings/'
+    | '/settings/my-account/calendars'
+    | '/settings/my-account/profile'
+    | '/api/integrations/googlecalendar/add'
+    | '/api/integrations/googlecalendar/callback'
     | '/settings/developer/webhooks/$webhookId'
     | '/settings/developer/webhooks/'
   fileRoutesByTo: FileRoutesByTo
@@ -196,6 +259,11 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/availability'
     | '/event-types'
+    | '/settings'
+    | '/settings/my-account/calendars'
+    | '/settings/my-account/profile'
+    | '/api/integrations/googlecalendar/add'
+    | '/api/integrations/googlecalendar/callback'
     | '/settings/developer/webhooks/$webhookId'
     | '/settings/developer/webhooks'
   id:
@@ -203,6 +271,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authed'
     | '/$username/$slug'
+    | '/_authed/settings'
     | '/api/health'
     | '/auth/login'
     | '/auth/signup'
@@ -214,6 +283,11 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/_authed/availability/'
     | '/_authed/event-types/'
+    | '/_authed/settings/'
+    | '/_authed/settings/my-account/calendars'
+    | '/_authed/settings/my-account/profile'
+    | '/api/integrations/googlecalendar/add'
+    | '/api/integrations/googlecalendar/callback'
     | '/_authed/settings/developer/webhooks/$webhookId'
     | '/_authed/settings/developer/webhooks/'
   fileRoutesById: FileRoutesById
@@ -228,6 +302,8 @@ export interface RootRouteChildren {
   BookingUidRoute: typeof BookingUidRoute
   UsernameIndexRoute: typeof UsernameIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiIntegrationsGooglecalendarAddRoute: typeof ApiIntegrationsGooglecalendarAddRoute
+  ApiIntegrationsGooglecalendarCallbackRoute: typeof ApiIntegrationsGooglecalendarCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -259,6 +335,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/$username/$slug'
       preLoaderRoute: typeof UsernameSlugRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authed/settings': {
+      id: '/_authed/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthedSettingsRouteImport
+      parentRoute: typeof AuthedRoute
     }
     '/api/health': {
       id: '/api/health'
@@ -323,6 +406,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedEventTypesEventTypeIdRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/settings/': {
+      id: '/_authed/settings/'
+      path: '/'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof AuthedSettingsIndexRouteImport
+      parentRoute: typeof AuthedSettingsRoute
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -330,43 +420,89 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authed/settings/my-account/calendars': {
+      id: '/_authed/settings/my-account/calendars'
+      path: '/my-account/calendars'
+      fullPath: '/settings/my-account/calendars'
+      preLoaderRoute: typeof AuthedSettingsMyAccountCalendarsRouteImport
+      parentRoute: typeof AuthedSettingsRoute
+    }
+    '/_authed/settings/my-account/profile': {
+      id: '/_authed/settings/my-account/profile'
+      path: '/my-account/profile'
+      fullPath: '/settings/my-account/profile'
+      preLoaderRoute: typeof AuthedSettingsMyAccountProfileRouteImport
+      parentRoute: typeof AuthedSettingsRoute
+    }
+    '/api/integrations/googlecalendar/add': {
+      id: '/api/integrations/googlecalendar/add'
+      path: '/api/integrations/googlecalendar/add'
+      fullPath: '/api/integrations/googlecalendar/add'
+      preLoaderRoute: typeof ApiIntegrationsGooglecalendarAddRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/integrations/googlecalendar/callback': {
+      id: '/api/integrations/googlecalendar/callback'
+      path: '/api/integrations/googlecalendar/callback'
+      fullPath: '/api/integrations/googlecalendar/callback'
+      preLoaderRoute: typeof ApiIntegrationsGooglecalendarCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authed/settings/developer/webhooks/': {
       id: '/_authed/settings/developer/webhooks/'
-      path: '/settings/developer/webhooks'
+      path: '/developer/webhooks'
       fullPath: '/settings/developer/webhooks/'
       preLoaderRoute: typeof AuthedSettingsDeveloperWebhooksIndexRouteImport
-      parentRoute: typeof AuthedRoute
+      parentRoute: typeof AuthedSettingsRoute
     }
     '/_authed/settings/developer/webhooks/$webhookId': {
       id: '/_authed/settings/developer/webhooks/$webhookId'
-      path: '/settings/developer/webhooks/$webhookId'
+      path: '/developer/webhooks/$webhookId'
       fullPath: '/settings/developer/webhooks/$webhookId'
       preLoaderRoute: typeof AuthedSettingsDeveloperWebhooksWebhookIdRouteImport
-      parentRoute: typeof AuthedRoute
+      parentRoute: typeof AuthedSettingsRoute
     }
   }
 }
 
+interface AuthedSettingsRouteChildren {
+  AuthedSettingsIndexRoute: typeof AuthedSettingsIndexRoute
+  AuthedSettingsMyAccountCalendarsRoute: typeof AuthedSettingsMyAccountCalendarsRoute
+  AuthedSettingsMyAccountProfileRoute: typeof AuthedSettingsMyAccountProfileRoute
+  AuthedSettingsDeveloperWebhooksWebhookIdRoute: typeof AuthedSettingsDeveloperWebhooksWebhookIdRoute
+  AuthedSettingsDeveloperWebhooksIndexRoute: typeof AuthedSettingsDeveloperWebhooksIndexRoute
+}
+
+const AuthedSettingsRouteChildren: AuthedSettingsRouteChildren = {
+  AuthedSettingsIndexRoute: AuthedSettingsIndexRoute,
+  AuthedSettingsMyAccountCalendarsRoute: AuthedSettingsMyAccountCalendarsRoute,
+  AuthedSettingsMyAccountProfileRoute: AuthedSettingsMyAccountProfileRoute,
+  AuthedSettingsDeveloperWebhooksWebhookIdRoute:
+    AuthedSettingsDeveloperWebhooksWebhookIdRoute,
+  AuthedSettingsDeveloperWebhooksIndexRoute:
+    AuthedSettingsDeveloperWebhooksIndexRoute,
+}
+
+const AuthedSettingsRouteWithChildren = AuthedSettingsRoute._addFileChildren(
+  AuthedSettingsRouteChildren,
+)
+
 interface AuthedRouteChildren {
+  AuthedSettingsRoute: typeof AuthedSettingsRouteWithChildren
   AuthedAvailabilityScheduleIdRoute: typeof AuthedAvailabilityScheduleIdRoute
   AuthedBookingsStatusRoute: typeof AuthedBookingsStatusRoute
   AuthedEventTypesEventTypeIdRoute: typeof AuthedEventTypesEventTypeIdRoute
   AuthedAvailabilityIndexRoute: typeof AuthedAvailabilityIndexRoute
   AuthedEventTypesIndexRoute: typeof AuthedEventTypesIndexRoute
-  AuthedSettingsDeveloperWebhooksWebhookIdRoute: typeof AuthedSettingsDeveloperWebhooksWebhookIdRoute
-  AuthedSettingsDeveloperWebhooksIndexRoute: typeof AuthedSettingsDeveloperWebhooksIndexRoute
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
+  AuthedSettingsRoute: AuthedSettingsRouteWithChildren,
   AuthedAvailabilityScheduleIdRoute: AuthedAvailabilityScheduleIdRoute,
   AuthedBookingsStatusRoute: AuthedBookingsStatusRoute,
   AuthedEventTypesEventTypeIdRoute: AuthedEventTypesEventTypeIdRoute,
   AuthedAvailabilityIndexRoute: AuthedAvailabilityIndexRoute,
   AuthedEventTypesIndexRoute: AuthedEventTypesIndexRoute,
-  AuthedSettingsDeveloperWebhooksWebhookIdRoute:
-    AuthedSettingsDeveloperWebhooksWebhookIdRoute,
-  AuthedSettingsDeveloperWebhooksIndexRoute:
-    AuthedSettingsDeveloperWebhooksIndexRoute,
 }
 
 const AuthedRouteWithChildren =
@@ -382,6 +518,9 @@ const rootRouteChildren: RootRouteChildren = {
   BookingUidRoute: BookingUidRoute,
   UsernameIndexRoute: UsernameIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiIntegrationsGooglecalendarAddRoute: ApiIntegrationsGooglecalendarAddRoute,
+  ApiIntegrationsGooglecalendarCallbackRoute:
+    ApiIntegrationsGooglecalendarCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -49,6 +49,28 @@ export class UserRepository {
     return found ?? null;
   }
 
+  async findProfile(userId: number) {
+    const [found] = await this.db
+      .select({
+        name: user.name,
+        email: user.email,
+        username: user.username,
+        timeZone: user.timeZone,
+        locale: user.locale,
+      })
+      .from(user)
+      .where(eq(user.id, userId))
+      .limit(1);
+    return found ?? null;
+  }
+
+  async updateProfile(
+    userId: number,
+    data: { name: string; timeZone: string; locale: string }
+  ): Promise<void> {
+    await this.db.update(user).set(data).where(eq(user.id, userId));
+  }
+
   async findByEmail(email: string) {
     const [found] = await this.db
       .select({ id: user.id, email: user.email, username: user.username })

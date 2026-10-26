@@ -254,12 +254,17 @@ export class BookingService {
   private emit(event: BookingEvent) {
     const listeners = this.deps.listeners ?? [];
     if (!listeners.length) return;
-    const work = Promise.allSettled(listeners.map((listener) => listener(event))).then((results) => {
-      for (const result of results) {
-        if (result.status === "rejected")
-          console.error(`Booking listener failed for ${event.type}`, result.reason);
+    // In order, not in parallel: the calendar listener fills in the Meet link that webhooks and
+    // emails then include. One failing listener doesn't stop the rest.
+    const work = (async () => {
+      for (const listener of listeners) {
+        try {
+          await listener(event);
+        } catch (error) {
+          console.error(`Booking listener failed for ${event.type}`, error);
+        }
       }
-    });
+    })();
     if (this.deps.runInBackground) this.deps.runInBackground(work);
   }
 

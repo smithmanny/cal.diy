@@ -24,6 +24,8 @@ services:
       DATABASE_URL: file:/data/cal.db
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET in .env (openssl rand -base64 32)}
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
+      # Only needed once you connect a calendar; see apps/start/.env.example.
+      CALENDSO_ENCRYPTION_KEY: ${CALENDSO_ENCRYPTION_KEY:-}
     volumes:
       - cal-data:/data
 
