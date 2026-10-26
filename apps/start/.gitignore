@@ -1,0 +1,5 @@
+dist
+.wrangler
+data
+.tanstack
+worker-configuration.d.ts

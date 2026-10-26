@@ -34,3 +34,10 @@ Thumbs.db
 
 # Examples and docs
 docs
+
+# Local databases and Cloudflare dev state
+.wrangler
+**/.wrangler
+**/data
+*.db
+*.db-*

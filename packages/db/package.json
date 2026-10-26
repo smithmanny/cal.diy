@@ -1,0 +1,35 @@
+{
+  "name": "@calcom/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./schema": "./src/schema.ts",
+    "./relations": "./src/relations.ts",
+    "./enums": "./src/enums.ts",
+    "./ids": "./src/ids.ts",
+    "./database": "./src/database.ts",
+    "./drivers/d1": "./src/drivers/d1.ts",
+    "./drivers/libsql": "./src/drivers/libsql.ts"
+  },
+  "scripts": {
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:migrate:d1:local": "wrangler d1 migrations apply cal-diy --local --config ../../apps/start/wrangler.jsonc",
+    "db:migrate:d1:remote": "wrangler d1 migrations apply cal-diy --remote --config ../../apps/start/wrangler.jsonc",
+    "db:studio": "drizzle-kit studio",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@libsql/client": "0.18.0",
+    "drizzle-orm": "0.45.4"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261010.1",
+    "@types/node": "20.17.23",
+    "drizzle-kit": "0.31.11",
+    "typescript": "5.9.3",
+    "vitest": "4.1.8"
+  }
+}

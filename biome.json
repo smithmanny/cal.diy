@@ -27,10 +27,7 @@
     }
   },
   "formatter": {
-    "includes": [
-      "**/*",
-      "!packages/ui/components/icon/dynamicIconImports.tsx"
-    ],
+    "includes": ["**/*", "!packages/ui/components/icon/dynamicIconImports.tsx"],
     "lineWidth": 110,
     "indentStyle": "space",
     "indentWidth": 2,
@@ -50,6 +47,8 @@
       "!!apps/web/public/embed",
       "!!packages/prisma/zod",
       "!!packages/prisma/enums",
+      "!!**/routeTree.gen.ts",
+      "!!packages/db/migrations",
       "!!*.lock",
       "!!*.log",
       "!!.gitignore",
@@ -104,6 +103,16 @@
         "rules": {
           "style": {
             "noDefaultExport": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["apps/start/src/routes/__root.tsx"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noHeadElement": "off"
           }
         }
       }
@@ -220,7 +229,13 @@
       }
     },
     {
-      "includes": ["**/*.test.ts", "**/*.test.tsx", "**/*.spec.ts", "**/*.e2e-spec.ts", "**/*.integration-test.ts"],
+      "includes": [
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.spec.ts",
+        "**/*.e2e-spec.ts",
+        "**/*.integration-test.ts"
+      ],
       "linter": {
         "rules": {
           "complexity": {
