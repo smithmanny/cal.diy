@@ -1,13 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import {
-  CalendarDaysIcon,
-  ClockIcon,
-  LinkIcon,
-  LogOutIcon,
-  SettingsIcon,
-  WebhookIcon,
-  ZapIcon,
-} from "lucide-react";
+import { CalendarDaysIcon, ClockIcon, LinkIcon, LogOutIcon, SettingsIcon, WebhookIcon } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 import { authClient } from "~/lib/auth-client";
 import { useT } from "~/lib/i18n";
@@ -20,7 +12,6 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/event-types", labelKey: "event_types_page_title", icon: LinkIcon },
   { to: "/bookings/upcoming", labelKey: "bookings", icon: CalendarDaysIcon },
   { to: "/availability", labelKey: "availability", icon: ClockIcon },
-  { to: "/workflows", labelKey: "workflows", icon: ZapIcon },
   { to: "/settings/developer/webhooks", labelKey: "webhooks", icon: WebhookIcon },
   { to: "/settings/my-account/profile", labelKey: "settings", icon: SettingsIcon },
 ];
@@ -32,7 +23,6 @@ export const APP_SHELL_MESSAGE_KEYS = [
   "event_types_page_title",
   "bookings",
   "availability",
-  "workflows",
   "webhooks",
   "settings",
   "sign_out",
