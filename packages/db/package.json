@@ -11,7 +11,8 @@
     "./database": "./src/database.ts",
     "./drivers/d1": "./src/drivers/d1.ts",
     "./drivers/libsql": "./src/drivers/libsql.ts",
-    "./conditional-insert": "./src/conditional-insert.ts"
+    "./conditional-insert": "./src/conditional-insert.ts",
+    "./insert-chunks": "./src/insert-chunks.ts"
   },
   "scripts": {
     "db:generate": "drizzle-kit generate",

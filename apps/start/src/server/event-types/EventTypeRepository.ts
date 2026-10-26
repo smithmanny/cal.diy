@@ -1,5 +1,6 @@
 import "@tanstack/react-start/server-only";
 import type { Database } from "@calcom/db/database";
+import { chunkRowsForInsert } from "@calcom/db/insert-chunks";
 import { eventType } from "@calcom/db/schema";
 import { and, asc, desc, eq, max, ne } from "drizzle-orm";
 
@@ -95,8 +96,11 @@ export class EventTypeRepository {
     userId: number,
     rows: (WritableColumns & { title: string; slug: string; length: number })[]
   ) {
-    if (!rows.length) return;
-    await this.db.insert(eventType).values(rows.map((row) => ({ ...row, userId })));
+    const values = rows.map((row) => ({ ...row, userId }));
+    const [first, ...rest] = chunkRowsForInsert(eventType, values).map((chunk) =>
+      this.db.insert(eventType).values(chunk)
+    );
+    if (first) await this.db.batch([first, ...rest]);
   }
 
   async update(id: number, data: WritableColumns) {

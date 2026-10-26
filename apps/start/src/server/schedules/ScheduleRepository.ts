@@ -1,8 +1,14 @@
 import "@tanstack/react-start/server-only";
 import type { Database } from "@calcom/db/database";
+import { chunkRowsForInsert } from "@calcom/db/insert-chunks";
 import { availability, schedule } from "@calcom/db/schema";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import type { AvailabilityRow } from "./scheduleMapper";
+
+function availabilityInserts(db: Database, rows: AvailabilityRow[], scheduleId: number, userId: number) {
+  const values = rows.map((row) => ({ ...row, scheduleId, userId }));
+  return chunkRowsForInsert(availability, values).map((chunk) => db.insert(availability).values(chunk));
+}
 
 const availabilityColumns = {
   scheduleId: availability.scheduleId,
@@ -70,11 +76,8 @@ export class ScheduleRepository {
     // D1 has no interactive transactions and the rows need the new id, so this is two steps;
     // undo the schedule if the rows fail rather than leave an empty schedule behind.
     try {
-      if (data.availability.length) {
-        await this.db
-          .insert(availability)
-          .values(data.availability.map((row) => ({ ...row, scheduleId: created.id, userId: data.userId })));
-      }
+      const [first, ...rest] = availabilityInserts(this.db, data.availability, created.id, data.userId);
+      if (first) await this.db.batch([first, ...rest]);
     } catch (error) {
       await this.db.delete(schedule).where(eq(schedule.id, created.id));
       throw error;
@@ -96,15 +99,9 @@ export class ScheduleRepository {
         .where(eq(schedule.id, data.id)),
       this.db.delete(availability).where(eq(availability.scheduleId, data.id)),
     ] as const;
-    if (!data.availability.length) {
-      await this.db.batch(statements);
-      return;
-    }
     await this.db.batch([
       ...statements,
-      this.db
-        .insert(availability)
-        .values(data.availability.map((row) => ({ ...row, scheduleId: data.id, userId: data.userId }))),
+      ...availabilityInserts(this.db, data.availability, data.id, data.userId),
     ]);
   }
 
