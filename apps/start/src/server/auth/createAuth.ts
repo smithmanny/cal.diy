@@ -7,6 +7,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
+import { RESERVED_USERNAMES } from "~/lib/reserved-usernames";
 import { pickMessages } from "../catalog";
 import { EventTypeRepository } from "../event-types/EventTypeRepository";
 import { EventTypeService } from "../event-types/EventTypeService";
@@ -98,7 +99,7 @@ export function createAuth({ db, baseURL, secret, google }: AuthConfig) {
             if (requested) {
               const username = requested;
               const taken = await users.findTakenUsernamesWithoutOrganization([username]);
-              if (taken.has(username)) {
+              if (taken.has(username) || RESERVED_USERNAMES.has(username)) {
                 throw new APIError("BAD_REQUEST", {
                   message: AUTH_ERROR_CODES.usernameTaken,
                   code: AUTH_ERROR_CODES.usernameTaken,

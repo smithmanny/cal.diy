@@ -23,6 +23,10 @@ describe("username helpers", () => {
     expect(await findAvailableUsername(repoWithTaken([]), "jane")).toBe("jane");
   });
 
+  it("never picks a reserved route name", async () => {
+    expect(await findAvailableUsername(repoWithTaken([]), "settings")).toMatch(/^settings-\d{4}$/);
+  });
+
   it("adds a numeric suffix when the base name is taken", async () => {
     expect(await findAvailableUsername(repoWithTaken(["jane"]), "jane")).toMatch(/^jane-\d{4}$/);
   });

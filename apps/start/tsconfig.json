@@ -16,5 +16,11 @@
       "~/*": ["./src/*"]
     }
   },
-  "include": ["src", "scripts", "vite.config.ts", "vitest.config.ts"]
+  "include": [
+    "src",
+    "scripts",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "../../packages/types/business-days-plugin.d.ts"
+  ]
 }

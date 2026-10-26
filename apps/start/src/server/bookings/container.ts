@@ -1,0 +1,23 @@
+import "@tanstack/react-start/server-only";
+
+import { getDb } from "../db";
+import { EventTypeRepository } from "../event-types/EventTypeRepository";
+import { ScheduleRepository } from "../schedules/ScheduleRepository";
+import { UserRepository } from "../users/UserRepository";
+import { BookingRepository } from "./BookingRepository";
+import { BookingService } from "./BookingService";
+import { getBookingListeners, getBusyTimesProviders } from "./integrations";
+import { runInBackground } from "#runtime";
+
+export async function getBookingService(): Promise<BookingService> {
+  const db = await getDb();
+  return new BookingService({
+    userRepo: new UserRepository(db),
+    eventTypeRepo: new EventTypeRepository(db),
+    scheduleRepo: new ScheduleRepository(db),
+    bookingRepo: new BookingRepository(db),
+    busyTimesProviders: getBusyTimesProviders(db),
+    listeners: getBookingListeners(db),
+    runInBackground,
+  });
+}

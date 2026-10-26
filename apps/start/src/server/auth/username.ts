@@ -1,4 +1,5 @@
 import slugify from "@calcom/lib/slugify";
+import { RESERVED_USERNAMES } from "~/lib/reserved-usernames";
 import type { UserRepository } from "../users/UserRepository";
 
 const CANDIDATE_COUNT = 5;
@@ -24,6 +25,8 @@ export async function findAvailableUsername(
     ...Array.from({ length: CANDIDATE_COUNT }, () => `${base}-${Math.floor(1000 + Math.random() * 9000)}`),
   ];
   const taken = await users.findTakenUsernamesWithoutOrganization(candidates);
-  const available = candidates.find((candidate) => !taken.has(candidate));
+  const available = candidates.find(
+    (candidate) => !taken.has(candidate) && !RESERVED_USERNAMES.has(candidate)
+  );
   return available ?? `${base}-${crypto.randomUUID().slice(0, 8)}`;
 }

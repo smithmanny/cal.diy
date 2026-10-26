@@ -11,9 +11,12 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthedRouteImport } from './routes/_authed'
+import { Route as UsernameIndexRouteImport } from './routes/$username/index'
+import { Route as UsernameSlugRouteImport } from './routes/$username/$slug'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthSignupRouteImport } from './routes/auth/signup'
+import { Route as BookingUidRouteImport } from './routes/booking/$uid'
 import { Route as AuthedAvailabilityIndexRouteImport } from './routes/_authed/availability/index'
 import { Route as AuthedAvailabilityScheduleIdRouteImport } from './routes/_authed/availability/$scheduleId'
 import { Route as AuthedEventTypesIndexRouteImport } from './routes/_authed/event-types/index'
@@ -29,6 +32,16 @@ const AuthedRoute = AuthedRouteImport.update({
   id: '/_authed',
   getParentRoute: () => rootRouteImport,
 } as any)
+const UsernameIndexRoute = UsernameIndexRouteImport.update({
+  id: '/$username/',
+  path: '/$username/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UsernameSlugRoute = UsernameSlugRouteImport.update({
+  id: '/$username/$slug',
+  path: '/$username/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
@@ -42,6 +55,11 @@ const AuthLoginRoute = AuthLoginRouteImport.update({
 const AuthSignupRoute = AuthSignupRouteImport.update({
   id: '/auth/signup',
   path: '/auth/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BookingUidRoute = BookingUidRouteImport.update({
+  id: '/booking/$uid',
+  path: '/booking/$uid',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthedAvailabilityIndexRoute = AuthedAvailabilityIndexRouteImport.update({
@@ -74,9 +92,12 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/$username/$slug': typeof UsernameSlugRoute
   '/api/health': typeof ApiHealthRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/booking/$uid': typeof BookingUidRoute
+  '/$username/': typeof UsernameIndexRoute
   '/availability/$scheduleId': typeof AuthedAvailabilityScheduleIdRoute
   '/event-types/$eventTypeId': typeof AuthedEventTypesEventTypeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -85,9 +106,12 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/$username/$slug': typeof UsernameSlugRoute
   '/api/health': typeof ApiHealthRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/booking/$uid': typeof BookingUidRoute
+  '/$username': typeof UsernameIndexRoute
   '/availability/$scheduleId': typeof AuthedAvailabilityScheduleIdRoute
   '/event-types/$eventTypeId': typeof AuthedEventTypesEventTypeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -98,9 +122,12 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authed': typeof AuthedRouteWithChildren
+  '/$username/$slug': typeof UsernameSlugRoute
   '/api/health': typeof ApiHealthRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/booking/$uid': typeof BookingUidRoute
+  '/$username/': typeof UsernameIndexRoute
   '/_authed/availability/$scheduleId': typeof AuthedAvailabilityScheduleIdRoute
   '/_authed/event-types/$eventTypeId': typeof AuthedEventTypesEventTypeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -111,9 +138,12 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/$username/$slug'
     | '/api/health'
     | '/auth/login'
     | '/auth/signup'
+    | '/booking/$uid'
+    | '/$username/'
     | '/availability/$scheduleId'
     | '/event-types/$eventTypeId'
     | '/api/auth/$'
@@ -122,9 +152,12 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/$username/$slug'
     | '/api/health'
     | '/auth/login'
     | '/auth/signup'
+    | '/booking/$uid'
+    | '/$username'
     | '/availability/$scheduleId'
     | '/event-types/$eventTypeId'
     | '/api/auth/$'
@@ -134,9 +167,12 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authed'
+    | '/$username/$slug'
     | '/api/health'
     | '/auth/login'
     | '/auth/signup'
+    | '/booking/$uid'
+    | '/$username/'
     | '/_authed/availability/$scheduleId'
     | '/_authed/event-types/$eventTypeId'
     | '/api/auth/$'
@@ -147,9 +183,12 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthedRoute: typeof AuthedRouteWithChildren
+  UsernameSlugRoute: typeof UsernameSlugRoute
   ApiHealthRoute: typeof ApiHealthRoute
   AuthLoginRoute: typeof AuthLoginRoute
   AuthSignupRoute: typeof AuthSignupRoute
+  BookingUidRoute: typeof BookingUidRoute
+  UsernameIndexRoute: typeof UsernameIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
@@ -167,6 +206,20 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: '/'
       preLoaderRoute: typeof AuthedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/$username/': {
+      id: '/$username/'
+      path: '/$username'
+      fullPath: '/$username/'
+      preLoaderRoute: typeof UsernameIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/$username/$slug': {
+      id: '/$username/$slug'
+      path: '/$username/$slug'
+      fullPath: '/$username/$slug'
+      preLoaderRoute: typeof UsernameSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/health': {
@@ -188,6 +241,13 @@ declare module '@tanstack/react-router' {
       path: '/auth/signup'
       fullPath: '/auth/signup'
       preLoaderRoute: typeof AuthSignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/booking/$uid': {
+      id: '/booking/$uid'
+      path: '/booking/$uid'
+      fullPath: '/booking/$uid'
+      preLoaderRoute: typeof BookingUidRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authed/availability/': {
@@ -248,9 +308,12 @@ const AuthedRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthedRoute: AuthedRouteWithChildren,
+  UsernameSlugRoute: UsernameSlugRoute,
   ApiHealthRoute: ApiHealthRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthSignupRoute: AuthSignupRoute,
+  BookingUidRoute: BookingUidRoute,
+  UsernameIndexRoute: UsernameIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport

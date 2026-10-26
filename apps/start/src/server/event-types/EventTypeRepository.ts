@@ -47,6 +47,14 @@ export class EventTypeRepository {
     return found ?? null;
   }
 
+  findManyVisibleByUserId(userId: number) {
+    return this.db
+      .select(summaryColumns)
+      .from(eventType)
+      .where(and(eq(eventType.userId, userId), eq(eventType.hidden, false)))
+      .orderBy(desc(eventType.position), asc(eventType.id));
+  }
+
   async findByUserIdAndSlug(userId: number, slug: string) {
     const [found] = await this.db
       .select(detailColumns)

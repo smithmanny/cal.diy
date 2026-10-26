@@ -1,6 +1,6 @@
 import "@tanstack/react-start/server-only";
 
-import { env } from "cloudflare:workers";
+import { env, waitUntil } from "cloudflare:workers";
 import type { Database } from "@calcom/db/database";
 import { createD1Database } from "@calcom/db/drivers/d1";
 
@@ -15,4 +15,9 @@ export async function getDb(): Promise<Database> {
 export async function readStaticAsset(path: string): Promise<string | null> {
   const response = await env.ASSETS.fetch(new Request(`https://assets.local/${path}`));
   return response.ok ? response.text() : null;
+}
+
+/** Keeps the Worker alive until `promise` settles, without delaying the response. */
+export function runInBackground(promise: Promise<unknown>): void {
+  waitUntil(promise.catch((error) => console.error("Background task failed", error)));
 }

@@ -43,3 +43,8 @@ export async function readStaticAsset(path: string): Promise<string | null> {
     return null;
   }
 }
+
+/** The Node process outlives the request, so the work just continues after the response. */
+export function runInBackground(promise: Promise<unknown>): void {
+  void promise.catch((error) => console.error("Background task failed", error));
+}

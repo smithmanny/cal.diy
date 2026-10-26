@@ -94,6 +94,12 @@ describe("createAuth", () => {
     });
   });
 
+  it("rejects usernames that would shadow app routes", async () => {
+    await expect(signUp({ email: "route@example.com", username: "Availability" })).rejects.toMatchObject({
+      body: { code: AUTH_ERROR_CODES.usernameTaken },
+    });
+  });
+
   it("derives a free username from the email when none is given (OAuth sign-ups)", async () => {
     await signUp({ email: "alex@example.com", username: "alex" });
     await signUp({ email: "alex@another.com" });

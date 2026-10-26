@@ -7,7 +7,8 @@
   "exports": {
     "./date-ranges": "./src/date-ranges.ts",
     "./slots": "./src/slots.ts",
-    "./types": "./src/types.ts"
+    "./types": "./src/types.ts",
+    "./available-slots": "./src/available-slots.ts"
   },
   "scripts": {
     "test": "TZ=UTC vitest run",

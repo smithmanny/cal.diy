@@ -30,6 +30,25 @@ export class UserRepository {
     await this.db.update(user).set({ defaultScheduleId: scheduleId }).where(eq(user.id, userId));
   }
 
+  /** Users outside an organization, which is every user until organizations are ported. */
+  async findByUsername(username: string) {
+    const [found] = await this.db
+      .select({
+        id: user.id,
+        name: user.name,
+        username: user.username,
+        email: user.email,
+        timeZone: user.timeZone,
+        locale: user.locale,
+        defaultScheduleId: user.defaultScheduleId,
+        avatarUrl: user.avatarUrl,
+      })
+      .from(user)
+      .where(and(eq(user.username, username.toLowerCase()), isNull(user.organizationId)))
+      .limit(1);
+    return found ?? null;
+  }
+
   async findByEmail(email: string) {
     const [found] = await this.db
       .select({ id: user.id, email: user.email, username: user.username })
