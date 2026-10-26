@@ -23,6 +23,8 @@ import { Route as AuthedBookingsStatusRouteImport } from './routes/_authed/booki
 import { Route as AuthedEventTypesIndexRouteImport } from './routes/_authed/event-types/index'
 import { Route as AuthedEventTypesEventTypeIdRouteImport } from './routes/_authed/event-types/$eventTypeId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as AuthedSettingsDeveloperWebhooksIndexRouteImport } from './routes/_authed/settings/developer/webhooks/index'
+import { Route as AuthedSettingsDeveloperWebhooksWebhookIdRouteImport } from './routes/_authed/settings/developer/webhooks/$webhookId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -95,6 +97,18 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthedSettingsDeveloperWebhooksIndexRoute =
+  AuthedSettingsDeveloperWebhooksIndexRouteImport.update({
+    id: '/settings/developer/webhooks/',
+    path: '/settings/developer/webhooks/',
+    getParentRoute: () => AuthedRoute,
+  } as any)
+const AuthedSettingsDeveloperWebhooksWebhookIdRoute =
+  AuthedSettingsDeveloperWebhooksWebhookIdRouteImport.update({
+    id: '/settings/developer/webhooks/$webhookId',
+    path: '/settings/developer/webhooks/$webhookId',
+    getParentRoute: () => AuthedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -110,6 +124,8 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/availability/': typeof AuthedAvailabilityIndexRoute
   '/event-types/': typeof AuthedEventTypesIndexRoute
+  '/settings/developer/webhooks/$webhookId': typeof AuthedSettingsDeveloperWebhooksWebhookIdRoute
+  '/settings/developer/webhooks/': typeof AuthedSettingsDeveloperWebhooksIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -125,6 +141,8 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/availability': typeof AuthedAvailabilityIndexRoute
   '/event-types': typeof AuthedEventTypesIndexRoute
+  '/settings/developer/webhooks/$webhookId': typeof AuthedSettingsDeveloperWebhooksWebhookIdRoute
+  '/settings/developer/webhooks': typeof AuthedSettingsDeveloperWebhooksIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -142,6 +160,8 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/_authed/availability/': typeof AuthedAvailabilityIndexRoute
   '/_authed/event-types/': typeof AuthedEventTypesIndexRoute
+  '/_authed/settings/developer/webhooks/$webhookId': typeof AuthedSettingsDeveloperWebhooksWebhookIdRoute
+  '/_authed/settings/developer/webhooks/': typeof AuthedSettingsDeveloperWebhooksIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -159,6 +179,8 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/availability/'
     | '/event-types/'
+    | '/settings/developer/webhooks/$webhookId'
+    | '/settings/developer/webhooks/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -174,6 +196,8 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/availability'
     | '/event-types'
+    | '/settings/developer/webhooks/$webhookId'
+    | '/settings/developer/webhooks'
   id:
     | '__root__'
     | '/'
@@ -190,6 +214,8 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/_authed/availability/'
     | '/_authed/event-types/'
+    | '/_authed/settings/developer/webhooks/$webhookId'
+    | '/_authed/settings/developer/webhooks/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -304,6 +330,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authed/settings/developer/webhooks/': {
+      id: '/_authed/settings/developer/webhooks/'
+      path: '/settings/developer/webhooks'
+      fullPath: '/settings/developer/webhooks/'
+      preLoaderRoute: typeof AuthedSettingsDeveloperWebhooksIndexRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/settings/developer/webhooks/$webhookId': {
+      id: '/_authed/settings/developer/webhooks/$webhookId'
+      path: '/settings/developer/webhooks/$webhookId'
+      fullPath: '/settings/developer/webhooks/$webhookId'
+      preLoaderRoute: typeof AuthedSettingsDeveloperWebhooksWebhookIdRouteImport
+      parentRoute: typeof AuthedRoute
+    }
   }
 }
 
@@ -313,6 +353,8 @@ interface AuthedRouteChildren {
   AuthedEventTypesEventTypeIdRoute: typeof AuthedEventTypesEventTypeIdRoute
   AuthedAvailabilityIndexRoute: typeof AuthedAvailabilityIndexRoute
   AuthedEventTypesIndexRoute: typeof AuthedEventTypesIndexRoute
+  AuthedSettingsDeveloperWebhooksWebhookIdRoute: typeof AuthedSettingsDeveloperWebhooksWebhookIdRoute
+  AuthedSettingsDeveloperWebhooksIndexRoute: typeof AuthedSettingsDeveloperWebhooksIndexRoute
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
@@ -321,6 +363,10 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedEventTypesEventTypeIdRoute: AuthedEventTypesEventTypeIdRoute,
   AuthedAvailabilityIndexRoute: AuthedAvailabilityIndexRoute,
   AuthedEventTypesIndexRoute: AuthedEventTypesIndexRoute,
+  AuthedSettingsDeveloperWebhooksWebhookIdRoute:
+    AuthedSettingsDeveloperWebhooksWebhookIdRoute,
+  AuthedSettingsDeveloperWebhooksIndexRoute:
+    AuthedSettingsDeveloperWebhooksIndexRoute,
 }
 
 const AuthedRouteWithChildren =
