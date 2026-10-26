@@ -2,6 +2,7 @@ import "@tanstack/react-start/server-only";
 
 import process from "node:process";
 import type { Database } from "@calcom/db/database";
+import { IS_PRODUCTION_BUILD } from "../build";
 import { getDb } from "../db";
 import { CalendarRepository } from "./CalendarRepository";
 import { CalendarService } from "./CalendarService";
@@ -18,7 +19,7 @@ function publicUrl(): string {
 function encryptionKey(): string | null {
   const key = process.env.CALENDSO_ENCRYPTION_KEY;
   if (key) return key;
-  return process.env.NODE_ENV === "production" ? null : DEV_ENCRYPTION_KEY;
+  return IS_PRODUCTION_BUILD ? null : DEV_ENCRYPTION_KEY;
 }
 
 export function isGoogleCalendarEnabled(): boolean {

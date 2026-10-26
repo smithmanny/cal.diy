@@ -17,6 +17,7 @@ beforeEach(async () => {
     baseURL: "http://localhost:3000",
     secret: "test-secret-that-is-long-enough-123",
     clientIpHeaders: ["x-cal-client-ip"],
+    rateLimit: false,
   });
 });
 

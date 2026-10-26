@@ -1,9 +1,13 @@
 /** Google's endpoints; overridable outside production so the OAuth flow can be tested against a fake. */
 import process from "node:process";
+import { IS_PRODUCTION_BUILD } from "../../build";
+
 export type GoogleEndpoints = { authorize: string; token: string; revoke: string; calendarApi: string };
 
-export function googleEndpoints(env: Record<string, string | undefined> = process.env): GoogleEndpoints {
-  const allowOverride = env.NODE_ENV !== "production";
+export function googleEndpoints(
+  env: Record<string, string | undefined> = process.env,
+  allowOverride = !IS_PRODUCTION_BUILD
+): GoogleEndpoints {
   const pick = (name: string, fallback: string) => (allowOverride && env[name]) || fallback;
   return {
     authorize: pick("GOOGLE_OAUTH_AUTHORIZE_URL", "https://accounts.google.com/o/oauth2/v2/auth"),

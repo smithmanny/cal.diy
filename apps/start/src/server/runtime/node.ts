@@ -5,11 +5,12 @@ import { resolve } from "node:path";
 import process from "node:process";
 import type { Database } from "@calcom/db/database";
 import { createLibsqlDatabase, migrateLibsqlDatabase } from "@calcom/db/drivers/libsql";
+import { IS_PRODUCTION_BUILD } from "../build";
 import type { EmailMessage, EmailSender } from "../emails/sender";
 
 // The server is bundled into dist/, so resolve from the working directory (apps/start, or /app in Docker).
 const DEFAULT_MIGRATIONS_DIR = resolve(process.cwd(), "../../packages/db/migrations");
-const STATIC_DIR = resolve(process.cwd(), process.env.NODE_ENV === "production" ? "dist/client" : "public");
+const STATIC_DIR = resolve(process.cwd(), IS_PRODUCTION_BUILD ? "dist/client" : "public");
 
 let dbPromise: Promise<Database> | undefined;
 

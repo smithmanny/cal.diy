@@ -37,6 +37,7 @@ export type AuthConfig = {
   google?: { clientId: string; clientSecret: string };
   /** Headers the runtime guarantees hold the real client IP; rate limiting is keyed on it. */
   clientIpHeaders: string[];
+  rateLimit: boolean;
 };
 
 // Error codes are i18n keys from packages/i18n/locales/en/common.json; the client translates them.
@@ -45,7 +46,7 @@ export const AUTH_ERROR_CODES = {
   usernameTaken: "username_already_taken",
 } as const;
 
-export function createAuth({ db, baseURL, secret, google, clientIpHeaders }: AuthConfig) {
+export function createAuth({ db, baseURL, secret, google, clientIpHeaders, rateLimit }: AuthConfig) {
   const users = new UserRepository(db);
   const scheduleRepo = new ScheduleRepository(db);
   const schedules = new ScheduleService({ scheduleRepo, userRepo: users });
@@ -64,6 +65,8 @@ export function createAuth({ db, baseURL, secret, google, clientIpHeaders }: Aut
       // failed sign-ins anywhere would lock everyone out.
       ipAddress: { ipAddressHeaders: clientIpHeaders },
     },
+    // Better Auth's own default reads NODE_ENV, which Workers don't set, so it would stay off there.
+    rateLimit: { enabled: rateLimit },
     user: {
       fields: { image: "avatarUrl", createdAt: "createdDate" },
       additionalFields: {
