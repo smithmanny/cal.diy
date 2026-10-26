@@ -8,7 +8,7 @@
 FROM --platform=$BUILDPLATFORM node:22-bookworm-slim AS builder
 WORKDIR /app
 COPY . .
-RUN yarn workspaces focus @calcom/start @calcom/db \
+RUN yarn workspaces focus @calcom/start @calcom/db @calcom/scheduling \
   && yarn workspace @calcom/start build
 
 FROM node:22-bookworm-slim AS runtime

@@ -26,6 +26,9 @@ services:
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
       # Only needed once you connect a calendar; see apps/start/.env.example.
       CALENDSO_ENCRYPTION_KEY: ${CALENDSO_ENCRYPTION_KEY:-}
+      # Behind a reverse proxy (Caddy, nginx, Traefik), list its address so sign-in rate limits
+      # see real client IPs instead of the proxy's; see apps/start/.env.example.
+      TRUST_PROXY: ${TRUST_PROXY:-}
     volumes:
       - cal-data:/data
 

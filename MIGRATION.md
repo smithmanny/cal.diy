@@ -1,7 +1,8 @@
 # Stack migration: Next.js + Prisma + tRPC → TanStack Start + Drizzle + D1/SQLite
 
-Working branch: `claude/migrate-tanstack-drizzle-d1-c8bkot` (big-bang: the old app stays in the tree
-as a reference until each slice is ported, then it is deleted).
+Working branch: `claude/migrate-tanstack-drizzle-d1-c8bkot`. This is a big-bang migration: the new
+app lives in `apps/start` beside the old one, which stays in the tree as a reference until the
+remaining slices are ported and it can be deleted in one step (Phase 5).
 
 ## Target architecture
 
@@ -14,9 +15,9 @@ as a reference until each slice is ported, then it is deleted).
 | Auth | NextAuth | Better Auth (`apps/start/src/server/auth`) |
 | Hosting | Vercel / Docker (Node + Postgres) | Cloudflare Workers + D1, **or** Docker (Node + SQLite file) |
 
-The same build serves both hosting targets. `DEPLOY_TARGET=cloudflare` switches the Vite build to the
-Workers runtime; the only runtime-specific module is the DB driver (`apps/start/src/server/db/*.ts`,
-selected through the `#db-driver` alias).
+The same code serves both hosting targets. `DEPLOY_TARGET=cloudflare` switches the Vite build to the
+Workers runtime; everything runtime-specific (database, static asset reads, background work, SMTP,
+trusted client-IP header) sits behind the `#runtime` alias in `apps/start/src/server/runtime/`.
 
 ## Rules for ported code (D1 / SQLite constraints)
 
@@ -32,6 +33,13 @@ selected through the `#db-driver` alias).
 - **Dates are integer milliseconds** (`timestamp_ms`), including former `@db.Date` / `@db.Time`.
 - **`users.emailVerified` is a boolean** owned by Better Auth (it was a timestamp under NextAuth).
   `SecondaryEmail.emailVerified` is still a timestamp.
+- **At most 100 bound parameters per statement** on D1. Multi-row inserts go through
+  `chunkRowsForInsert` (`@calcom/db/insert-chunks`); local SQLite allows far more, so only the
+  Workers e2e run catches a miss.
+- **Check-then-write in one statement.** `conditionalInsert` (`@calcom/db/conditional-insert`)
+  builds `INSERT … SELECT … WHERE`, e.g. "insert this booking only if the slot is still free".
+- **Production checks use `IS_PRODUCTION_BUILD`** (`import.meta.env.PROD`), not `NODE_ENV`, which
+  Workers don't set.
 - **Keep the repository pattern.** Repositories swap Prisma for an injected `Database`; services
   don't change.
 
@@ -48,31 +56,43 @@ selected through the `#db-driver` alias).
 - [x] Docker: multi-arch Dockerfile (amd64 / arm64 / armv7) and single-service `docker-compose.yml`,
       with migrations on boot and data in a volume
 
-### Phase 2: platform
-- [x] Auth with Better Auth: email/password signup and login, Google sign-in (enabled when
-      `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` are set), sessions, protected `_authed` routes.
-      Verified in a browser on Node, Workers + D1, and the Docker image
-- [ ] Auth follow-ups: email verification and password reset (need the email layer), 2FA
-      (Better Auth `twoFactor` plugin, replacing `users.twoFactorSecret`), SAML/OIDC SSO
-- [ ] App shell: Tailwind, `@calcom/ui`, i18n, layout and navigation
-- [ ] Port `packages/lib` utilities off Next (`next/*` imports, `headers()`, `cookies()`)
-- [ ] Data portability: Postgres → SQLite data export/import script. Existing passwords are bcrypt
-      hashes in `UserPassword`; the import moves them to `Account.password` (provider `credential`),
-      and `createAuth` will need a `password.verify` that also accepts `$2…` bcrypt hashes
+### Phase 2: platform ✅
+- [x] Auth with Better Auth: email/password and Google sign-in, sessions, protected `_authed` routes,
+      per-IP rate limiting on a trusted client IP (see Auth below)
+- [x] App shell: Tailwind 4, `@coss/ui` components with Cal's theme tokens, navigation, settings tabs
+- [x] i18n from `packages/i18n/locales`: locale from the user or `Accept-Language`, right-to-left
+      layouts, each route loads only the keys it uses
+- [x] CSRF protection on server functions (`createCsrfMiddleware`); errors that aren't `AppError`s
+      reach the client as `something_went_wrong`
+- [ ] Email verification, password reset, 2FA (Better Auth `twoFactor`), SAML/OIDC SSO
+- [ ] Data import from an existing Postgres install. Passwords are bcrypt hashes in `UserPassword`;
+      the import would move them to `Account.password` and `createAuth` would need a
+      `password.verify` that also accepts `$2…` hashes
 
-### Phase 3: core booking (MVP)
-- [ ] Repositories on Drizzle: User, EventType, Schedule/Availability, Booking, Attendee, Credential
-- [ ] Slots / availability engine
-- [ ] Public booking page (`/$user/$eventSlug`) and booking creation, with the seats and
-      round-robin paths rewritten to use `db.batch`
-- [ ] Event types, availability and bookings screens
+### Phase 3: core booking ✅
+- [x] Repositories on Drizzle: User, EventType, Schedule/Availability, Booking/Attendee, Credential,
+      Webhook, SelectedCalendar, BookingReference
+- [x] Slots engine (`packages/scheduling`): a port of Cal's `date-ranges` and `slots` with their tests,
+      plus buffers, minimum notice, a rolling booking window and busy times
+- [x] Availability: schedules with weekly hours and date overrides, default schedule, time zones
+- [x] Event types: create, edit (length, locations, minimum notice, buffers, booking window,
+      requires confirmation), hide, delete
+- [x] Public pages `/$username` and `/$username/$slug`, booking with a slot that can't be double-booked,
+      reschedule and cancel from `/booking/$uid`
+- [x] Bookings list (upcoming, unconfirmed, past, cancelled) with confirm, reject and cancel
+- [ ] Teams, organizations, seats, round robin, recurring events, payments, per-period booking
+      and duration limits
 
-### Phase 4: integrations, workflows and webhooks
-- [ ] App-store runtime (credentials, OAuth callbacks as server routes)
-- [ ] Calendar apps (Google, Outlook, CalDAV/Apple) and video apps (Zoom, Google Meet, Daily/Cal Video)
-- [ ] Webhooks
-- [ ] Workflows (email reminders; scheduled jobs via Workers Cron Triggers / a Node interval)
-- [ ] Emails (SMTP on Docker; an HTTP provider on Workers, which can't open raw SMTP sockets)
+### Phase 4: integrations, webhooks, emails ✅ (MVP set)
+- [x] Google Calendar: OAuth connect, busy times from selected calendars, events created, moved and
+      deleted with bookings; Google Meet links. Credentials encrypted with `CALENDSO_ENCRYPTION_KEY`
+      in Cal's format, so existing keys keep working
+- [x] Webhooks: Cal-compatible payloads, `X-Cal-Signature-256` HMAC, custom templates (`{{var}}`
+      only), BOOKING_CREATED/REQUESTED/RESCHEDULED/CANCELLED/REJECTED
+- [x] Emails: localized organizer and attendee emails with `.ics`, over Resend (both runtimes) or
+      SMTP (Node/Docker)
+- [ ] Workflows: this fork has no workflows feature, so there was nothing to port
+- [ ] Other app-store apps (Outlook, CalDAV/Apple, Zoom, Daily/Cal Video, …)
 
 ### Phase 5: public API and cleanup
 - [ ] Rebuild the `apps/api/v2` endpoints as Start server routes, keeping request/response shapes
@@ -84,8 +104,8 @@ selected through the `#db-driver` alias).
 `createAuth()` in `apps/start/src/server/auth/createAuth.ts` configures Better Auth on top of the
 existing tables:
 
-- `users` is Better Auth's `user` model (`image` → `avatarUrl`, `createdAt` → `created`), with
-  `username` and `timeZone` as extra fields. Usernames are slugified, checked for uniqueness among
+- `users` is Better Auth's `user` model (`image` → `avatarUrl`, `createdAt` → `createdDate`), with
+  `username`, `timeZone` and `locale` as extra fields. Usernames are slugified, checked for uniqueness among
   users outside an organization, and generated from the email for OAuth sign-ups.
 - `Account` and `Session` use Better Auth's shape (the NextAuth columns are gone), `Verification`
   is new, and `UserPassword` is removed: credential hashes live in `Account.password`.
@@ -94,6 +114,11 @@ existing tables:
   a number).
 - Error codes sent to the client are translation keys; `src/lib/auth-errors.ts` maps Better
   Auth's own codes onto existing keys.
+- New users get Cal's defaults: a working-hours schedule and "15min"/"30min" event types.
+- Production builds rate-limit sign-in and sign-up per client IP. The IP comes from a header the
+  runtime guarantees: `cf-connecting-ip` on Workers, and on Node a header `server.node.mjs` sets
+  from the socket. Behind a reverse proxy, set `TRUST_PROXY` (see `.env.example`) or every client
+  shares the proxy's limit.
 
 Settings: `BETTER_AUTH_SECRET` (required in production), `BETTER_AUTH_URL`, and optionally
 `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`. See `apps/start/.env.example` (Node/Docker) and
@@ -105,7 +130,7 @@ free plan allows per request (10 ms), so sign-up and login need the paid plan.
 ## Running it
 
 ```bash
-yarn workspaces focus @calcom/start @calcom/db   # install only what the new stack needs
+yarn workspaces focus @calcom/start @calcom/db @calcom/scheduling   # only what the new stack needs
 
 # Node + local SQLite file (migrations run on boot). Reads apps/start/.env.
 yarn workspace @calcom/start dev
@@ -113,9 +138,22 @@ yarn workspace @calcom/start dev
 # Cloudflare Workers runtime locally (Miniflare + local D1). Reads apps/start/.dev.vars.
 yarn workspace @calcom/db db:migrate:d1:local
 yarn workspace @calcom/start dev:cf
+```
 
+### Tests
+
+```bash
 yarn workspace @calcom/db test
+yarn workspace @calcom/scheduling test
 yarn workspace @calcom/start test
+
+# Browser tests. By default they start the dev server on a throwaway SQLite file, with a fake
+# Google and a webhook receiver on localhost.
+yarn workspace @calcom/start test:e2e
+# Against a running production build instead (Node with TRUST_PROXY=loopback, a Workers preview
+# from `vite preview`, or the Docker image). E2E_FAKES=1 also runs the webhook spec; the Google
+# spec needs the dev server, since production builds ignore endpoint overrides.
+E2E_BASE_URL=http://localhost:3000 yarn workspace @calcom/start test:e2e
 ```
 
 ### Deploy to Cloudflare
