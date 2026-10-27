@@ -21,6 +21,8 @@ import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthResetPasswordRouteImport } from './routes/auth/reset-password'
 import { Route as AuthSignupRouteImport } from './routes/auth/signup'
 import { Route as BookingUidRouteImport } from './routes/booking/$uid'
+import { Route as GettingStartedIndexRouteImport } from './routes/getting-started/index'
+import { Route as GettingStartedStepRouteImport } from './routes/getting-started/$step'
 import { Route as UsernameSlugEmbedRouteImport } from './routes/$username/$slug_.embed'
 import { Route as AuthedAvailabilityIndexRouteImport } from './routes/_authed/availability/index'
 import { Route as AuthedAvailabilityScheduleIdRouteImport } from './routes/_authed/availability/$scheduleId'
@@ -29,6 +31,7 @@ import { Route as AuthedEventTypesIndexRouteImport } from './routes/_authed/even
 import { Route as AuthedEventTypesEventTypeIdRouteImport } from './routes/_authed/event-types/$eventTypeId'
 import { Route as AuthedSettingsIndexRouteImport } from './routes/_authed/settings/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiAvatarFileRouteImport } from './routes/api/avatar/$file'
 import { Route as ApiV2MeRouteImport } from './routes/api/v2/me'
 import { Route as DLinkSlugRouteImport } from './routes/d/$link/$slug'
 import { Route as AuthedSettingsDeveloperApiKeysRouteImport } from './routes/_authed/settings/developer/api-keys'
@@ -121,6 +124,16 @@ const BookingUidRoute = BookingUidRouteImport.update({
   path: '/booking/$uid',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GettingStartedIndexRoute = GettingStartedIndexRouteImport.update({
+  id: '/getting-started/',
+  path: '/getting-started/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GettingStartedStepRoute = GettingStartedStepRouteImport.update({
+  id: '/getting-started/$step',
+  path: '/getting-started/$step',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const UsernameSlugEmbedRoute = UsernameSlugEmbedRouteImport.update({
   id: '/$username/$slug_/embed',
   path: '/$username/$slug/embed',
@@ -161,6 +174,11 @@ const AuthedSettingsIndexRoute = AuthedSettingsIndexRouteImport.update({
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAvatarFileRoute = ApiAvatarFileRouteImport.update({
+  id: '/api/avatar/$file',
+  path: '/api/avatar/$file',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiV2MeRoute = ApiV2MeRouteImport.update({
@@ -357,12 +375,15 @@ export interface FileRoutesByFullPath {
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
   '/booking/$uid': typeof BookingUidRoute
+  '/getting-started/$step': typeof GettingStartedStepRoute
   '/$username/': typeof UsernameIndexRoute
+  '/getting-started/': typeof GettingStartedIndexRoute
   '/$username/$slug/embed': typeof UsernameSlugEmbedRoute
   '/availability/$scheduleId': typeof AuthedAvailabilityScheduleIdRoute
   '/bookings/$status': typeof AuthedBookingsStatusRoute
   '/event-types/$eventTypeId': typeof AuthedEventTypesEventTypeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/avatar/$file': typeof ApiAvatarFileRoute
   '/api/v2/me': typeof ApiV2MeRoute
   '/d/$link/$slug': typeof DLinkSlugRoute
   '/availability/': typeof AuthedAvailabilityIndexRoute
@@ -409,12 +430,15 @@ export interface FileRoutesByTo {
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
   '/booking/$uid': typeof BookingUidRoute
+  '/getting-started/$step': typeof GettingStartedStepRoute
   '/$username': typeof UsernameIndexRoute
+  '/getting-started': typeof GettingStartedIndexRoute
   '/$username/$slug/embed': typeof UsernameSlugEmbedRoute
   '/availability/$scheduleId': typeof AuthedAvailabilityScheduleIdRoute
   '/bookings/$status': typeof AuthedBookingsStatusRoute
   '/event-types/$eventTypeId': typeof AuthedEventTypesEventTypeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/avatar/$file': typeof ApiAvatarFileRoute
   '/api/v2/me': typeof ApiV2MeRoute
   '/d/$link/$slug': typeof DLinkSlugRoute
   '/availability': typeof AuthedAvailabilityIndexRoute
@@ -464,12 +488,15 @@ export interface FileRoutesById {
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
   '/booking/$uid': typeof BookingUidRoute
+  '/getting-started/$step': typeof GettingStartedStepRoute
   '/$username/': typeof UsernameIndexRoute
+  '/getting-started/': typeof GettingStartedIndexRoute
   '/$username/$slug_/embed': typeof UsernameSlugEmbedRoute
   '/_authed/availability/$scheduleId': typeof AuthedAvailabilityScheduleIdRoute
   '/_authed/bookings/$status': typeof AuthedBookingsStatusRoute
   '/_authed/event-types/$eventTypeId': typeof AuthedEventTypesEventTypeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/avatar/$file': typeof ApiAvatarFileRoute
   '/api/v2/me': typeof ApiV2MeRoute
   '/d/$link/$slug': typeof DLinkSlugRoute
   '/_authed/availability/': typeof AuthedAvailabilityIndexRoute
@@ -519,12 +546,15 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/auth/signup'
     | '/booking/$uid'
+    | '/getting-started/$step'
     | '/$username/'
+    | '/getting-started/'
     | '/$username/$slug/embed'
     | '/availability/$scheduleId'
     | '/bookings/$status'
     | '/event-types/$eventTypeId'
     | '/api/auth/$'
+    | '/api/avatar/$file'
     | '/api/v2/me'
     | '/d/$link/$slug'
     | '/availability/'
@@ -571,12 +601,15 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/auth/signup'
     | '/booking/$uid'
+    | '/getting-started/$step'
     | '/$username'
+    | '/getting-started'
     | '/$username/$slug/embed'
     | '/availability/$scheduleId'
     | '/bookings/$status'
     | '/event-types/$eventTypeId'
     | '/api/auth/$'
+    | '/api/avatar/$file'
     | '/api/v2/me'
     | '/d/$link/$slug'
     | '/availability'
@@ -625,12 +658,15 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/auth/signup'
     | '/booking/$uid'
+    | '/getting-started/$step'
     | '/$username/'
+    | '/getting-started/'
     | '/$username/$slug_/embed'
     | '/_authed/availability/$scheduleId'
     | '/_authed/bookings/$status'
     | '/_authed/event-types/$eventTypeId'
     | '/api/auth/$'
+    | '/api/avatar/$file'
     | '/api/v2/me'
     | '/d/$link/$slug'
     | '/_authed/availability/'
@@ -679,9 +715,12 @@ export interface RootRouteChildren {
   AuthResetPasswordRoute: typeof AuthResetPasswordRoute
   AuthSignupRoute: typeof AuthSignupRoute
   BookingUidRoute: typeof BookingUidRoute
+  GettingStartedStepRoute: typeof GettingStartedStepRoute
   UsernameIndexRoute: typeof UsernameIndexRoute
+  GettingStartedIndexRoute: typeof GettingStartedIndexRoute
   UsernameSlugEmbedRoute: typeof UsernameSlugEmbedRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiAvatarFileRoute: typeof ApiAvatarFileRoute
   ApiV2MeRoute: typeof ApiV2MeRoute
   DLinkSlugRoute: typeof DLinkSlugRoute
   ApiIntegrationsGooglecalendarAddRoute: typeof ApiIntegrationsGooglecalendarAddRoute
@@ -792,6 +831,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BookingUidRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/getting-started/': {
+      id: '/getting-started/'
+      path: '/getting-started'
+      fullPath: '/getting-started/'
+      preLoaderRoute: typeof GettingStartedIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/getting-started/$step': {
+      id: '/getting-started/$step'
+      path: '/getting-started/$step'
+      fullPath: '/getting-started/$step'
+      preLoaderRoute: typeof GettingStartedStepRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/$username/$slug_/embed': {
       id: '/$username/$slug_/embed'
       path: '/$username/$slug/embed'
@@ -846,6 +899,13 @@ declare module '@tanstack/react-router' {
       path: '/api/auth/$'
       fullPath: '/api/auth/$'
       preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/avatar/$file': {
+      id: '/api/avatar/$file'
+      path: '/api/avatar/$file'
+      fullPath: '/api/avatar/$file'
+      preLoaderRoute: typeof ApiAvatarFileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/v2/me': {
@@ -1144,9 +1204,12 @@ const rootRouteChildren: RootRouteChildren = {
   AuthResetPasswordRoute: AuthResetPasswordRoute,
   AuthSignupRoute: AuthSignupRoute,
   BookingUidRoute: BookingUidRoute,
+  GettingStartedStepRoute: GettingStartedStepRoute,
   UsernameIndexRoute: UsernameIndexRoute,
+  GettingStartedIndexRoute: GettingStartedIndexRoute,
   UsernameSlugEmbedRoute: UsernameSlugEmbedRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiAvatarFileRoute: ApiAvatarFileRoute,
   ApiV2MeRoute: ApiV2MeRoute,
   DLinkSlugRoute: DLinkSlugRoute,
   ApiIntegrationsGooglecalendarAddRoute: ApiIntegrationsGooglecalendarAddRoute,

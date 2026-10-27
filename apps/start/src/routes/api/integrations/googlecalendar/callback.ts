@@ -1,12 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getAuth } from "~/server/auth/auth";
+import { clearReturnCookie, redirectResponse, returnPath } from "~/server/calendars/connectReturn";
 import { getCalendarService, oauthStateSecret } from "~/server/calendars/container";
 import { verifyState } from "~/server/calendars/google/oauth";
 
 function backToSettings(request: Request, error?: string) {
-  const url = new URL("/settings/my-account/calendars", request.url);
+  const url = new URL(returnPath(request.headers.get("cookie")), request.url);
   if (error) url.searchParams.set("error", error);
-  return Response.redirect(url, 302);
+  return redirectResponse(url.toString(), clearReturnCookie());
 }
 
 export const Route = createFileRoute("/api/integrations/googlecalendar/callback")({

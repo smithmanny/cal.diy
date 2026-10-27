@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getAuth } from "~/server/auth/auth";
+import { redirectResponse, returnCookie } from "~/server/calendars/connectReturn";
 import { googleOAuthConfig, oauthStateSecret } from "~/server/calendars/container";
 import { buildAuthorizeUrl, signState } from "~/server/calendars/google/oauth";
 
@@ -16,7 +17,8 @@ export const Route = createFileRoute("/api/integrations/googlecalendar/add")({
         const config = googleOAuthConfig();
         if (!config) return new Response("Google Calendar is not configured", { status: 404 });
         const url = buildAuthorizeUrl(config, await signState(Number(session.user.id), oauthStateSecret()));
-        return Response.redirect(url, 302);
+        const returnTo = new URL(request.url).searchParams.get("returnTo");
+        return redirectResponse(url, returnCookie(returnTo));
       },
     },
   },

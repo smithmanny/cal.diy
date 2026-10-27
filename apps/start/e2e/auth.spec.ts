@@ -1,5 +1,5 @@
 import process from "node:process";
-import { PASSWORD, signUp, uniqueName } from "./support/helpers";
+import { completeOnboarding, PASSWORD, signUp, uniqueName } from "./support/helpers";
 import { expect, test } from "./support/test";
 
 test("protected pages redirect to login and keep the destination", async ({ page }) => {
@@ -24,7 +24,7 @@ test("signup enforces Cal's password rule, then signs in, survives reload, signs
 
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page).toHaveURL(/\/event-types$/);
+  await completeOnboarding(page);
   await page.reload();
   await expect(page.getByText(`${username}@example.com`)).toBeVisible();
 

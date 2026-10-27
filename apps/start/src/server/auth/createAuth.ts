@@ -128,6 +128,7 @@ export function createAuth({
         timeFormat: { type: "number", required: false, input: false },
         weekStart: { type: "string", required: false, input: false },
         appTheme: { type: "string", required: false, input: false },
+        completedOnboarding: { type: "boolean", required: false, input: false },
       },
     },
     emailAndPassword: {

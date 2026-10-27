@@ -4805,5 +4805,6 @@
   "end_date": "End date",
   "guests_disabled": "This event type doesn't allow guests",
   "booking_has_ended": "This booking has already ended",
+  "image_upload_error": "The image couldn't be uploaded. Try a smaller PNG, JPEG or WebP image.",
   "ADD_NEW_STRINGS_ABOVE_THIS_LINE_TO_PREVENT_MERGE_CONFLICTS": "↑↑↑↑↑↑↑↑↑↑↑↑↑ Add your new strings above here ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑"
 }
