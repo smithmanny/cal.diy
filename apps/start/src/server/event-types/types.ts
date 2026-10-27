@@ -1,5 +1,11 @@
 import { isIntervalLimitOrderValid } from "@calcom/scheduling/limits";
 import { z } from "zod";
+import {
+  DYNAMIC_VIDEO_LOCATION_TYPES,
+  findAppByLocationType,
+  isValidAppLink,
+  STATIC_LINK_LOCATION_TYPES,
+} from "~/lib/apps";
 import { bookerLayoutsSchema } from "~/lib/booker-layouts";
 import { bookingFieldInputSchema } from "~/lib/booking-fields";
 import { SUPPORTED_LOCALES } from "~/lib/locales";
@@ -12,6 +18,16 @@ const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const MAX_RECURRING_COUNT = 100;
 
 const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
+
+/** Static-link apps only accept links that look like theirs, as in Cal. */
+function checkAppLinks(locations: { type: string; link?: string }[], context: z.RefinementCtx) {
+  for (const [index, location] of locations.entries()) {
+    if (location.link === undefined || location.type === "link") continue;
+    const app = findAppByLocationType(location.type);
+    if (app && !isValidAppLink(app, location.link))
+      context.addIssue({ code: z.ZodIssueCode.custom, path: [index, "link"], message: "invalid_link" });
+  }
+}
 
 // Stored in EventType.locations using Cal's existing location shapes, so data stays portable.
 export const eventLocationSchema = z.discriminatedUnion("type", [
@@ -26,6 +42,9 @@ export const eventLocationSchema = z.discriminatedUnion("type", [
       .regex(/^\+?[\d\s().-]{6,20}$/),
   }),
   z.object({ type: z.literal("integrations:google:meet") }),
+  z.object({ type: z.enum(DYNAMIC_VIDEO_LOCATION_TYPES) }),
+  // The host's own room link for apps like Whereby; checked against the app's pattern below.
+  z.object({ type: z.enum(STATIC_LINK_LOCATION_TYPES), link: z.string().trim().url().max(2000) }),
 ]);
 
 export type EventLocation = z.infer<typeof eventLocationSchema>;
@@ -42,6 +61,8 @@ export const editableLocationSchema = z.discriminatedUnion("type", [
       .regex(/^\+?[\d\s().-]{6,20}$/),
   }),
   z.object({ type: z.literal("integrations:google:meet") }),
+  // The video listener creates the meeting for the booking's new location.
+  z.object({ type: z.enum(DYNAMIC_VIDEO_LOCATION_TYPES) }),
 ]);
 
 export type EditableLocation = z.infer<typeof editableLocationSchema>;
@@ -86,7 +107,7 @@ export const eventTypeFields = z.object({
   seatsShowAvailabilityCount: z.boolean(),
   hidden: z.boolean(),
   scheduleId: z.number().int().positive().nullable(),
-  locations: z.array(eventLocationSchema).max(10),
+  locations: z.array(eventLocationSchema).max(10).superRefine(checkAppLinks),
   minimumBookingNotice: z.number().int().min(0).max(525600),
   beforeEventBuffer: z.number().int().min(0).max(1440),
   afterEventBuffer: z.number().int().min(0).max(1440),

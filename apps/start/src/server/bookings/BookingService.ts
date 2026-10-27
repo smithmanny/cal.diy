@@ -718,7 +718,8 @@ export class BookingService {
       eventTypeTitle: eventType.title,
       host: host.name ?? host.username ?? host.email,
       attendeeName: booking.name,
-      locationLabel: (locationKey && messages[locationKey]) || booking.location || "",
+      // App names (Zoom Video, …) aren't translated, so they are their own label.
+      locationLabel: (locationKey && (messages[locationKey] ?? locationKey)) || booking.location || "",
       eventDuration: booking.length,
       responses,
       defaultTemplate: messages.event_between_users ?? "{{eventName}} between {{host}} and {{attendeeName}}",
@@ -1294,7 +1295,8 @@ export class BookingService {
         if (!chosenResponse?.optionValue) throw new AppError("enter_phone_number");
         return chosenResponse.optionValue;
       default:
-        return chosen.type;
+        // Static-link apps (Whereby, …) meet in the host's own room; others are filled in by the app.
+        return "link" in chosen ? chosen.link : chosen.type;
     }
   }
 }

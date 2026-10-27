@@ -8,7 +8,9 @@ function MaintenancePage() {
   const t = useT();
   return (
     <AuthCard title={t("under_maintenance")}>
-      <p className="text-muted-foreground text-sm">{t("under_maintenance_description", { appName: "Cal.diy" })}</p>
+      <p className="text-muted-foreground text-sm">
+        {t("under_maintenance_description", { appName: "Cal.diy" })}
+      </p>
     </AuthCard>
   );
 }

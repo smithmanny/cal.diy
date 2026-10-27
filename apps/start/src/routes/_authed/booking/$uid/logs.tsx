@@ -14,7 +14,10 @@ function BookingLogsPage() {
   const t = useT();
   return (
     <div className="flex max-w-2xl flex-col gap-4">
-      <Link to="/booking/$uid" params={{ uid }} className="flex items-center gap-1 text-muted-foreground text-sm">
+      <Link
+        to="/booking/$uid"
+        params={{ uid }}
+        className="flex items-center gap-1 text-muted-foreground text-sm">
         <ArrowLeftIcon className="size-4" />
         {t("back")}
       </Link>

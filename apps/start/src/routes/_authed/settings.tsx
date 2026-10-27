@@ -8,6 +8,7 @@ const TABS = [
   { to: "/settings/my-account/general", labelKey: "general" },
   { to: "/settings/my-account/appearance", labelKey: "appearance" },
   { to: "/settings/my-account/calendars", labelKey: "calendars" },
+  { to: "/settings/my-account/conferencing", labelKey: "conferencing" },
   { to: "/settings/my-account/out-of-office", labelKey: "out_of_office" },
   { to: "/settings/my-account/push-notifications", labelKey: "push_notifications" },
   { to: "/settings/security/password", labelKey: "password" },

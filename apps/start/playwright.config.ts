@@ -1,8 +1,30 @@
 import process from "node:process";
 import { defineConfig, devices } from "@playwright/test";
-import { APP_PORT, E2E_VAPID_PUBLIC_KEY, FAKE_GOOGLE_PORT, FAKE_RESEND_PORT } from "./e2e/support/ports";
+import {
+  APP_PORT,
+  E2E_VAPID_PUBLIC_KEY,
+  FAKE_APPS_PORT,
+  FAKE_GOOGLE_PORT,
+  FAKE_RESEND_PORT,
+} from "./e2e/support/ports";
 
 const PORT = APP_PORT;
+const FAKE_APPS = `http://localhost:${FAKE_APPS_PORT}`;
+
+// Points Microsoft, Zoom, Daily and iCloud at the fake apps server (e2e/support/fake-apps-server.ts).
+const fakeAppsEnv = {
+  MS_GRAPH_CLIENT_ID: "fake-ms-client",
+  MS_GRAPH_CLIENT_SECRET: "fake-ms-secret",
+  MS_OAUTH_URL: `${FAKE_APPS}/ms/oauth`,
+  MS_GRAPH_API_URL: `${FAKE_APPS}/ms/graph`,
+  ZOOM_CLIENT_ID: "fake-zoom-client",
+  ZOOM_CLIENT_SECRET: "fake-zoom-secret",
+  ZOOM_OAUTH_URL: `${FAKE_APPS}/zoom/oauth`,
+  ZOOM_API_URL: `${FAKE_APPS}/zoom/api`,
+  DAILY_API_KEY: "fake-daily-key",
+  DAILY_API_URL: `${FAKE_APPS}/daily`,
+  APPLE_CALDAV_URL: `${FAKE_APPS}/dav/`,
+};
 // Set once in the runner so workers, which re-read this file, reach the same database (see e2e/support/db.ts).
 process.env.E2E_DATABASE_URL ??= `file:./data/e2e-${Date.now()}.db`;
 const externalBaseUrl = process.env.E2E_BASE_URL;
@@ -54,6 +76,7 @@ export default defineConfig({
           // Throwaway keys for the fake push service; never use these anywhere real.
           VAPID_PUBLIC_KEY: E2E_VAPID_PUBLIC_KEY,
           VAPID_PRIVATE_KEY: "9Hybx7hZVQFwH-K7WA42hS3hLk2YK6Hr7X0_uF7bkLI",
+          ...fakeAppsEnv,
         },
       },
 });

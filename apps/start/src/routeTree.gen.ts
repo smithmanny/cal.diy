@@ -11,19 +11,28 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthedRouteImport } from './routes/_authed'
+import { Route as MaintenanceRouteImport } from './routes/maintenance'
 import { Route as UsernameIndexRouteImport } from './routes/$username/index'
 import { Route as UsernameSlugRouteImport } from './routes/$username/$slug'
 import { Route as UsernameEmbedRouteImport } from './routes/$username/embed'
+import { Route as AuthedMoreRouteImport } from './routes/_authed/more'
 import { Route as AuthedSettingsRouteImport } from './routes/_authed/settings'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
+import { Route as AuthErrorRouteImport } from './routes/auth/error'
 import { Route as AuthForgotPasswordRouteImport } from './routes/auth/forgot-password'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
+import { Route as AuthLogoutRouteImport } from './routes/auth/logout'
 import { Route as AuthResetPasswordRouteImport } from './routes/auth/reset-password'
+import { Route as AuthSigninRouteImport } from './routes/auth/signin'
 import { Route as AuthSignupRouteImport } from './routes/auth/signup'
+import { Route as BookingSuccessfulUidRouteImport } from './routes/booking-successful/$uid'
 import { Route as BookingUidRouteImport } from './routes/booking/$uid'
 import { Route as GettingStartedIndexRouteImport } from './routes/getting-started/index'
 import { Route as GettingStartedStepRouteImport } from './routes/getting-started/$step'
+import { Route as RescheduleUidRouteImport } from './routes/reschedule/$uid'
+import { Route as VideoUidRouteImport } from './routes/video/$uid'
 import { Route as UsernameSlugEmbedRouteImport } from './routes/$username/$slug_.embed'
+import { Route as AuthedAppsIndexRouteImport } from './routes/_authed/apps/index'
 import { Route as AuthedAvailabilityIndexRouteImport } from './routes/_authed/availability/index'
 import { Route as AuthedAvailabilityScheduleIdRouteImport } from './routes/_authed/availability/$scheduleId'
 import { Route as AuthedBookingsStatusRouteImport } from './routes/_authed/bookings/$status'
@@ -33,18 +42,23 @@ import { Route as AuthedSettingsIndexRouteImport } from './routes/_authed/settin
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiAvatarFileRouteImport } from './routes/api/avatar/$file'
 import { Route as ApiV2MeRouteImport } from './routes/api/v2/me'
+import { Route as AuthForgotPasswordIdRouteImport } from './routes/auth/forgot-password_.$id'
+import { Route as BookingUidEmbedRouteImport } from './routes/booking/$uid_.embed'
 import { Route as DLinkSlugRouteImport } from './routes/d/$link/$slug'
+import { Route as RescheduleUidEmbedRouteImport } from './routes/reschedule/$uid_.embed'
+import { Route as AuthedBookingUidLogsRouteImport } from './routes/_authed/booking/$uid/logs'
 import { Route as AuthedSettingsDeveloperApiKeysRouteImport } from './routes/_authed/settings/developer/api-keys'
 import { Route as AuthedSettingsMyAccountAppearanceRouteImport } from './routes/_authed/settings/my-account/appearance'
 import { Route as AuthedSettingsMyAccountCalendarsRouteImport } from './routes/_authed/settings/my-account/calendars'
+import { Route as AuthedSettingsMyAccountConferencingRouteImport } from './routes/_authed/settings/my-account/conferencing'
 import { Route as AuthedSettingsMyAccountGeneralRouteImport } from './routes/_authed/settings/my-account/general'
 import { Route as AuthedSettingsMyAccountOutOfOfficeRouteImport } from './routes/_authed/settings/my-account/out-of-office'
 import { Route as AuthedSettingsMyAccountProfileRouteImport } from './routes/_authed/settings/my-account/profile'
 import { Route as AuthedSettingsMyAccountPushNotificationsRouteImport } from './routes/_authed/settings/my-account/push-notifications'
 import { Route as AuthedSettingsSecurityPasswordRouteImport } from './routes/_authed/settings/security/password'
 import { Route as AuthedSettingsSecurityTwoFactorAuthRouteImport } from './routes/_authed/settings/security/two-factor-auth'
-import { Route as ApiIntegrationsGooglecalendarAddRouteImport } from './routes/api/integrations/googlecalendar/add'
-import { Route as ApiIntegrationsGooglecalendarCallbackRouteImport } from './routes/api/integrations/googlecalendar/callback'
+import { Route as ApiIntegrationsAppAddRouteImport } from './routes/api/integrations/$app/add'
+import { Route as ApiIntegrationsAppCallbackRouteImport } from './routes/api/integrations/$app/callback'
 import { Route as ApiV2BookingsIndexRouteImport } from './routes/api/v2/bookings/index'
 import { Route as ApiV2EventTypesIndexRouteImport } from './routes/api/v2/event-types/index'
 import { Route as ApiV2EventTypesEventTypeIdRouteImport } from './routes/api/v2/event-types/$eventTypeId'
@@ -57,6 +71,7 @@ import { Route as ApiV2WebhooksWebhookIdRouteImport } from './routes/api/v2/webh
 import { Route as DLinkSlugEmbedRouteImport } from './routes/d/$link/$slug_.embed'
 import { Route as AuthedSettingsDeveloperWebhooksIndexRouteImport } from './routes/_authed/settings/developer/webhooks/index'
 import { Route as AuthedSettingsDeveloperWebhooksWebhookIdRouteImport } from './routes/_authed/settings/developer/webhooks/$webhookId'
+import { Route as AuthedSettingsDeveloperWebhooksNewRouteImport } from './routes/_authed/settings/developer/webhooks/new'
 import { Route as ApiV2BookingsBookingUidIndexRouteImport } from './routes/api/v2/bookings/$bookingUid/index'
 import { Route as ApiV2BookingsBookingUidCancelRouteImport } from './routes/api/v2/bookings/$bookingUid/cancel'
 import { Route as ApiV2BookingsBookingUidConfirmRouteImport } from './routes/api/v2/bookings/$bookingUid/confirm'
@@ -75,6 +90,11 @@ const AuthedRoute = AuthedRouteImport.update({
   id: '/_authed',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MaintenanceRoute = MaintenanceRouteImport.update({
+  id: '/maintenance',
+  path: '/maintenance',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const UsernameIndexRoute = UsernameIndexRouteImport.update({
   id: '/$username/',
   path: '/$username/',
@@ -90,6 +110,11 @@ const UsernameEmbedRoute = UsernameEmbedRouteImport.update({
   path: '/$username/embed',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthedMoreRoute = AuthedMoreRouteImport.update({
+  id: '/more',
+  path: '/more',
+  getParentRoute: () => AuthedRoute,
+} as any)
 const AuthedSettingsRoute = AuthedSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -98,6 +123,11 @@ const AuthedSettingsRoute = AuthedSettingsRouteImport.update({
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
   path: '/api/health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthErrorRoute = AuthErrorRouteImport.update({
+  id: '/auth/error',
+  path: '/auth/error',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
@@ -110,14 +140,29 @@ const AuthLoginRoute = AuthLoginRouteImport.update({
   path: '/auth/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthLogoutRoute = AuthLogoutRouteImport.update({
+  id: '/auth/logout',
+  path: '/auth/logout',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
   id: '/auth/reset-password',
   path: '/auth/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthSigninRoute = AuthSigninRouteImport.update({
+  id: '/auth/signin',
+  path: '/auth/signin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthSignupRoute = AuthSignupRouteImport.update({
   id: '/auth/signup',
   path: '/auth/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BookingSuccessfulUidRoute = BookingSuccessfulUidRouteImport.update({
+  id: '/booking-successful/$uid',
+  path: '/booking-successful/$uid',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BookingUidRoute = BookingUidRouteImport.update({
@@ -135,10 +180,25 @@ const GettingStartedStepRoute = GettingStartedStepRouteImport.update({
   path: '/getting-started/$step',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RescheduleUidRoute = RescheduleUidRouteImport.update({
+  id: '/reschedule/$uid',
+  path: '/reschedule/$uid',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VideoUidRoute = VideoUidRouteImport.update({
+  id: '/video/$uid',
+  path: '/video/$uid',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const UsernameSlugEmbedRoute = UsernameSlugEmbedRouteImport.update({
   id: '/$username/$slug_/embed',
   path: '/$username/$slug/embed',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthedAppsIndexRoute = AuthedAppsIndexRouteImport.update({
+  id: '/apps/',
+  path: '/apps/',
+  getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedAvailabilityIndexRoute = AuthedAvailabilityIndexRouteImport.update({
   id: '/availability/',
@@ -187,10 +247,30 @@ const ApiV2MeRoute = ApiV2MeRouteImport.update({
   path: '/api/v2/me',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthForgotPasswordIdRoute = AuthForgotPasswordIdRouteImport.update({
+  id: '/auth/forgot-password_/$id',
+  path: '/auth/forgot-password/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BookingUidEmbedRoute = BookingUidEmbedRouteImport.update({
+  id: '/booking/$uid_/embed',
+  path: '/booking/$uid/embed',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DLinkSlugRoute = DLinkSlugRouteImport.update({
   id: '/d/$link/$slug',
   path: '/d/$link/$slug',
   getParentRoute: () => rootRouteImport,
+} as any)
+const RescheduleUidEmbedRoute = RescheduleUidEmbedRouteImport.update({
+  id: '/reschedule/$uid_/embed',
+  path: '/reschedule/$uid/embed',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthedBookingUidLogsRoute = AuthedBookingUidLogsRouteImport.update({
+  id: '/booking/$uid/logs',
+  path: '/booking/$uid/logs',
+  getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedSettingsDeveloperApiKeysRoute =
   AuthedSettingsDeveloperApiKeysRouteImport.update({
@@ -208,6 +288,12 @@ const AuthedSettingsMyAccountCalendarsRoute =
   AuthedSettingsMyAccountCalendarsRouteImport.update({
     id: '/my-account/calendars',
     path: '/my-account/calendars',
+    getParentRoute: () => AuthedSettingsRoute,
+  } as any)
+const AuthedSettingsMyAccountConferencingRoute =
+  AuthedSettingsMyAccountConferencingRouteImport.update({
+    id: '/my-account/conferencing',
+    path: '/my-account/conferencing',
     getParentRoute: () => AuthedSettingsRoute,
   } as any)
 const AuthedSettingsMyAccountGeneralRoute =
@@ -246,16 +332,15 @@ const AuthedSettingsSecurityTwoFactorAuthRoute =
     path: '/security/two-factor-auth',
     getParentRoute: () => AuthedSettingsRoute,
   } as any)
-const ApiIntegrationsGooglecalendarAddRoute =
-  ApiIntegrationsGooglecalendarAddRouteImport.update({
-    id: '/api/integrations/googlecalendar/add',
-    path: '/api/integrations/googlecalendar/add',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiIntegrationsGooglecalendarCallbackRoute =
-  ApiIntegrationsGooglecalendarCallbackRouteImport.update({
-    id: '/api/integrations/googlecalendar/callback',
-    path: '/api/integrations/googlecalendar/callback',
+const ApiIntegrationsAppAddRoute = ApiIntegrationsAppAddRouteImport.update({
+  id: '/api/integrations/$app/add',
+  path: '/api/integrations/$app/add',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiIntegrationsAppCallbackRoute =
+  ApiIntegrationsAppCallbackRouteImport.update({
+    id: '/api/integrations/$app/callback',
+    path: '/api/integrations/$app/callback',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiV2BookingsIndexRoute = ApiV2BookingsIndexRouteImport.update({
@@ -322,6 +407,12 @@ const AuthedSettingsDeveloperWebhooksWebhookIdRoute =
     path: '/developer/webhooks/$webhookId',
     getParentRoute: () => AuthedSettingsRoute,
   } as any)
+const AuthedSettingsDeveloperWebhooksNewRoute =
+  AuthedSettingsDeveloperWebhooksNewRouteImport.update({
+    id: '/developer/webhooks/new',
+    path: '/developer/webhooks/new',
+    getParentRoute: () => AuthedSettingsRoute,
+  } as any)
 const ApiV2BookingsBookingUidIndexRoute =
   ApiV2BookingsBookingUidIndexRouteImport.update({
     id: '/api/v2/bookings/$bookingUid/',
@@ -373,16 +464,24 @@ const ApiV2BookingsBookingUidRescheduleRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/maintenance': typeof MaintenanceRoute
   '/$username/$slug': typeof UsernameSlugRoute
   '/$username/embed': typeof UsernameEmbedRoute
+  '/more': typeof AuthedMoreRoute
   '/settings': typeof AuthedSettingsRouteWithChildren
   '/api/health': typeof ApiHealthRoute
+  '/auth/error': typeof AuthErrorRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
+  '/auth/logout': typeof AuthLogoutRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
+  '/auth/signin': typeof AuthSigninRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/booking-successful/$uid': typeof BookingSuccessfulUidRoute
   '/booking/$uid': typeof BookingUidRoute
   '/getting-started/$step': typeof GettingStartedStepRoute
+  '/reschedule/$uid': typeof RescheduleUidRoute
+  '/video/$uid': typeof VideoUidRoute
   '/$username/': typeof UsernameIndexRoute
   '/getting-started/': typeof GettingStartedIndexRoute
   '/$username/$slug/embed': typeof UsernameSlugEmbedRoute
@@ -392,21 +491,27 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/avatar/$file': typeof ApiAvatarFileRoute
   '/api/v2/me': typeof ApiV2MeRoute
+  '/auth/forgot-password/$id': typeof AuthForgotPasswordIdRoute
+  '/booking/$uid/embed': typeof BookingUidEmbedRoute
   '/d/$link/$slug': typeof DLinkSlugRoute
+  '/reschedule/$uid/embed': typeof RescheduleUidEmbedRoute
+  '/apps/': typeof AuthedAppsIndexRoute
   '/availability/': typeof AuthedAvailabilityIndexRoute
   '/event-types/': typeof AuthedEventTypesIndexRoute
   '/settings/': typeof AuthedSettingsIndexRoute
+  '/booking/$uid/logs': typeof AuthedBookingUidLogsRoute
   '/settings/developer/api-keys': typeof AuthedSettingsDeveloperApiKeysRoute
   '/settings/my-account/appearance': typeof AuthedSettingsMyAccountAppearanceRoute
   '/settings/my-account/calendars': typeof AuthedSettingsMyAccountCalendarsRoute
+  '/settings/my-account/conferencing': typeof AuthedSettingsMyAccountConferencingRoute
   '/settings/my-account/general': typeof AuthedSettingsMyAccountGeneralRoute
   '/settings/my-account/out-of-office': typeof AuthedSettingsMyAccountOutOfOfficeRoute
   '/settings/my-account/profile': typeof AuthedSettingsMyAccountProfileRoute
   '/settings/my-account/push-notifications': typeof AuthedSettingsMyAccountPushNotificationsRoute
   '/settings/security/password': typeof AuthedSettingsSecurityPasswordRoute
   '/settings/security/two-factor-auth': typeof AuthedSettingsSecurityTwoFactorAuthRoute
-  '/api/integrations/googlecalendar/add': typeof ApiIntegrationsGooglecalendarAddRoute
-  '/api/integrations/googlecalendar/callback': typeof ApiIntegrationsGooglecalendarCallbackRoute
+  '/api/integrations/$app/add': typeof ApiIntegrationsAppAddRoute
+  '/api/integrations/$app/callback': typeof ApiIntegrationsAppCallbackRoute
   '/api/v2/event-types/$eventTypeId': typeof ApiV2EventTypesEventTypeIdRoute
   '/api/v2/schedules/$scheduleId': typeof ApiV2SchedulesScheduleIdRoute
   '/api/v2/schedules/default': typeof ApiV2SchedulesDefaultRoute
@@ -418,6 +523,7 @@ export interface FileRoutesByFullPath {
   '/api/v2/slots/': typeof ApiV2SlotsIndexRoute
   '/api/v2/webhooks/': typeof ApiV2WebhooksIndexRoute
   '/settings/developer/webhooks/$webhookId': typeof AuthedSettingsDeveloperWebhooksWebhookIdRoute
+  '/settings/developer/webhooks/new': typeof AuthedSettingsDeveloperWebhooksNewRoute
   '/api/v2/bookings/$bookingUid/cancel': typeof ApiV2BookingsBookingUidCancelRoute
   '/api/v2/bookings/$bookingUid/confirm': typeof ApiV2BookingsBookingUidConfirmRoute
   '/api/v2/bookings/$bookingUid/decline': typeof ApiV2BookingsBookingUidDeclineRoute
@@ -430,15 +536,23 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/maintenance': typeof MaintenanceRoute
   '/$username/$slug': typeof UsernameSlugRoute
   '/$username/embed': typeof UsernameEmbedRoute
+  '/more': typeof AuthedMoreRoute
   '/api/health': typeof ApiHealthRoute
+  '/auth/error': typeof AuthErrorRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
+  '/auth/logout': typeof AuthLogoutRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
+  '/auth/signin': typeof AuthSigninRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/booking-successful/$uid': typeof BookingSuccessfulUidRoute
   '/booking/$uid': typeof BookingUidRoute
   '/getting-started/$step': typeof GettingStartedStepRoute
+  '/reschedule/$uid': typeof RescheduleUidRoute
+  '/video/$uid': typeof VideoUidRoute
   '/$username': typeof UsernameIndexRoute
   '/getting-started': typeof GettingStartedIndexRoute
   '/$username/$slug/embed': typeof UsernameSlugEmbedRoute
@@ -448,21 +562,27 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/avatar/$file': typeof ApiAvatarFileRoute
   '/api/v2/me': typeof ApiV2MeRoute
+  '/auth/forgot-password/$id': typeof AuthForgotPasswordIdRoute
+  '/booking/$uid/embed': typeof BookingUidEmbedRoute
   '/d/$link/$slug': typeof DLinkSlugRoute
+  '/reschedule/$uid/embed': typeof RescheduleUidEmbedRoute
+  '/apps': typeof AuthedAppsIndexRoute
   '/availability': typeof AuthedAvailabilityIndexRoute
   '/event-types': typeof AuthedEventTypesIndexRoute
   '/settings': typeof AuthedSettingsIndexRoute
+  '/booking/$uid/logs': typeof AuthedBookingUidLogsRoute
   '/settings/developer/api-keys': typeof AuthedSettingsDeveloperApiKeysRoute
   '/settings/my-account/appearance': typeof AuthedSettingsMyAccountAppearanceRoute
   '/settings/my-account/calendars': typeof AuthedSettingsMyAccountCalendarsRoute
+  '/settings/my-account/conferencing': typeof AuthedSettingsMyAccountConferencingRoute
   '/settings/my-account/general': typeof AuthedSettingsMyAccountGeneralRoute
   '/settings/my-account/out-of-office': typeof AuthedSettingsMyAccountOutOfOfficeRoute
   '/settings/my-account/profile': typeof AuthedSettingsMyAccountProfileRoute
   '/settings/my-account/push-notifications': typeof AuthedSettingsMyAccountPushNotificationsRoute
   '/settings/security/password': typeof AuthedSettingsSecurityPasswordRoute
   '/settings/security/two-factor-auth': typeof AuthedSettingsSecurityTwoFactorAuthRoute
-  '/api/integrations/googlecalendar/add': typeof ApiIntegrationsGooglecalendarAddRoute
-  '/api/integrations/googlecalendar/callback': typeof ApiIntegrationsGooglecalendarCallbackRoute
+  '/api/integrations/$app/add': typeof ApiIntegrationsAppAddRoute
+  '/api/integrations/$app/callback': typeof ApiIntegrationsAppCallbackRoute
   '/api/v2/event-types/$eventTypeId': typeof ApiV2EventTypesEventTypeIdRoute
   '/api/v2/schedules/$scheduleId': typeof ApiV2SchedulesScheduleIdRoute
   '/api/v2/schedules/default': typeof ApiV2SchedulesDefaultRoute
@@ -474,6 +594,7 @@ export interface FileRoutesByTo {
   '/api/v2/slots': typeof ApiV2SlotsIndexRoute
   '/api/v2/webhooks': typeof ApiV2WebhooksIndexRoute
   '/settings/developer/webhooks/$webhookId': typeof AuthedSettingsDeveloperWebhooksWebhookIdRoute
+  '/settings/developer/webhooks/new': typeof AuthedSettingsDeveloperWebhooksNewRoute
   '/api/v2/bookings/$bookingUid/cancel': typeof ApiV2BookingsBookingUidCancelRoute
   '/api/v2/bookings/$bookingUid/confirm': typeof ApiV2BookingsBookingUidConfirmRoute
   '/api/v2/bookings/$bookingUid/decline': typeof ApiV2BookingsBookingUidDeclineRoute
@@ -488,16 +609,24 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authed': typeof AuthedRouteWithChildren
+  '/maintenance': typeof MaintenanceRoute
   '/$username/$slug': typeof UsernameSlugRoute
   '/$username/embed': typeof UsernameEmbedRoute
+  '/_authed/more': typeof AuthedMoreRoute
   '/_authed/settings': typeof AuthedSettingsRouteWithChildren
   '/api/health': typeof ApiHealthRoute
+  '/auth/error': typeof AuthErrorRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
+  '/auth/logout': typeof AuthLogoutRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
+  '/auth/signin': typeof AuthSigninRoute
   '/auth/signup': typeof AuthSignupRoute
+  '/booking-successful/$uid': typeof BookingSuccessfulUidRoute
   '/booking/$uid': typeof BookingUidRoute
   '/getting-started/$step': typeof GettingStartedStepRoute
+  '/reschedule/$uid': typeof RescheduleUidRoute
+  '/video/$uid': typeof VideoUidRoute
   '/$username/': typeof UsernameIndexRoute
   '/getting-started/': typeof GettingStartedIndexRoute
   '/$username/$slug_/embed': typeof UsernameSlugEmbedRoute
@@ -507,21 +636,27 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/avatar/$file': typeof ApiAvatarFileRoute
   '/api/v2/me': typeof ApiV2MeRoute
+  '/auth/forgot-password_/$id': typeof AuthForgotPasswordIdRoute
+  '/booking/$uid_/embed': typeof BookingUidEmbedRoute
   '/d/$link/$slug': typeof DLinkSlugRoute
+  '/reschedule/$uid_/embed': typeof RescheduleUidEmbedRoute
+  '/_authed/apps/': typeof AuthedAppsIndexRoute
   '/_authed/availability/': typeof AuthedAvailabilityIndexRoute
   '/_authed/event-types/': typeof AuthedEventTypesIndexRoute
   '/_authed/settings/': typeof AuthedSettingsIndexRoute
+  '/_authed/booking/$uid/logs': typeof AuthedBookingUidLogsRoute
   '/_authed/settings/developer/api-keys': typeof AuthedSettingsDeveloperApiKeysRoute
   '/_authed/settings/my-account/appearance': typeof AuthedSettingsMyAccountAppearanceRoute
   '/_authed/settings/my-account/calendars': typeof AuthedSettingsMyAccountCalendarsRoute
+  '/_authed/settings/my-account/conferencing': typeof AuthedSettingsMyAccountConferencingRoute
   '/_authed/settings/my-account/general': typeof AuthedSettingsMyAccountGeneralRoute
   '/_authed/settings/my-account/out-of-office': typeof AuthedSettingsMyAccountOutOfOfficeRoute
   '/_authed/settings/my-account/profile': typeof AuthedSettingsMyAccountProfileRoute
   '/_authed/settings/my-account/push-notifications': typeof AuthedSettingsMyAccountPushNotificationsRoute
   '/_authed/settings/security/password': typeof AuthedSettingsSecurityPasswordRoute
   '/_authed/settings/security/two-factor-auth': typeof AuthedSettingsSecurityTwoFactorAuthRoute
-  '/api/integrations/googlecalendar/add': typeof ApiIntegrationsGooglecalendarAddRoute
-  '/api/integrations/googlecalendar/callback': typeof ApiIntegrationsGooglecalendarCallbackRoute
+  '/api/integrations/$app/add': typeof ApiIntegrationsAppAddRoute
+  '/api/integrations/$app/callback': typeof ApiIntegrationsAppCallbackRoute
   '/api/v2/event-types/$eventTypeId': typeof ApiV2EventTypesEventTypeIdRoute
   '/api/v2/schedules/$scheduleId': typeof ApiV2SchedulesScheduleIdRoute
   '/api/v2/schedules/default': typeof ApiV2SchedulesDefaultRoute
@@ -533,6 +668,7 @@ export interface FileRoutesById {
   '/api/v2/slots/': typeof ApiV2SlotsIndexRoute
   '/api/v2/webhooks/': typeof ApiV2WebhooksIndexRoute
   '/_authed/settings/developer/webhooks/$webhookId': typeof AuthedSettingsDeveloperWebhooksWebhookIdRoute
+  '/_authed/settings/developer/webhooks/new': typeof AuthedSettingsDeveloperWebhooksNewRoute
   '/api/v2/bookings/$bookingUid/cancel': typeof ApiV2BookingsBookingUidCancelRoute
   '/api/v2/bookings/$bookingUid/confirm': typeof ApiV2BookingsBookingUidConfirmRoute
   '/api/v2/bookings/$bookingUid/decline': typeof ApiV2BookingsBookingUidDeclineRoute
@@ -547,16 +683,24 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/maintenance'
     | '/$username/$slug'
     | '/$username/embed'
+    | '/more'
     | '/settings'
     | '/api/health'
+    | '/auth/error'
     | '/auth/forgot-password'
     | '/auth/login'
+    | '/auth/logout'
     | '/auth/reset-password'
+    | '/auth/signin'
     | '/auth/signup'
+    | '/booking-successful/$uid'
     | '/booking/$uid'
     | '/getting-started/$step'
+    | '/reschedule/$uid'
+    | '/video/$uid'
     | '/$username/'
     | '/getting-started/'
     | '/$username/$slug/embed'
@@ -566,21 +710,27 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/avatar/$file'
     | '/api/v2/me'
+    | '/auth/forgot-password/$id'
+    | '/booking/$uid/embed'
     | '/d/$link/$slug'
+    | '/reschedule/$uid/embed'
+    | '/apps/'
     | '/availability/'
     | '/event-types/'
     | '/settings/'
+    | '/booking/$uid/logs'
     | '/settings/developer/api-keys'
     | '/settings/my-account/appearance'
     | '/settings/my-account/calendars'
+    | '/settings/my-account/conferencing'
     | '/settings/my-account/general'
     | '/settings/my-account/out-of-office'
     | '/settings/my-account/profile'
     | '/settings/my-account/push-notifications'
     | '/settings/security/password'
     | '/settings/security/two-factor-auth'
-    | '/api/integrations/googlecalendar/add'
-    | '/api/integrations/googlecalendar/callback'
+    | '/api/integrations/$app/add'
+    | '/api/integrations/$app/callback'
     | '/api/v2/event-types/$eventTypeId'
     | '/api/v2/schedules/$scheduleId'
     | '/api/v2/schedules/default'
@@ -592,6 +742,7 @@ export interface FileRouteTypes {
     | '/api/v2/slots/'
     | '/api/v2/webhooks/'
     | '/settings/developer/webhooks/$webhookId'
+    | '/settings/developer/webhooks/new'
     | '/api/v2/bookings/$bookingUid/cancel'
     | '/api/v2/bookings/$bookingUid/confirm'
     | '/api/v2/bookings/$bookingUid/decline'
@@ -604,15 +755,23 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/maintenance'
     | '/$username/$slug'
     | '/$username/embed'
+    | '/more'
     | '/api/health'
+    | '/auth/error'
     | '/auth/forgot-password'
     | '/auth/login'
+    | '/auth/logout'
     | '/auth/reset-password'
+    | '/auth/signin'
     | '/auth/signup'
+    | '/booking-successful/$uid'
     | '/booking/$uid'
     | '/getting-started/$step'
+    | '/reschedule/$uid'
+    | '/video/$uid'
     | '/$username'
     | '/getting-started'
     | '/$username/$slug/embed'
@@ -622,21 +781,27 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/avatar/$file'
     | '/api/v2/me'
+    | '/auth/forgot-password/$id'
+    | '/booking/$uid/embed'
     | '/d/$link/$slug'
+    | '/reschedule/$uid/embed'
+    | '/apps'
     | '/availability'
     | '/event-types'
     | '/settings'
+    | '/booking/$uid/logs'
     | '/settings/developer/api-keys'
     | '/settings/my-account/appearance'
     | '/settings/my-account/calendars'
+    | '/settings/my-account/conferencing'
     | '/settings/my-account/general'
     | '/settings/my-account/out-of-office'
     | '/settings/my-account/profile'
     | '/settings/my-account/push-notifications'
     | '/settings/security/password'
     | '/settings/security/two-factor-auth'
-    | '/api/integrations/googlecalendar/add'
-    | '/api/integrations/googlecalendar/callback'
+    | '/api/integrations/$app/add'
+    | '/api/integrations/$app/callback'
     | '/api/v2/event-types/$eventTypeId'
     | '/api/v2/schedules/$scheduleId'
     | '/api/v2/schedules/default'
@@ -648,6 +813,7 @@ export interface FileRouteTypes {
     | '/api/v2/slots'
     | '/api/v2/webhooks'
     | '/settings/developer/webhooks/$webhookId'
+    | '/settings/developer/webhooks/new'
     | '/api/v2/bookings/$bookingUid/cancel'
     | '/api/v2/bookings/$bookingUid/confirm'
     | '/api/v2/bookings/$bookingUid/decline'
@@ -661,16 +827,24 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_authed'
+    | '/maintenance'
     | '/$username/$slug'
     | '/$username/embed'
+    | '/_authed/more'
     | '/_authed/settings'
     | '/api/health'
+    | '/auth/error'
     | '/auth/forgot-password'
     | '/auth/login'
+    | '/auth/logout'
     | '/auth/reset-password'
+    | '/auth/signin'
     | '/auth/signup'
+    | '/booking-successful/$uid'
     | '/booking/$uid'
     | '/getting-started/$step'
+    | '/reschedule/$uid'
+    | '/video/$uid'
     | '/$username/'
     | '/getting-started/'
     | '/$username/$slug_/embed'
@@ -680,21 +854,27 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/avatar/$file'
     | '/api/v2/me'
+    | '/auth/forgot-password_/$id'
+    | '/booking/$uid_/embed'
     | '/d/$link/$slug'
+    | '/reschedule/$uid_/embed'
+    | '/_authed/apps/'
     | '/_authed/availability/'
     | '/_authed/event-types/'
     | '/_authed/settings/'
+    | '/_authed/booking/$uid/logs'
     | '/_authed/settings/developer/api-keys'
     | '/_authed/settings/my-account/appearance'
     | '/_authed/settings/my-account/calendars'
+    | '/_authed/settings/my-account/conferencing'
     | '/_authed/settings/my-account/general'
     | '/_authed/settings/my-account/out-of-office'
     | '/_authed/settings/my-account/profile'
     | '/_authed/settings/my-account/push-notifications'
     | '/_authed/settings/security/password'
     | '/_authed/settings/security/two-factor-auth'
-    | '/api/integrations/googlecalendar/add'
-    | '/api/integrations/googlecalendar/callback'
+    | '/api/integrations/$app/add'
+    | '/api/integrations/$app/callback'
     | '/api/v2/event-types/$eventTypeId'
     | '/api/v2/schedules/$scheduleId'
     | '/api/v2/schedules/default'
@@ -706,6 +886,7 @@ export interface FileRouteTypes {
     | '/api/v2/slots/'
     | '/api/v2/webhooks/'
     | '/_authed/settings/developer/webhooks/$webhookId'
+    | '/_authed/settings/developer/webhooks/new'
     | '/api/v2/bookings/$bookingUid/cancel'
     | '/api/v2/bookings/$bookingUid/confirm'
     | '/api/v2/bookings/$bookingUid/decline'
@@ -720,24 +901,34 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthedRoute: typeof AuthedRouteWithChildren
+  MaintenanceRoute: typeof MaintenanceRoute
   UsernameSlugRoute: typeof UsernameSlugRoute
   UsernameEmbedRoute: typeof UsernameEmbedRoute
   ApiHealthRoute: typeof ApiHealthRoute
+  AuthErrorRoute: typeof AuthErrorRoute
   AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute
   AuthLoginRoute: typeof AuthLoginRoute
+  AuthLogoutRoute: typeof AuthLogoutRoute
   AuthResetPasswordRoute: typeof AuthResetPasswordRoute
+  AuthSigninRoute: typeof AuthSigninRoute
   AuthSignupRoute: typeof AuthSignupRoute
+  BookingSuccessfulUidRoute: typeof BookingSuccessfulUidRoute
   BookingUidRoute: typeof BookingUidRoute
   GettingStartedStepRoute: typeof GettingStartedStepRoute
+  RescheduleUidRoute: typeof RescheduleUidRoute
+  VideoUidRoute: typeof VideoUidRoute
   UsernameIndexRoute: typeof UsernameIndexRoute
   GettingStartedIndexRoute: typeof GettingStartedIndexRoute
   UsernameSlugEmbedRoute: typeof UsernameSlugEmbedRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiAvatarFileRoute: typeof ApiAvatarFileRoute
   ApiV2MeRoute: typeof ApiV2MeRoute
+  AuthForgotPasswordIdRoute: typeof AuthForgotPasswordIdRoute
+  BookingUidEmbedRoute: typeof BookingUidEmbedRoute
   DLinkSlugRoute: typeof DLinkSlugRoute
-  ApiIntegrationsGooglecalendarAddRoute: typeof ApiIntegrationsGooglecalendarAddRoute
-  ApiIntegrationsGooglecalendarCallbackRoute: typeof ApiIntegrationsGooglecalendarCallbackRoute
+  RescheduleUidEmbedRoute: typeof RescheduleUidEmbedRoute
+  ApiIntegrationsAppAddRoute: typeof ApiIntegrationsAppAddRoute
+  ApiIntegrationsAppCallbackRoute: typeof ApiIntegrationsAppCallbackRoute
   ApiV2EventTypesEventTypeIdRoute: typeof ApiV2EventTypesEventTypeIdRoute
   ApiV2SchedulesScheduleIdRoute: typeof ApiV2SchedulesScheduleIdRoute
   ApiV2SchedulesDefaultRoute: typeof ApiV2SchedulesDefaultRoute
@@ -774,6 +965,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/maintenance': {
+      id: '/maintenance'
+      path: '/maintenance'
+      fullPath: '/maintenance'
+      preLoaderRoute: typeof MaintenanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/$username/': {
       id: '/$username/'
       path: '/$username'
@@ -795,6 +993,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UsernameEmbedRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authed/more': {
+      id: '/_authed/more'
+      path: '/more'
+      fullPath: '/more'
+      preLoaderRoute: typeof AuthedMoreRouteImport
+      parentRoute: typeof AuthedRoute
+    }
     '/_authed/settings': {
       id: '/_authed/settings'
       path: '/settings'
@@ -807,6 +1012,13 @@ declare module '@tanstack/react-router' {
       path: '/api/health'
       fullPath: '/api/health'
       preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/error': {
+      id: '/auth/error'
+      path: '/auth/error'
+      fullPath: '/auth/error'
+      preLoaderRoute: typeof AuthErrorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/forgot-password': {
@@ -823,6 +1035,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/logout': {
+      id: '/auth/logout'
+      path: '/auth/logout'
+      fullPath: '/auth/logout'
+      preLoaderRoute: typeof AuthLogoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth/reset-password': {
       id: '/auth/reset-password'
       path: '/auth/reset-password'
@@ -830,11 +1049,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/signin': {
+      id: '/auth/signin'
+      path: '/auth/signin'
+      fullPath: '/auth/signin'
+      preLoaderRoute: typeof AuthSigninRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth/signup': {
       id: '/auth/signup'
       path: '/auth/signup'
       fullPath: '/auth/signup'
       preLoaderRoute: typeof AuthSignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/booking-successful/$uid': {
+      id: '/booking-successful/$uid'
+      path: '/booking-successful/$uid'
+      fullPath: '/booking-successful/$uid'
+      preLoaderRoute: typeof BookingSuccessfulUidRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/booking/$uid': {
@@ -858,12 +1091,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GettingStartedStepRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reschedule/$uid': {
+      id: '/reschedule/$uid'
+      path: '/reschedule/$uid'
+      fullPath: '/reschedule/$uid'
+      preLoaderRoute: typeof RescheduleUidRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/video/$uid': {
+      id: '/video/$uid'
+      path: '/video/$uid'
+      fullPath: '/video/$uid'
+      preLoaderRoute: typeof VideoUidRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/$username/$slug_/embed': {
       id: '/$username/$slug_/embed'
       path: '/$username/$slug/embed'
       fullPath: '/$username/$slug/embed'
       preLoaderRoute: typeof UsernameSlugEmbedRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authed/apps/': {
+      id: '/_authed/apps/'
+      path: '/apps'
+      fullPath: '/apps/'
+      preLoaderRoute: typeof AuthedAppsIndexRouteImport
+      parentRoute: typeof AuthedRoute
     }
     '/_authed/availability/': {
       id: '/_authed/availability/'
@@ -928,12 +1182,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV2MeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/forgot-password_/$id': {
+      id: '/auth/forgot-password_/$id'
+      path: '/auth/forgot-password/$id'
+      fullPath: '/auth/forgot-password/$id'
+      preLoaderRoute: typeof AuthForgotPasswordIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/booking/$uid_/embed': {
+      id: '/booking/$uid_/embed'
+      path: '/booking/$uid/embed'
+      fullPath: '/booking/$uid/embed'
+      preLoaderRoute: typeof BookingUidEmbedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/d/$link/$slug': {
       id: '/d/$link/$slug'
       path: '/d/$link/$slug'
       fullPath: '/d/$link/$slug'
       preLoaderRoute: typeof DLinkSlugRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/reschedule/$uid_/embed': {
+      id: '/reschedule/$uid_/embed'
+      path: '/reschedule/$uid/embed'
+      fullPath: '/reschedule/$uid/embed'
+      preLoaderRoute: typeof RescheduleUidEmbedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authed/booking/$uid/logs': {
+      id: '/_authed/booking/$uid/logs'
+      path: '/booking/$uid/logs'
+      fullPath: '/booking/$uid/logs'
+      preLoaderRoute: typeof AuthedBookingUidLogsRouteImport
+      parentRoute: typeof AuthedRoute
     }
     '/_authed/settings/developer/api-keys': {
       id: '/_authed/settings/developer/api-keys'
@@ -954,6 +1236,13 @@ declare module '@tanstack/react-router' {
       path: '/my-account/calendars'
       fullPath: '/settings/my-account/calendars'
       preLoaderRoute: typeof AuthedSettingsMyAccountCalendarsRouteImport
+      parentRoute: typeof AuthedSettingsRoute
+    }
+    '/_authed/settings/my-account/conferencing': {
+      id: '/_authed/settings/my-account/conferencing'
+      path: '/my-account/conferencing'
+      fullPath: '/settings/my-account/conferencing'
+      preLoaderRoute: typeof AuthedSettingsMyAccountConferencingRouteImport
       parentRoute: typeof AuthedSettingsRoute
     }
     '/_authed/settings/my-account/general': {
@@ -998,18 +1287,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedSettingsSecurityTwoFactorAuthRouteImport
       parentRoute: typeof AuthedSettingsRoute
     }
-    '/api/integrations/googlecalendar/add': {
-      id: '/api/integrations/googlecalendar/add'
-      path: '/api/integrations/googlecalendar/add'
-      fullPath: '/api/integrations/googlecalendar/add'
-      preLoaderRoute: typeof ApiIntegrationsGooglecalendarAddRouteImport
+    '/api/integrations/$app/add': {
+      id: '/api/integrations/$app/add'
+      path: '/api/integrations/$app/add'
+      fullPath: '/api/integrations/$app/add'
+      preLoaderRoute: typeof ApiIntegrationsAppAddRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/integrations/googlecalendar/callback': {
-      id: '/api/integrations/googlecalendar/callback'
-      path: '/api/integrations/googlecalendar/callback'
-      fullPath: '/api/integrations/googlecalendar/callback'
-      preLoaderRoute: typeof ApiIntegrationsGooglecalendarCallbackRouteImport
+    '/api/integrations/$app/callback': {
+      id: '/api/integrations/$app/callback'
+      path: '/api/integrations/$app/callback'
+      fullPath: '/api/integrations/$app/callback'
+      preLoaderRoute: typeof ApiIntegrationsAppCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/v2/bookings/': {
@@ -1096,6 +1385,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedSettingsDeveloperWebhooksWebhookIdRouteImport
       parentRoute: typeof AuthedSettingsRoute
     }
+    '/_authed/settings/developer/webhooks/new': {
+      id: '/_authed/settings/developer/webhooks/new'
+      path: '/developer/webhooks/new'
+      fullPath: '/settings/developer/webhooks/new'
+      preLoaderRoute: typeof AuthedSettingsDeveloperWebhooksNewRouteImport
+      parentRoute: typeof AuthedSettingsRoute
+    }
     '/api/v2/bookings/$bookingUid/': {
       id: '/api/v2/bookings/$bookingUid/'
       path: '/api/v2/bookings/$bookingUid'
@@ -1160,6 +1456,7 @@ interface AuthedSettingsRouteChildren {
   AuthedSettingsDeveloperApiKeysRoute: typeof AuthedSettingsDeveloperApiKeysRoute
   AuthedSettingsMyAccountAppearanceRoute: typeof AuthedSettingsMyAccountAppearanceRoute
   AuthedSettingsMyAccountCalendarsRoute: typeof AuthedSettingsMyAccountCalendarsRoute
+  AuthedSettingsMyAccountConferencingRoute: typeof AuthedSettingsMyAccountConferencingRoute
   AuthedSettingsMyAccountGeneralRoute: typeof AuthedSettingsMyAccountGeneralRoute
   AuthedSettingsMyAccountOutOfOfficeRoute: typeof AuthedSettingsMyAccountOutOfOfficeRoute
   AuthedSettingsMyAccountProfileRoute: typeof AuthedSettingsMyAccountProfileRoute
@@ -1167,6 +1464,7 @@ interface AuthedSettingsRouteChildren {
   AuthedSettingsSecurityPasswordRoute: typeof AuthedSettingsSecurityPasswordRoute
   AuthedSettingsSecurityTwoFactorAuthRoute: typeof AuthedSettingsSecurityTwoFactorAuthRoute
   AuthedSettingsDeveloperWebhooksWebhookIdRoute: typeof AuthedSettingsDeveloperWebhooksWebhookIdRoute
+  AuthedSettingsDeveloperWebhooksNewRoute: typeof AuthedSettingsDeveloperWebhooksNewRoute
   AuthedSettingsDeveloperWebhooksIndexRoute: typeof AuthedSettingsDeveloperWebhooksIndexRoute
 }
 
@@ -1176,6 +1474,8 @@ const AuthedSettingsRouteChildren: AuthedSettingsRouteChildren = {
   AuthedSettingsMyAccountAppearanceRoute:
     AuthedSettingsMyAccountAppearanceRoute,
   AuthedSettingsMyAccountCalendarsRoute: AuthedSettingsMyAccountCalendarsRoute,
+  AuthedSettingsMyAccountConferencingRoute:
+    AuthedSettingsMyAccountConferencingRoute,
   AuthedSettingsMyAccountGeneralRoute: AuthedSettingsMyAccountGeneralRoute,
   AuthedSettingsMyAccountOutOfOfficeRoute:
     AuthedSettingsMyAccountOutOfOfficeRoute,
@@ -1187,6 +1487,8 @@ const AuthedSettingsRouteChildren: AuthedSettingsRouteChildren = {
     AuthedSettingsSecurityTwoFactorAuthRoute,
   AuthedSettingsDeveloperWebhooksWebhookIdRoute:
     AuthedSettingsDeveloperWebhooksWebhookIdRoute,
+  AuthedSettingsDeveloperWebhooksNewRoute:
+    AuthedSettingsDeveloperWebhooksNewRoute,
   AuthedSettingsDeveloperWebhooksIndexRoute:
     AuthedSettingsDeveloperWebhooksIndexRoute,
 }
@@ -1196,21 +1498,27 @@ const AuthedSettingsRouteWithChildren = AuthedSettingsRoute._addFileChildren(
 )
 
 interface AuthedRouteChildren {
+  AuthedMoreRoute: typeof AuthedMoreRoute
   AuthedSettingsRoute: typeof AuthedSettingsRouteWithChildren
   AuthedAvailabilityScheduleIdRoute: typeof AuthedAvailabilityScheduleIdRoute
   AuthedBookingsStatusRoute: typeof AuthedBookingsStatusRoute
   AuthedEventTypesEventTypeIdRoute: typeof AuthedEventTypesEventTypeIdRoute
+  AuthedAppsIndexRoute: typeof AuthedAppsIndexRoute
   AuthedAvailabilityIndexRoute: typeof AuthedAvailabilityIndexRoute
   AuthedEventTypesIndexRoute: typeof AuthedEventTypesIndexRoute
+  AuthedBookingUidLogsRoute: typeof AuthedBookingUidLogsRoute
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
+  AuthedMoreRoute: AuthedMoreRoute,
   AuthedSettingsRoute: AuthedSettingsRouteWithChildren,
   AuthedAvailabilityScheduleIdRoute: AuthedAvailabilityScheduleIdRoute,
   AuthedBookingsStatusRoute: AuthedBookingsStatusRoute,
   AuthedEventTypesEventTypeIdRoute: AuthedEventTypesEventTypeIdRoute,
+  AuthedAppsIndexRoute: AuthedAppsIndexRoute,
   AuthedAvailabilityIndexRoute: AuthedAvailabilityIndexRoute,
   AuthedEventTypesIndexRoute: AuthedEventTypesIndexRoute,
+  AuthedBookingUidLogsRoute: AuthedBookingUidLogsRoute,
 }
 
 const AuthedRouteWithChildren =
@@ -1219,25 +1527,34 @@ const AuthedRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthedRoute: AuthedRouteWithChildren,
+  MaintenanceRoute: MaintenanceRoute,
   UsernameSlugRoute: UsernameSlugRoute,
   UsernameEmbedRoute: UsernameEmbedRoute,
   ApiHealthRoute: ApiHealthRoute,
+  AuthErrorRoute: AuthErrorRoute,
   AuthForgotPasswordRoute: AuthForgotPasswordRoute,
   AuthLoginRoute: AuthLoginRoute,
+  AuthLogoutRoute: AuthLogoutRoute,
   AuthResetPasswordRoute: AuthResetPasswordRoute,
+  AuthSigninRoute: AuthSigninRoute,
   AuthSignupRoute: AuthSignupRoute,
+  BookingSuccessfulUidRoute: BookingSuccessfulUidRoute,
   BookingUidRoute: BookingUidRoute,
   GettingStartedStepRoute: GettingStartedStepRoute,
+  RescheduleUidRoute: RescheduleUidRoute,
+  VideoUidRoute: VideoUidRoute,
   UsernameIndexRoute: UsernameIndexRoute,
   GettingStartedIndexRoute: GettingStartedIndexRoute,
   UsernameSlugEmbedRoute: UsernameSlugEmbedRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiAvatarFileRoute: ApiAvatarFileRoute,
   ApiV2MeRoute: ApiV2MeRoute,
+  AuthForgotPasswordIdRoute: AuthForgotPasswordIdRoute,
+  BookingUidEmbedRoute: BookingUidEmbedRoute,
   DLinkSlugRoute: DLinkSlugRoute,
-  ApiIntegrationsGooglecalendarAddRoute: ApiIntegrationsGooglecalendarAddRoute,
-  ApiIntegrationsGooglecalendarCallbackRoute:
-    ApiIntegrationsGooglecalendarCallbackRoute,
+  RescheduleUidEmbedRoute: RescheduleUidEmbedRoute,
+  ApiIntegrationsAppAddRoute: ApiIntegrationsAppAddRoute,
+  ApiIntegrationsAppCallbackRoute: ApiIntegrationsAppCallbackRoute,
   ApiV2EventTypesEventTypeIdRoute: ApiV2EventTypesEventTypeIdRoute,
   ApiV2SchedulesScheduleIdRoute: ApiV2SchedulesScheduleIdRoute,
   ApiV2SchedulesDefaultRoute: ApiV2SchedulesDefaultRoute,

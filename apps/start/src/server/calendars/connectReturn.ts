@@ -4,7 +4,6 @@
  */
 const COOKIE = "cal_calendar_return";
 const ALLOWED = new Set(["/getting-started/connected-calendar"]);
-const SETTINGS = "/settings/my-account/calendars";
 
 export function returnCookie(path: string | null): string | null {
   if (!path || !ALLOWED.has(path)) return null;
@@ -15,15 +14,15 @@ export function clearReturnCookie(): string {
   return `${COOKIE}=; Path=/api/integrations; Max-Age=0; HttpOnly; SameSite=Lax`;
 }
 
-/** The page to go back to: the allowed path the cookie names, else calendar settings. */
-export function returnPath(cookieHeader: string | null): string {
+/** The page to go back to: the allowed path the cookie names, else the app's own page. */
+export function returnPath(cookieHeader: string | null, fallback: string): string {
   const value = cookieHeader
     ?.split(";")
     .map((part) => part.trim())
     .find((part) => part.startsWith(`${COOKIE}=`))
     ?.slice(COOKIE.length + 1);
   const path = value ? decodeURIComponent(value) : null;
-  return path && ALLOWED.has(path) ? path : SETTINGS;
+  return path && ALLOWED.has(path) ? path : fallback;
 }
 
 export function redirectResponse(location: string, setCookie: string | null): Response {
