@@ -68,6 +68,16 @@ trusted client-IP header) sits behind the `#runtime` alias in `apps/start/src/se
 - [x] Data import from an existing Cal Postgres install (`import:postgres`, see
       [Migrating from an existing Cal install](#migrating-from-an-existing-cal-install)). Sign-in
       accepts the imported bcrypt hashes and upgrades them to scrypt
+- [x] Onboarding (`/getting-started/<step>`, Cal's four steps): new sign-ups go through it before
+      the app; accounts that existed before migration `0004` are marked as done. Avatars are stored
+      in Cal's `avatars` table and served from `/api/avatar/<key>.png`
+- [x] Web push notifications for new bookings (Settings > Push notifications), written with
+      WebCrypto (VAPID ES256, RFC 8291 aes128gcm) so they work on Workers. Set
+      `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` (`npx web-push generate-vapid-keys`) to turn them on
+- [x] Remaining small pages: `/booking/<uid>/logs`, `/more`, `/auth/logout`, `/auth/error`,
+      `/maintenance` and a translated 404. Cal's old URLs redirect: `/reschedule/<uid>`,
+      `/booking-successful/<uid>`, `/booking/<uid>/embed`, `/auth/signin`,
+      `/auth/forgot-password/<id>` (starts a new reset), `/settings/developer/webhooks/new`
 
 ### Phase 3: core booking ✅
 - [x] Repositories on Drizzle: User, EventType, Schedule/Availability, Booking/Attendee, Credential,

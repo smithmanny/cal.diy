@@ -1,6 +1,6 @@
 import { Button } from "@coss/ui/components/button";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { AuthCard } from "~/components/AuthCard";
 import { authClient } from "~/lib/auth-client";
 import { useT } from "~/lib/i18n";
@@ -10,9 +10,15 @@ import { loadMessages } from "~/lib/messages";
 function LogoutPage() {
   const t = useT();
   const router = useRouter();
+  const [done, setDone] = useState(false);
   useEffect(() => {
-    authClient.signOut().then(() => router.invalidate());
+    authClient
+      .signOut()
+      .then(() => router.invalidate())
+      .finally(() => setDone(true));
   }, [router]);
+  // Only claim the user is out once the session is really gone.
+  if (!done) return <AuthCard title="Cal.diy">{null}</AuthCard>;
   return (
     <AuthCard title={t("youve_been_logged_out")} subtitle={t("hope_to_see_you_soon")}>
       <Button className="w-full" render={<Link to="/auth/login" search={{ callbackUrl: "/event-types" }} />}>
