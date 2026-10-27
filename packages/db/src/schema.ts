@@ -534,6 +534,9 @@ export const user = sqliteTable(
       onUpdate: "cascade",
     }),
     locked: integer("locked", { mode: "boolean" }).notNull().default(false),
+    // Better Auth's admin plugin: why and until when a user is locked (its `banned` is `locked`).
+    banReason: text("banReason"),
+    banExpires: integer("banExpires", { mode: "timestamp_ms" }),
     movedToProfileId: integer("movedToProfileId")
       .unique("users_movedToProfileId_key")
       .references((): AnySQLiteColumn => profile.id, { onDelete: "set null", onUpdate: "cascade" }),
@@ -1364,6 +1367,11 @@ export const session = sqliteTable(
     expiresAt: integer("expiresAt", { mode: "timestamp_ms" }).notNull(),
     ipAddress: text("ipAddress"),
     userAgent: text("userAgent"),
+    /** The admin acting as this session's user (Better Auth's admin plugin). */
+    impersonatedBy: integer("impersonatedBy").references((): AnySQLiteColumn => user.id, {
+      onDelete: "cascade",
+      onUpdate: "cascade",
+    }),
     createdAt: integer("createdAt", { mode: "timestamp_ms" })
       .notNull()
       .$defaultFn(() => new Date()),

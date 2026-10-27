@@ -2,24 +2,15 @@ import "@tanstack/react-start/server-only";
 
 import process from "node:process";
 import type { Database } from "@calcom/db/database";
-import { IS_PRODUCTION_BUILD } from "../build";
+import { DEV_ENCRYPTION_KEY, encryptionKey } from "../crypto/encryptionKey";
 import { getDb } from "../db";
 import { CalendarRepository } from "./CalendarRepository";
 import { CalendarService } from "./CalendarService";
 import { googleEndpoints } from "./google/endpoints";
 import type { GoogleOAuthConfig } from "./google/oauth";
 
-const DEV_ENCRYPTION_KEY = "cal-diy-dev-only-encryption-key!";
-
 function publicUrl(): string {
   return (process.env.BETTER_AUTH_URL ?? "http://localhost:3000").replace(/\/+$/, "");
-}
-
-/** Same variable Cal uses, so credentials encrypted by an existing Cal install stay readable. */
-function encryptionKey(): string | null {
-  const key = process.env.CALENDSO_ENCRYPTION_KEY;
-  if (key) return key;
-  return IS_PRODUCTION_BUILD ? null : DEV_ENCRYPTION_KEY;
 }
 
 export function isGoogleCalendarEnabled(): boolean {
