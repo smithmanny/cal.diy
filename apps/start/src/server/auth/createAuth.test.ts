@@ -119,6 +119,38 @@ describe("createAuth", () => {
     expect(usernames[1]).toMatch(/^alex-\d{4}$/);
   });
 
+  it("signs in a user imported from Cal with their bcrypt hash, then stores Better Auth's hash", async () => {
+    const [imported] = await db
+      .insert(user)
+      .values({ email: "imported@example.com", username: "imported", emailVerified: true })
+      .returning({ id: user.id });
+    // "Password123", hashed by Cal's bcryptjs.
+    const bcryptHash = "$2b$04$yxyWVCgn3e8lTFpsV1iN6O32k5hMuBjoOZma/JYlrNNHtUE7SRcOW";
+    await db.insert(account).values({
+      userId: imported.id,
+      providerId: "credential",
+      accountId: String(imported.id),
+      password: bcryptHash,
+    });
+
+    await expect(
+      auth.api.signInEmail({ body: { email: "imported@example.com", password: "Password124" } })
+    ).rejects.toMatchObject({ body: { code: "INVALID_EMAIL_OR_PASSWORD" } });
+    const signedIn = await auth.api.signInEmail({
+      body: { email: "imported@example.com", password: "Password123" },
+    });
+    expect(signedIn.user.email).toBe("imported@example.com");
+
+    const [stored] = await db
+      .select({ password: account.password })
+      .from(account)
+      .where(eq(account.userId, imported.id));
+    expect(stored.password).not.toBe(bcryptHash);
+    await expect(
+      auth.api.signInEmail({ body: { email: "imported@example.com", password: "Password123" } })
+    ).resolves.toMatchObject({ user: { email: "imported@example.com" } });
+  });
+
   it("signs in with the right password, resolves the session from its cookie, and refuses a wrong one", async () => {
     await signUp({ email: "login@example.com", username: "login" });
 

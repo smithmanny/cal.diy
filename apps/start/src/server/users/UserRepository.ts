@@ -25,6 +25,14 @@ export class UserRepository {
     return new Set(rows.flatMap((row) => (row.username ? [row.username] : [])));
   }
 
+  /** Swaps one stored password hash for another; matching on the old hash makes a concurrent change win. */
+  async replacePasswordHash(oldHash: string, newHash: string): Promise<void> {
+    await this.db
+      .update(account)
+      .set({ password: newHash })
+      .where(and(eq(account.providerId, "credential"), eq(account.password, oldHash)));
+  }
+
   async findDefaultScheduleId(userId: number): Promise<number | null> {
     const [found] = await this.db
       .select({ defaultScheduleId: user.defaultScheduleId })
