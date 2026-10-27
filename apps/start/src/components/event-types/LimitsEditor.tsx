@@ -7,11 +7,10 @@ import { Button } from "@coss/ui/components/button";
 import { Input } from "@coss/ui/components/input";
 import { Switch } from "@coss/ui/components/switch";
 import { TrashIcon } from "lucide-react";
-import type { ReactNode } from "react";
 import { selectClass } from "~/components/availability/TimeSelect";
 import type { TFunction } from "~/lib/i18n";
 import type { EventTypeInput } from "~/server/event-types/types";
-import { Field, type SetField } from "./EditorLayout";
+import { Field, type SetField, ToggleBlock } from "./EditorLayout";
 
 const BUFFER_OPTIONS = [0, 5, 10, 15, 20, 30, 45, 60, 90, 120];
 const INTERVAL_OPTIONS = [5, 10, 15, 20, 30, 45, 60, 75, 90, 105, 120];
@@ -21,33 +20,6 @@ const LIMIT_KEYS: { key: IntervalLimitKey; labelKey: string }[] = [
   { key: "PER_MONTH", labelKey: "per_month" },
   { key: "PER_YEAR", labelKey: "per_year" },
 ];
-
-function ToggleBlock({
-  title,
-  description,
-  checked,
-  onCheckedChange,
-  children,
-}: {
-  title: string;
-  description?: string;
-  checked: boolean;
-  onCheckedChange: (checked: boolean) => void;
-  children?: ReactNode;
-}) {
-  return (
-    <div className="flex flex-col gap-3">
-      <label className="flex items-start gap-2 text-sm">
-        <Switch checked={checked} onCheckedChange={onCheckedChange} />
-        <span className="flex flex-col">
-          <span className="font-medium">{title}</span>
-          {description && <span className="text-muted-foreground">{description}</span>}
-        </span>
-      </label>
-      {checked && children && <div className="ps-10">{children}</div>}
-    </div>
-  );
-}
 
 /** Cal's per-day/week/month/year rows; one row per period, at most once each. */
 function IntervalLimitsEditor({

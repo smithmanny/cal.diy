@@ -109,6 +109,41 @@ describe("EventTypeService", () => {
     ).rejects.toMatchObject({ code: "booking_question_system_field_removed" });
   });
 
+  it("keeps the confirmation threshold in Cal's metadata without touching other keys", async () => {
+    const { id } = await service.create(ownerId, {
+      title: "Intro",
+      slug: "intro",
+      description: null,
+      length: 30,
+    });
+    await db
+      .update(eventType)
+      .set({ metadata: { apps: { stripe: { enabled: true } } } })
+      .where(eq(eventType.id, id));
+    const input = await baseInput(id);
+    await service.update(ownerId, id, {
+      ...input,
+      requiresConfirmation: true,
+      requiresConfirmationThreshold: { time: 4, unit: "hours" },
+      requiresConfirmationWillBlockSlot: true,
+    });
+    const metadataOf = async () =>
+      (await db.select({ metadata: eventType.metadata }).from(eventType).where(eq(eventType.id, id)))[0]
+        .metadata;
+    expect(await metadataOf()).toEqual({
+      apps: { stripe: { enabled: true } },
+      requiresConfirmationThreshold: { time: 4, unit: "hours" },
+    });
+    expect(await service.get(ownerId, id)).toMatchObject({
+      requiresConfirmationThreshold: { time: 4, unit: "hours" },
+      requiresConfirmationWillBlockSlot: true,
+    });
+
+    await service.update(ownerId, id, { ...(await baseInput(id)), requiresConfirmation: false });
+    expect(await metadataOf()).toEqual({ apps: { stripe: { enabled: true } } });
+    expect((await service.get(ownerId, id)).requiresConfirmationWillBlockSlot).toBe(false);
+  });
+
   it("rejects a URL the same user already uses, but allows it for other users", async () => {
     await service.create(ownerId, { title: "Intro", slug: "intro", description: null, length: 30 });
     await expect(

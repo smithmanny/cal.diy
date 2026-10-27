@@ -1,13 +1,13 @@
 import slugify from "@calcom/lib/slugify";
 import { Button } from "@coss/ui/components/button";
 import { Input } from "@coss/ui/components/input";
-import { Switch } from "@coss/ui/components/switch";
 import { Textarea } from "@coss/ui/components/textarea";
 import { createFileRoute, Link, notFound, useNavigate, useRouter } from "@tanstack/react-router";
 import { ArrowLeftIcon, ExternalLinkIcon } from "lucide-react";
 import { useState } from "react";
 import { FormError } from "~/components/AuthCard";
 import { selectClass } from "~/components/availability/TimeSelect";
+import { ADVANCED_MESSAGE_KEYS, AdvancedEditor } from "~/components/event-types/AdvancedEditor";
 import {
   BOOKING_QUESTIONS_MESSAGE_KEYS,
   BookingQuestionsEditor,
@@ -24,6 +24,7 @@ import type { EventTypeInput } from "~/server/event-types/types";
 import { listSchedules } from "~/server/schedules/functions";
 
 const MESSAGE_KEYS = [
+  ...ADVANCED_MESSAGE_KEYS,
   ...BOOKING_QUESTIONS_MESSAGE_KEYS,
   ...LOCATIONS_MESSAGE_KEYS,
   ...LIMITS_MESSAGE_KEYS,
@@ -66,7 +67,10 @@ function EventTypeEditorPage() {
   const bookingUrl = `${origin}/${user.username}/${eventType.slug}`;
 
   async function save() {
-    const invalid = limitsErrorKey(form);
+    const redirect = form.successRedirectUrl?.trim() || null;
+    const invalid =
+      limitsErrorKey(form) ??
+      (redirect && !/^https?:\/\/\S+$/i.test(redirect) ? "url_validation_error" : null);
     if (invalid) {
       setStatus({ kind: "error", key: invalid });
       return;
@@ -74,7 +78,12 @@ function EventTypeEditorPage() {
     setPending(true);
     setStatus(null);
     try {
-      await updateEventType({ data: { id, eventType: form } });
+      await updateEventType({
+        data: {
+          id,
+          eventType: { ...form, successRedirectUrl: redirect, eventName: form.eventName?.trim() || null },
+        },
+      });
       await router.invalidate();
       setStatus({ kind: "saved", key: "saved" });
     } catch (error) {
@@ -192,17 +201,7 @@ function EventTypeEditorPage() {
       </Section>
 
       <Section title={t("advanced")}>
-        <label className="flex items-center gap-2 font-medium text-sm">
-          <Switch
-            checked={form.requiresConfirmation}
-            onCheckedChange={(v) => set("requiresConfirmation", v)}
-          />
-          {t("requires_confirmation")}
-        </label>
-        <label className="flex items-center gap-2 font-medium text-sm">
-          <Switch checked={form.hidden} onCheckedChange={(v) => set("hidden", v)} />
-          {t("hide_from_profile")}
-        </label>
+        <AdvancedEditor form={form} set={set} t={t} />
       </Section>
 
       <div>

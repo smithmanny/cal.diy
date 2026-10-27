@@ -52,6 +52,23 @@ export const eventTypeFields = z.object({
   maxActiveBookingsPerBooker: z.number().int().min(1).max(1000).nullable(),
   maxActiveBookingPerBookerOfferReschedule: z.boolean(),
   requiresConfirmation: z.boolean(),
+  /** Cal's metadata.requiresConfirmationThreshold: only bookings made with less notice need confirming. */
+  requiresConfirmationThreshold: z
+    .object({ time: z.number().int().min(1).max(100_000), unit: z.enum(["minutes", "hours"]) })
+    .nullable(),
+  requiresConfirmationWillBlockSlot: z.boolean(),
+  disableCancelling: z.boolean(),
+  disableRescheduling: z.boolean(),
+  minimumRescheduleNotice: z.number().int().min(1).max(525_600).nullable(),
+  successRedirectUrl: z
+    .string()
+    .trim()
+    .url()
+    .max(2000)
+    .refine((url) => /^https?:\/\//i.test(url), { message: "invalid_url_error_message" })
+    .nullable(),
+  forwardParamsSuccessRedirect: z.boolean(),
+  eventName: z.string().trim().max(1000).nullable(),
   bookingFields: z.array(bookingFieldInputSchema).max(50),
 });
 

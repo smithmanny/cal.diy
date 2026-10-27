@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 // Only referenced inside handlers, so this server-only module stays out of the client bundle.
 import { isEmailEnabled } from "../emails/container";
-import { authMiddleware } from "../middleware";
+import { authMiddleware, optionalUserId } from "../middleware";
 import { getBookingService } from "./container";
 import { createBookingSchema, slotsQuerySchema } from "./types";
 
@@ -25,7 +25,7 @@ export const getAvailableSlots = createServerFn({ method: "GET" })
 
 export const createBooking = createServerFn({ method: "POST" })
   .validator(createBookingSchema)
-  .handler(async ({ data }) => (await getBookingService()).create(data));
+  .handler(async ({ data }) => (await getBookingService()).create(data, await optionalUserId()));
 
 // The uid is an unguessable token handed to the attendee and host, as in Cal.
 

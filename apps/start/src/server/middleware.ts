@@ -15,3 +15,10 @@ export const authMiddleware = createMiddleware({ type: "function" }).server(asyn
     },
   });
 });
+
+/** The signed-in user's id on public endpoints that treat hosts differently, else null. */
+export async function optionalUserId(): Promise<number | null> {
+  const auth = await getAuth();
+  const session = await auth.api.getSession({ headers: getRequestHeaders() });
+  return session ? Number(session.user.id) : null;
+}

@@ -12,7 +12,7 @@ import {
 import { AppError } from "../errors";
 import type { ScheduleRepository } from "../schedules/ScheduleRepository";
 import type { EventTypeRepository, EventTypeRow } from "./EventTypeRepository";
-import { parseIntervalLimit, toPeriodType } from "./fields";
+import { mergeMetadata, parseConfirmationThreshold, parseIntervalLimit, toPeriodType } from "./fields";
 import {
   type EventLocation,
   type EventTypeDto,
@@ -64,6 +64,14 @@ function toDto(row: EventTypeRow): EventTypeDto {
     maxActiveBookingsPerBooker: row.maxActiveBookingsPerBooker,
     maxActiveBookingPerBookerOfferReschedule: row.maxActiveBookingPerBookerOfferReschedule ?? false,
     requiresConfirmation: row.requiresConfirmation,
+    requiresConfirmationThreshold: parseConfirmationThreshold(row.metadata),
+    requiresConfirmationWillBlockSlot: row.requiresConfirmationWillBlockSlot,
+    disableCancelling: row.disableCancelling ?? false,
+    disableRescheduling: row.disableRescheduling ?? false,
+    minimumRescheduleNotice: row.minimumRescheduleNotice,
+    successRedirectUrl: row.successRedirectUrl,
+    forwardParamsSuccessRedirect: row.forwardParamsSuccessRedirect ?? true,
+    eventName: row.eventName,
     bookingFields: withSystemFields(parseBookingFields(row.bookingFields), {
       disableGuests: row.disableGuests,
     }).map(toBookingFieldInput),
@@ -155,6 +163,19 @@ export class EventTypeService {
       maxActiveBookingsPerBooker: input.maxActiveBookingsPerBooker,
       maxActiveBookingPerBookerOfferReschedule: input.maxActiveBookingPerBookerOfferReschedule,
       requiresConfirmation: input.requiresConfirmation,
+      requiresConfirmationWillBlockSlot:
+        input.requiresConfirmation && input.requiresConfirmationWillBlockSlot,
+      metadata: mergeMetadata(row.metadata, {
+        requiresConfirmationThreshold: input.requiresConfirmation
+          ? input.requiresConfirmationThreshold
+          : null,
+      }),
+      disableCancelling: input.disableCancelling,
+      disableRescheduling: input.disableRescheduling,
+      minimumRescheduleNotice: input.minimumRescheduleNotice,
+      successRedirectUrl: input.successRedirectUrl || null,
+      forwardParamsSuccessRedirect: input.forwardParamsSuccessRedirect,
+      eventName: input.eventName || null,
       bookingFields: applyBookingFields(row, input),
     });
   }

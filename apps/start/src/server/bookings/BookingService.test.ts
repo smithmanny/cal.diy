@@ -19,6 +19,7 @@ import type { BookingEvent } from "./events";
 
 let db: Database;
 let service: BookingService;
+let serviceDeps: ConstructorParameters<typeof BookingService>[0];
 let events: BookingEvent[];
 let pending: Promise<unknown>[];
 let hostId: number;
@@ -62,7 +63,7 @@ beforeEach(async () => {
     },
     { userId: hostId, title: "Secret", slug: "secret", length: 60, hidden: true },
   ]);
-  service = new BookingService({
+  serviceDeps = {
     userRepo,
     eventTypeRepo: new EventTypeRepository(db),
     scheduleRepo,
@@ -72,7 +73,8 @@ beforeEach(async () => {
     holidayService: new HolidayService({ repo: new HolidayRepository(db), fetchHolidays: null }),
     listeners: [async (event) => void events.push(event)],
     runInBackground: (promise) => void pending.push(promise),
-  });
+  };
+  service = new BookingService(serviceDeps);
 });
 
 const daySlots = (slug = "intro") =>
@@ -93,6 +95,15 @@ type BookOptions = {
   location?: { value: string; optionValue?: string };
   responses?: Record<string, unknown>;
 };
+
+const input = (start: string, slug = "intro", email = "guest@example.com") => ({
+  username: "host",
+  slug,
+  start,
+  timeZone: "Europe/Paris",
+  locale: "en",
+  responses: { name: "Guest", email, location: { value: "link" } },
+});
 
 const book = (start: string, options: BookOptions = {}) =>
   service.create({
@@ -321,6 +332,97 @@ describe("BookingService", () => {
     await db.update(eventType).set({ disableGuests: true }).where(eq(eventType.slug, "intro"));
     const { uid } = await book(at("10:00"), { responses: { guests: ["a@example.com"] } });
     expect((await service.getBooking(uid)).attendees).toHaveLength(1);
+  });
+
+  it("names bookings from the event's template, with question answers", async () => {
+    await db
+      .update(eventType)
+      .set({
+        eventName: "{Scheduler first name} x {Organiser} ({Event duration}, {Location}) {notes}{missing}",
+      })
+      .where(eq(eventType.slug, "intro"));
+    const { uid } = await book(at("10:00"), { notes: "Acme", responses: { name: "Greta Guest" } });
+    expect((await service.getBooking(uid)).title).toBe("Greta x Hana Host (60 mins, Link meeting) Acme");
+  });
+
+  it("only asks for confirmation within the threshold, when one is set", async () => {
+    await db
+      .update(eventType)
+      .set({ metadata: { requiresConfirmationThreshold: { time: 2, unit: "hours" }, apps: { x: 1 } } })
+      .where(eq(eventType.slug, "approval"));
+    const early = new BookingService({ ...serviceDeps, now: () => new Date(at("08:30")) });
+    await expect(early.create(input(at("11:00"), "approval"))).resolves.toMatchObject({ status: "ACCEPTED" });
+    await expect(early.create(input(at("09:00"), "approval", "b@example.com"))).resolves.toMatchObject({
+      status: "PENDING",
+    });
+  });
+
+  it("lets unconfirmed bookings block the slot when the event type says so", async () => {
+    await db
+      .update(eventType)
+      .set({ requiresConfirmationWillBlockSlot: true })
+      .where(eq(eventType.slug, "approval"));
+    await book(at("10:00"), { slug: "approval" });
+    expect(await slots("approval")).not.toContain(at("10:00"));
+    expect(await slots()).not.toContain(at("10:00"));
+    await expect(book(at("10:00"), { email: "b@example.com" })).rejects.toMatchObject({
+      code: "booking_conflict_error",
+    });
+  });
+
+  it("stops bookers cancelling or rescheduling when the host turned it off", async () => {
+    const { uid } = await book(at("10:00"));
+    await db
+      .update(eventType)
+      .set({ disableCancelling: true, disableRescheduling: true })
+      .where(eq(eventType.slug, "intro"));
+    expect(await service.getBooking(uid)).toMatchObject({ canCancel: false, canReschedule: false });
+    await expect(service.cancel(uid, null, null)).rejects.toMatchObject({ code: "cannot_cancel_booking" });
+    await expect(book(at("11:00"), { rescheduleUid: uid })).rejects.toMatchObject({
+      code: "rescheduling_is_disabled",
+    });
+    await service.cancelAsHost(hostId, uid, "Host can");
+    expect((await service.getBooking(uid)).status).toBe("CANCELLED");
+  });
+
+  it("refuses late reschedules within the minimum notice, except by the host", async () => {
+    await db.update(eventType).set({ minimumRescheduleNotice: 60 }).where(eq(eventType.slug, "intro"));
+    const { uid } = await book(at("10:00"));
+    const late = new BookingService({ ...serviceDeps, now: () => new Date(at("09:30")) });
+    expect(await late.getBooking(uid)).toMatchObject({ canReschedule: false, canCancel: true });
+    await expect(late.create({ ...input(at("11:00")), rescheduleUid: uid })).rejects.toMatchObject({
+      code: "reschedule_disabled_minimum_notice",
+    });
+    await expect(late.create({ ...input(at("11:00")), rescheduleUid: uid }, hostId)).resolves.toMatchObject({
+      status: "ACCEPTED",
+    });
+  });
+
+  it("sends bookers to the host's page with the booking's details", async () => {
+    await db
+      .update(eventType)
+      .set({ successRedirectUrl: "https://example.com/thanks?ref=cal" })
+      .where(eq(eventType.slug, "intro"));
+    const { uid, redirectUrl } = await book(at("10:00"), { responses: { guests: ["gus@example.com"] } });
+    const url = new URL(redirectUrl ?? "");
+    expect(url.origin + url.pathname).toBe("https://example.com/thanks");
+    expect(Object.fromEntries(url.searchParams)).toMatchObject({
+      ref: "cal",
+      uid,
+      startTime: "2030-01-07T10:00:00.000Z",
+      attendeeName: "Guest",
+      attendeeStartTime: "2030-01-07T11:00:00+01:00",
+      hostName: "Hana Host",
+      guestEmails: "gus@example.com",
+    });
+
+    await db
+      .update(eventType)
+      .set({ forwardParamsSuccessRedirect: false })
+      .where(eq(eventType.slug, "intro"));
+    expect((await book(at("12:00"), { email: "b@example.com" })).redirectUrl).toBe(
+      "https://example.com/thanks?ref=cal"
+    );
   });
 
   it("keeps bookings that need confirmation PENDING without blocking the slot, until accepted", async () => {

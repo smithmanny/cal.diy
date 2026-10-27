@@ -4,11 +4,11 @@ import { createFileRoute, Link, notFound, useRouter } from "@tanstack/react-rout
 import { useState } from "react";
 import { PageHeader } from "~/components/AppShell";
 import { FormError } from "~/components/AuthCard";
-import { LOCATION_LABEL_KEYS } from "~/components/booker/locationLabels";
 import { HydratedFieldset } from "~/components/HydratedFieldset";
 import { formatLongDate, formatTime } from "~/lib/date-utils";
 import { errorMessageKey } from "~/lib/errors";
 import { useT } from "~/lib/i18n";
+import { LOCATION_LABEL_KEYS } from "~/lib/location-labels";
 import { loadMessages } from "~/lib/messages";
 import { cancelBookingAsHost, decideBooking, listHostBookings } from "~/server/bookings/functions";
 

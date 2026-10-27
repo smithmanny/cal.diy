@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { BookerSidebar } from "~/components/booker/BookerSidebar";
 import { BOOKING_FIELD_MESSAGE_KEYS } from "~/components/booker/BookingFieldInput";
 import { BookingForm, type BookingSubmission } from "~/components/booker/BookingForm";
-import { LOCATION_LABEL_KEYS } from "~/components/booker/locationLabels";
 import { SlotPicker } from "~/components/booker/SlotPicker";
 import { useMonthSlots } from "~/components/booker/useMonthSlots";
 import { HydratedFieldset } from "~/components/HydratedFieldset";
@@ -11,6 +10,7 @@ import { PoweredBy } from "~/components/PoweredBy";
 import { ThemeScope } from "~/components/ThemeScope";
 import { HourCycleProvider } from "~/lib/hour-cycle";
 import { useT } from "~/lib/i18n";
+import { LOCATION_LABEL_KEYS } from "~/lib/location-labels";
 import { loadMessages } from "~/lib/messages";
 import { NOINDEX_META } from "~/lib/seo";
 import { createBooking, getPublicEvent } from "~/server/bookings/functions";
@@ -87,7 +87,7 @@ function BookerPage() {
 
   async function book(submission: BookingSubmission) {
     if (!selectedSlot || !slots.timeZone) return;
-    const { uid } = await createBooking({
+    const { uid, redirectUrl } = await createBooking({
       data: {
         username,
         slug,
@@ -98,7 +98,9 @@ function BookerPage() {
         rescheduleUid: submission.rescheduleUid ?? rescheduleUid,
       },
     });
-    await navigate({ to: "/booking/$uid", params: { uid } });
+    // The host's own thank-you page replaces ours, as in Cal.
+    if (redirectUrl) window.location.assign(redirectUrl);
+    else await navigate({ to: "/booking/$uid", params: { uid } });
   }
 
   return (

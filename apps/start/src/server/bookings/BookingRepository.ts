@@ -41,6 +41,24 @@ const detailColumns = {
   metadata: booking.metadata,
 };
 
+/** Accepted bookings, and pending ones whose event type says unconfirmed bookings block the slot. */
+function blocksTime(db: Database): SQL | undefined {
+  return or(
+    eq(booking.status, "ACCEPTED"),
+    and(
+      eq(booking.status, "PENDING"),
+      exists(
+        db
+          .select({ one: sql`1` })
+          .from(eventType)
+          .where(
+            and(eq(eventType.id, booking.eventTypeId), eq(eventType.requiresConfirmationWillBlockSlot, true))
+          )
+      )
+    )
+  );
+}
+
 export type NewBooking = {
   uid: string;
   userId: number;
@@ -89,7 +107,10 @@ export class BookingRepository {
     excludeUid?: string;
   }) {
     const overlaps = and(
-      eq(booking.status, "ACCEPTED"),
+      or(
+        eq(booking.status, "ACCEPTED"),
+        and(eq(booking.status, "PENDING"), eq(eventType.requiresConfirmationWillBlockSlot, true))
+      ),
       lt(booking.startTime, to),
       gt(booking.endTime, from),
       excludeUid ? ne(booking.uid, excludeUid) : undefined
@@ -116,7 +137,7 @@ export class BookingRepository {
   }
 
   /**
-   * Inserts the booking and its attendee only if the host has no ACCEPTED booking overlapping it.
+   * Inserts the booking and its attendees only if no booking that blocks time overlaps it.
    * The check and the insert are one statement (see conditionalInsert) because D1 can't hold a
    * transaction open; the attendee insert in the same batch finds the booking by its pre-generated
    * uid. Returns false when the slot was taken in the meantime.
@@ -130,7 +151,7 @@ export class BookingRepository {
         .where(
           and(
             eq(booking.userId, data.userId),
-            eq(booking.status, "ACCEPTED"),
+            blocksTime(this.db),
             lt(booking.startTime, data.endTime),
             gt(booking.endTime, data.startTime),
             // A reschedule may overlap the booking it replaces.
@@ -249,6 +270,9 @@ export class BookingRepository {
               length: eventType.length,
               bookingFields: eventType.bookingFields,
               disableGuests: eventType.disableGuests,
+              disableCancelling: eventType.disableCancelling,
+              disableRescheduling: eventType.disableRescheduling,
+              minimumRescheduleNotice: eventType.minimumRescheduleNotice,
             })
             .from(eventType)
             .where(eq(eventType.id, found.eventTypeId))

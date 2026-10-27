@@ -6,8 +6,8 @@ import type { ReactNode } from "react";
 import { selectClass } from "~/components/availability/TimeSelect";
 import { type BookingField, fieldLabel, fieldPlaceholder, type LocationResponse } from "~/lib/booking-fields";
 import type { TFunction } from "~/lib/i18n";
+import { LOCATION_LABEL_KEYS } from "~/lib/location-labels";
 import type { PublicEventLocation } from "~/server/bookings/types";
-import { LOCATION_LABEL_KEYS } from "./locationLabels";
 
 type FieldProps = {
   field: BookingField;

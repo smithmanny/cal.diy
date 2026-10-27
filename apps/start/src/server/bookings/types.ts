@@ -80,6 +80,9 @@ export type BookingDetailsDto = {
   cancellationReason: string | null;
   rescheduled: boolean;
   notes: string | null;
+  /** Whether the booker may still cancel or move it, per the event type's settings. */
+  canCancel: boolean;
+  canReschedule: boolean;
   answers: BookingAnswerDto[];
   host: { name: string | null; email: string; username: string | null; appearance: AppearanceDto } | null;
   eventType: { title: string; slug: string; length: number } | null;

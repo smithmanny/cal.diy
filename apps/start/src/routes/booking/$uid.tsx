@@ -4,7 +4,6 @@ import { createFileRoute, Link, notFound, useRouter } from "@tanstack/react-rout
 import { CheckCircle2Icon, ClockIcon, XCircleIcon } from "lucide-react";
 import { useState } from "react";
 import { FormError } from "~/components/AuthCard";
-import { LOCATION_LABEL_KEYS } from "~/components/booker/locationLabels";
 import { HydratedFieldset } from "~/components/HydratedFieldset";
 import { PoweredBy } from "~/components/PoweredBy";
 import { ThemeScope } from "~/components/ThemeScope";
@@ -12,6 +11,7 @@ import { formatResponse } from "~/lib/booking-fields";
 import { formatLongDate, formatTime } from "~/lib/date-utils";
 import { errorMessageKey } from "~/lib/errors";
 import { useT } from "~/lib/i18n";
+import { LOCATION_LABEL_KEYS } from "~/lib/location-labels";
 import { loadMessages } from "~/lib/messages";
 import { cancelBookingByUid, getBookingByUid } from "~/server/bookings/functions";
 
@@ -93,7 +93,7 @@ function BookingPage() {
   const heading = t(headingKey);
 
   const rows: [string, string | null][] = [
-    [t("what"), booking.eventType?.title ?? booking.title],
+    [t("what"), booking.title],
     [
       t("when"),
       `${formatLongDate(booking.startTime, timeZone, locale)}\n${formatTime(booking.startTime, timeZone, locale)} - ${formatTime(booking.endTime, timeZone, locale)} (${timeZone})`,
@@ -162,48 +162,59 @@ function BookingPage() {
               </>
             )}
           </dl>
-          {!isCancelled && !isPast && booking.host?.username && booking.eventType && (
-            <footer className="flex flex-col gap-3 border-t pt-6 text-center text-sm">
-              {cancelling ? (
-                <div className="flex flex-col gap-3 text-left">
-                  <label className="flex flex-col gap-1.5 font-medium">
-                    {t("cancellation_reason")}
-                    <Textarea
-                      rows={3}
-                      maxLength={1000}
-                      placeholder={t("cancellation_reason_placeholder")}
-                      value={reason}
-                      onChange={(event) => setReason(event.target.value)}
-                    />
-                  </label>
-                  <FormError message={errorKey && t(errorKey)} />
-                  <div className="flex justify-end gap-2">
-                    <Button variant="ghost" onClick={() => setCancelling(false)}>
-                      {t("back")}
-                    </Button>
-                    <Button variant="destructive" disabled={pending} onClick={cancel}>
-                      {t("cancel_event")}
-                    </Button>
+          {!isCancelled &&
+            !isPast &&
+            (booking.canCancel || booking.canReschedule) &&
+            booking.host?.username &&
+            booking.eventType && (
+              <footer className="flex flex-col gap-3 border-t pt-6 text-center text-sm">
+                {cancelling ? (
+                  <div className="flex flex-col gap-3 text-left">
+                    <label className="flex flex-col gap-1.5 font-medium">
+                      {t("cancellation_reason")}
+                      <Textarea
+                        rows={3}
+                        maxLength={1000}
+                        placeholder={t("cancellation_reason_placeholder")}
+                        value={reason}
+                        onChange={(event) => setReason(event.target.value)}
+                      />
+                    </label>
+                    <FormError message={errorKey && t(errorKey)} />
+                    <div className="flex justify-end gap-2">
+                      <Button variant="ghost" onClick={() => setCancelling(false)}>
+                        {t("back")}
+                      </Button>
+                      <Button variant="destructive" disabled={pending} onClick={cancel}>
+                        {t("cancel_event")}
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <p>
-                  {t("need_to_reschedule_or_cancel")}{" "}
-                  <Link
-                    to="/$username/$slug"
-                    params={{ username: booking.host.username, slug: booking.eventType.slug }}
-                    search={{ rescheduleUid: booking.uid }}
-                    className="font-medium underline">
-                    {t("reschedule")}
-                  </Link>{" "}
-                  ·{" "}
-                  <button type="button" className="font-medium underline" onClick={() => setCancelling(true)}>
-                    {t("cancel")}
-                  </button>
-                </p>
-              )}
-            </footer>
-          )}
+                ) : (
+                  <p>
+                    {t("need_to_reschedule_or_cancel")}{" "}
+                    {booking.canReschedule && (
+                      <Link
+                        to="/$username/$slug"
+                        params={{ username: booking.host.username, slug: booking.eventType.slug }}
+                        search={{ rescheduleUid: booking.uid }}
+                        className="font-medium underline">
+                        {t("reschedule")}
+                      </Link>
+                    )}
+                    {booking.canReschedule && booking.canCancel && " · "}
+                    {booking.canCancel && (
+                      <button
+                        type="button"
+                        className="font-medium underline"
+                        onClick={() => setCancelling(true)}>
+                        {t("cancel")}
+                      </button>
+                    )}
+                  </p>
+                )}
+              </footer>
+            )}
         </HydratedFieldset>
         <PoweredBy hidden={booking.host?.appearance.hideBranding ?? false} t={t} />
       </main>

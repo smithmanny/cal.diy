@@ -1,4 +1,5 @@
 import "@tanstack/react-start/server-only";
+import dayjs from "@calcom/dayjs";
 import type { JsonValue } from "@calcom/db/ids";
 import { cuid } from "@calcom/db/ids";
 import {
@@ -18,11 +19,13 @@ import {
   validateBookingResponses,
   withSystemFields,
 } from "~/lib/booking-fields";
+import { getEventName } from "~/lib/event-name";
+import { LOCATION_LABEL_KEYS } from "~/lib/location-labels";
 import { weekStartIndex } from "~/lib/time-format";
 import { pickMessages } from "../catalog";
 import { AppError } from "../errors";
 import type { EventTypeRepository } from "../event-types/EventTypeRepository";
-import { parseIntervalLimit, toPeriodType } from "../event-types/fields";
+import { parseConfirmationThreshold, parseIntervalLimit, toPeriodType } from "../event-types/fields";
 import { type EventLocation, eventLocationSchema } from "../event-types/types";
 import type { HolidayService } from "../holidays/HolidayService";
 import type { OutOfOfficeRepository } from "../out-of-office/OutOfOfficeRepository";
@@ -65,6 +68,58 @@ function bookingFieldsOf(eventType: { bookingFields: unknown; disableGuests: boo
   return withSystemFields(parseBookingFields(eventType.bookingFields), {
     disableGuests: eventType.disableGuests,
   });
+}
+
+type EventTypeRow = NonNullable<Awaited<ReturnType<EventTypeRepository["findByUserIdAndSlug"]>>>;
+
+/** Cal's isWithinMinimumRescheduleNotice: the booking starts soon, but hasn't started yet. */
+function isWithinRescheduleNotice(startTime: Date, notice: number | null | undefined, now: Date): boolean {
+  if (!notice || notice <= 0) return false;
+  const untilStart = startTime.getTime() - now.getTime();
+  return untilStart > 0 && untilStart < notice * 60_000;
+}
+
+type RedirectBooking = {
+  uid: string;
+  title: string;
+  description: string | null;
+  start: Date;
+  end: Date;
+  location: string | null;
+  host: { name: string | null; timeZone: string };
+  attendee: { name: string; timeZone: string };
+  guests: string[];
+  phone: string | null;
+};
+
+/**
+ * The host's "redirect on booking" URL, with the booking's details as query parameters when
+ * forwarding is on, named as in Cal's getBookingRedirectExtraParams.
+ */
+function successRedirectUrl(
+  eventType: Pick<EventTypeRow, "successRedirectUrl" | "forwardParamsSuccessRedirect">,
+  booking: RedirectBooking
+): string | null {
+  if (!eventType.successRedirectUrl) return null;
+  const url = new URL(eventType.successRedirectUrl);
+  if (eventType.forwardParamsSuccessRedirect === false) return url.toString();
+  const params: Record<string, string | null> = {
+    uid: booking.uid,
+    title: booking.title,
+    description: booking.description,
+    startTime: booking.start.toISOString(),
+    endTime: booking.end.toISOString(),
+    location: booking.location,
+    hostName: booking.host.name,
+    hostStartTime: booking.host.name ? dayjs(booking.start).tz(booking.host.timeZone).format() : null,
+    attendeeName: booking.attendee.name,
+    attendeeStartTime: dayjs(booking.start).tz(booking.attendee.timeZone).format(),
+    guestEmails: booking.guests.length ? booking.guests.join(", ") : null,
+    phone: booking.phone,
+    isEmbed: "false",
+  };
+  for (const [key, value] of Object.entries(params)) if (value) url.searchParams.append(key, value);
+  return url.toString();
 }
 
 function parseLocations(value: unknown): EventLocation[] {
@@ -187,13 +242,20 @@ export class BookingService {
     };
   }
 
-  async create(input: CreateBookingInput): Promise<{ uid: string; status: string }> {
+  /** `actorUserId` is the signed-in user, if any; a host may move their own booking at any time. */
+  async create(
+    input: CreateBookingInput,
+    actorUserId: number | null = null
+  ): Promise<{ uid: string; status: string; redirectUrl: string | null }> {
     if (!isValidTimeZone(input.timeZone)) throw new AppError("invalid_timezone");
     const { host, eventType } = await this.loadEvent(input.username, input.slug);
+    const now = this.deps.now?.() ?? new Date();
     const start = new Date(input.start);
     const end = new Date(start.getTime() + eventType.length * 60_000);
 
-    const original = input.rescheduleUid ? await this.findReschedulable(input.rescheduleUid, host.id) : null;
+    const original = input.rescheduleUid
+      ? await this.findReschedulable(input.rescheduleUid, host.id, actorUserId === host.id, now)
+      : null;
 
     // The slot list is the source of truth for what may be booked (hours, buffers, notice, window).
     const dayAround = 24 * 60 * 60 * 1000;
@@ -228,11 +290,22 @@ export class BookingService {
       (locationResponse?.value === "phone" ? locationResponse.optionValue : undefined) ||
       (typeof responses.attendeePhoneNumber === "string" ? responses.attendeePhoneNumber : null);
     const notes = typeof responses.notes === "string" ? responses.notes : null;
-    const messages = await pickMessages(host.locale ?? "en", ["event_between_users"]);
-    const title = (messages.event_between_users ?? "{{eventName}} between {{host}} and {{attendeeName}}")
-      .replace("{{eventName}}", eventType.title)
-      .replace("{{host}}", host.name ?? host.username ?? host.email)
-      .replace("{{attendeeName}}", name);
+    const locationKey = LOCATION_LABEL_KEYS[locationResponse?.value ?? ""];
+    const messages = await pickMessages(host.locale ?? "en", [
+      "event_between_users",
+      ...(locationKey ? [locationKey] : []),
+    ]);
+    const title = getEventName({
+      template: eventType.eventName,
+      eventTypeTitle: eventType.title,
+      host: host.name ?? host.username ?? host.email,
+      attendeeName: name,
+      locationLabel: (locationKey && messages[locationKey]) || location || "",
+      eventDuration: eventType.length,
+      responses,
+      defaultTemplate: messages.event_between_users ?? "{{eventName}} between {{host}} and {{attendeeName}}",
+    });
+    const status = this.needsConfirmation(eventType, start, now) ? "PENDING" : "ACCEPTED";
 
     // Cal drops guests that repeat the booker.
     const guests = (Array.isArray(responses.guests) ? responses.guests : []).filter(
@@ -252,7 +325,7 @@ export class BookingService {
         startTime: start,
         endTime: end,
         location,
-        status: eventType.requiresConfirmation ? "PENDING" : "ACCEPTED",
+        status,
         responses: responses as { [key: string]: JsonValue },
         fromReschedule: original?.uid ?? null,
         attendees: [
@@ -276,7 +349,24 @@ export class BookingService {
         });
       }
     }
-    return { uid, status: eventType.requiresConfirmation ? "PENDING" : "ACCEPTED" };
+    return {
+      uid,
+      status,
+      redirectUrl: eventType.successRedirectUrl
+        ? successRedirectUrl(eventType, {
+            uid,
+            title,
+            description: notes,
+            start,
+            end,
+            location,
+            host: { name: host.name, timeZone: host.timeZone },
+            attendee: { name, timeZone: input.timeZone },
+            guests,
+            phone: typeof responses.phone === "string" ? responses.phone : null,
+          })
+        : null,
+    };
   }
 
   async getBooking(uid: string): Promise<BookingDetailsDto> {
@@ -293,6 +383,14 @@ export class BookingService {
       cancellationReason: found.cancellationReason,
       rescheduled: Boolean(found.rescheduled),
       notes: typeof responses.notes === "string" ? responses.notes : null,
+      canCancel: !found.eventType?.disableCancelling,
+      canReschedule:
+        !found.eventType?.disableRescheduling &&
+        !isWithinRescheduleNotice(
+          found.startTime,
+          found.eventType?.minimumRescheduleNotice,
+          this.deps.now?.() ?? new Date()
+        ),
       answers: found.eventType
         ? userFieldAnswers(bookingFieldsOf(found.eventType), responses).map(({ field, value }) => ({
             name: field.name,
@@ -317,10 +415,23 @@ export class BookingService {
     };
   }
 
-  /** Anyone holding the uid (attendee or host) may cancel, as in Cal. */
+  /**
+   * Anyone holding the uid (attendee or host) may cancel, as in Cal, unless the event type turned
+   * cancelling off; the host can still cancel from their bookings.
+   */
   async cancel(uid: string, reason: string | null, cancelledBy: string | null): Promise<void> {
     const found = await this.deps.bookingRepo.findByUid(uid);
     if (!found) throw new AppError("booking_not_found", 404);
+    if (found.eventType?.disableCancelling) throw new AppError("cannot_cancel_booking", 403);
+    await this.cancelFound(found, reason, cancelledBy);
+  }
+
+  private async cancelFound(
+    found: NonNullable<Awaited<ReturnType<BookingRepository["findByUid"]>>>,
+    reason: string | null,
+    cancelledBy: string | null
+  ): Promise<void> {
+    const { uid } = found;
     if (found.status === "CANCELLED" || found.status === "REJECTED")
       throw new AppError("event_cancelled", 409);
     await this.deps.bookingRepo.updateStatus(uid, {
@@ -344,7 +455,7 @@ export class BookingService {
   async cancelAsHost(hostId: number, uid: string, reason: string | null): Promise<void> {
     const found = await this.deps.bookingRepo.findByUid(uid);
     if (!found || found.userId !== hostId) throw new AppError("booking_not_found", 404);
-    await this.cancel(uid, reason, found.host?.email ?? null);
+    await this.cancelFound(found, reason, found.host?.email ?? null);
   }
 
   /** Host-only decisions on bookings that require confirmation. */
@@ -414,10 +525,7 @@ export class BookingService {
   }
 
   /** Cal's "Limit number of upcoming bookings per booker". */
-  private async assertBookerUnderLimit(
-    eventType: NonNullable<Awaited<ReturnType<EventTypeRepository["findByUserIdAndSlug"]>>>,
-    email: string
-  ): Promise<void> {
+  private async assertBookerUnderLimit(eventType: EventTypeRow, email: string): Promise<void> {
     const max = eventType.maxActiveBookingsPerBooker;
     if (!max) return;
     const upcoming = await this.deps.bookingRepo.findUpcomingForAttendee({
@@ -438,12 +546,27 @@ export class BookingService {
     throw new AppError("booker_upcoming_limit_reached", 409, { count: max });
   }
 
-  private async findReschedulable(uid: string, hostId: number) {
+  private async findReschedulable(uid: string, hostId: number, byHost: boolean, now: Date) {
     const original = await this.deps.bookingRepo.findByUid(uid);
     if (!original || original.userId !== hostId) throw new AppError("booking_not_found", 404);
     if (original.status === "CANCELLED" || original.status === "REJECTED")
       throw new AppError("event_cancelled", 409);
+    if (original.eventType?.disableRescheduling) throw new AppError("rescheduling_is_disabled", 403);
+    if (
+      !byHost &&
+      isWithinRescheduleNotice(original.startTime, original.eventType?.minimumRescheduleNotice, now)
+    )
+      throw new AppError("reschedule_disabled_minimum_notice", 403);
     return original;
+  }
+
+  /** Cal's requiresConfirmationThreshold: with one set, only short-notice bookings need confirming. */
+  private needsConfirmation(eventType: EventTypeRow, start: Date, now: Date): boolean {
+    if (!eventType.requiresConfirmation) return false;
+    const threshold = parseConfirmationThreshold(eventType.metadata);
+    if (!threshold) return true;
+    const thresholdMs = threshold.time * (threshold.unit === "hours" ? 3_600_000 : 60_000);
+    return start.getTime() - now.getTime() < thresholdMs;
   }
 
   private async computeSlots(

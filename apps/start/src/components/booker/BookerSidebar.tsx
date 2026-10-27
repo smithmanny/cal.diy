@@ -1,8 +1,8 @@
 import { ClockIcon, GlobeIcon, MapPinIcon } from "lucide-react";
 import type { TFunction } from "~/lib/i18n";
+import { LOCATION_LABEL_KEYS } from "~/lib/location-labels";
 import type { PublicEventDto } from "~/server/bookings/types";
 import { TimeZoneSelect } from "../TimeZoneSelect";
-import { LOCATION_LABEL_KEYS } from "./locationLabels";
 
 export function BookerSidebar({
   event,
