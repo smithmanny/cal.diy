@@ -53,6 +53,7 @@ const detailColumns = {
   eventTypeColor: eventType.eventTypeColor,
   interfaceLanguage: eventType.interfaceLanguage,
   requiresBookerEmailVerification: eventType.requiresBookerEmailVerification,
+  recurringEvent: eventType.recurringEvent,
 };
 
 type WritableColumns = Partial<Omit<typeof eventType.$inferInsert, "id" | "userId" | "teamId">>;

@@ -20,6 +20,7 @@ import {
   parseIntervalLimit,
   parseMetadata,
   parseMultipleDuration,
+  parseRecurringEvent,
   toPeriodType,
 } from "./fields";
 import {
@@ -55,6 +56,7 @@ function toDto(row: EventTypeRow): EventTypeDto {
     description: row.description,
     length: row.length,
     multipleDuration: parseMultipleDuration(row.metadata),
+    recurringEvent: parseRecurringEvent(row.recurringEvent),
     hidden: row.hidden,
     scheduleId: row.scheduleId,
     locations: parseLocations(row.locations),
@@ -208,6 +210,7 @@ export class EventTypeService {
       hideCalendarEventDetails: input.hideCalendarEventDetails,
       hideOrganizerEmail: input.hideOrganizerEmail,
       requiresBookerEmailVerification: input.requiresBookerEmailVerification,
+      recurringEvent: input.recurringEvent,
       lockTimeZoneToggleOnBookingPage: input.lockTimeZoneToggleOnBookingPage,
       lockedTimeZone: input.lockTimeZoneToggleOnBookingPage ? input.lockedTimeZone : null,
       eventTypeColor: input.eventTypeColor,

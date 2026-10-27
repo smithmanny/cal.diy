@@ -10,12 +10,18 @@ import { ThemeScope } from "~/components/ThemeScope";
 import { formatResponse } from "~/lib/booking-fields";
 import { formatLongDate, formatTime } from "~/lib/date-utils";
 import { errorMessageKey } from "~/lib/errors";
-import { useT } from "~/lib/i18n";
+import { type TFunction, useT } from "~/lib/i18n";
 import { LOCATION_LABEL_KEYS } from "~/lib/location-labels";
 import { loadMessages } from "~/lib/messages";
+import { RECURRING_MESSAGE_KEYS, recurringSummary } from "~/lib/recurring";
 import { cancelBookingByUid, getBookingByUid } from "~/server/bookings/functions";
 
 const MESSAGE_KEYS = [
+  ...RECURRING_MESSAGE_KEYS,
+  "booking_submitted_recurring",
+  "meeting_is_scheduled_recurring",
+  "emailed_host_and_attendee_recurring",
+  "cancelling_all_recurring",
   "powered_by",
   ...Object.values(LOCATION_LABEL_KEYS),
   "meeting_is_scheduled",
@@ -42,12 +48,16 @@ const MESSAGE_KEYS = [
   "something_went_wrong",
 ];
 
-function statusPresentation(status: string, rescheduled: boolean) {
+function statusPresentation(status: string, rescheduled: boolean, recurring: boolean) {
   if (status === "CANCELLED" || status === "REJECTED") {
     return { headingKey: rescheduled ? "booking_rescheduled" : "event_cancelled", Icon: XCircleIcon };
   }
-  if (status === "PENDING") return { headingKey: "booking_submitted", Icon: ClockIcon };
-  return { headingKey: "meeting_is_scheduled", Icon: CheckCircle2Icon };
+  if (status === "PENDING")
+    return { headingKey: recurring ? "booking_submitted_recurring" : "booking_submitted", Icon: ClockIcon };
+  return {
+    headingKey: recurring ? "meeting_is_scheduled_recurring" : "meeting_is_scheduled",
+    Icon: CheckCircle2Icon,
+  };
 }
 
 function locationText(location: string | null, t: (key: string) => string): string | null {
@@ -60,20 +70,23 @@ function isUrl(value: string) {
   return /^https?:\/\//.test(value);
 }
 
-function BookingPage() {
-  const { booking } = Route.useLoaderData();
-  const { locale } = Route.useRouteContext();
-  const t = useT();
+/** Reschedule and cancel links for the booker, with the cancellation form. */
+function ManageFooter({
+  booking,
+  username,
+  slug,
+  t,
+}: {
+  booking: { uid: string; canCancel: boolean; canReschedule: boolean; recurring: object | null };
+  username: string;
+  slug: string;
+  t: TFunction;
+}) {
   const router = useRouter();
   const [cancelling, setCancelling] = useState(false);
   const [reason, setReason] = useState("");
   const [errorKey, setErrorKey] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  // Show times in the attendee's zone so server and client render the same thing.
-  const timeZone = booking.attendees[0]?.timeZone ?? "UTC";
-  const isCancelled = booking.status === "CANCELLED" || booking.status === "REJECTED";
-  const isPending = booking.status === "PENDING";
-  const isPast = new Date(booking.endTime) < new Date();
 
   async function cancel() {
     setPending(true);
@@ -89,15 +102,88 @@ function BookingPage() {
     }
   }
 
-  const { headingKey, Icon } = statusPresentation(booking.status, booking.rescheduled);
+  return (
+    <footer className="flex flex-col gap-3 border-t pt-6 text-center text-sm">
+      {cancelling ? (
+        <div className="flex flex-col gap-3 text-left">
+          {booking.recurring && <p className="text-muted-foreground">{t("cancelling_all_recurring")}</p>}
+          <label className="flex flex-col gap-1.5 font-medium">
+            {t("cancellation_reason")}
+            <Textarea
+              rows={3}
+              maxLength={1000}
+              placeholder={t("cancellation_reason_placeholder")}
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+            />
+          </label>
+          <FormError message={errorKey && t(errorKey)} />
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setCancelling(false)}>
+              {t("back")}
+            </Button>
+            <Button variant="destructive" disabled={pending} onClick={cancel}>
+              {t("cancel_event")}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <p>
+          {t("need_to_reschedule_or_cancel")}{" "}
+          {booking.canReschedule && (
+            <Link
+              to="/$username/$slug"
+              params={{ username: username, slug: slug }}
+              search={{ rescheduleUid: booking.uid }}
+              className="font-medium underline">
+              {t("reschedule")}
+            </Link>
+          )}
+          {booking.canReschedule && booking.canCancel && " · "}
+          {booking.canCancel && (
+            <button type="button" className="font-medium underline" onClick={() => setCancelling(true)}>
+              {t("cancel")}
+            </button>
+          )}
+        </p>
+      )}
+    </footer>
+  );
+}
+
+function BookingPage() {
+  const { booking } = Route.useLoaderData();
+  const { locale } = Route.useRouteContext();
+  const t = useT();
+  // Show times in the attendee's zone so server and client render the same thing.
+  const timeZone = booking.attendees[0]?.timeZone ?? "UTC";
+  const isCancelled = booking.status === "CANCELLED" || booking.status === "REJECTED";
+  const isPending = booking.status === "PENDING";
+  const isPast = new Date(booking.endTime) < new Date();
+
+  const { headingKey, Icon } = statusPresentation(
+    booking.status,
+    booking.rescheduled,
+    Boolean(booking.recurring)
+  );
   const heading = t(headingKey);
 
   const hostName = booking.host?.name ?? booking.host?.email ?? booking.host?.username ?? "";
+  const timeRange = (range: { startTime: string; endTime: string }) =>
+    `${formatLongDate(range.startTime, timeZone, locale)}\n${formatTime(range.startTime, timeZone, locale)} - ${formatTime(range.endTime, timeZone, locale)}`;
   const rows: [string, string | null][] = [
     [t("what"), booking.title],
     [
       t("when"),
-      `${formatLongDate(booking.startTime, timeZone, locale)}\n${formatTime(booking.startTime, timeZone, locale)} - ${formatTime(booking.endTime, timeZone, locale)} (${timeZone})`,
+      booking.recurring
+        ? [
+            recurringSummary(booking.recurring, t),
+            ...booking.recurring.occurrences
+              .filter((occurrence) => isCancelled || occurrence.status !== "CANCELLED")
+              .map((occurrence) => timeRange(occurrence)),
+            `(${timeZone})`,
+          ].join("\n")
+        : `${timeRange(booking)} (${timeZone})`,
     ],
     [
       t("who"),
@@ -136,7 +222,13 @@ function BookingPage() {
               </p>
             )}
             {!isCancelled && !isPending && booking.emailsEnabled && (
-              <p className="text-muted-foreground text-sm">{t("emailed_you_and_any_other_attendees")}</p>
+              <p className="text-muted-foreground text-sm">
+                {t(
+                  booking.recurring
+                    ? "emailed_host_and_attendee_recurring"
+                    : "emailed_you_and_any_other_attendees"
+                )}
+              </p>
             )}
           </header>
           <dl className="grid grid-cols-[6rem_1fr] gap-x-4 gap-y-3 border-t pt-6 text-sm">
@@ -168,53 +260,12 @@ function BookingPage() {
             (booking.canCancel || booking.canReschedule) &&
             booking.host?.username &&
             booking.eventType && (
-              <footer className="flex flex-col gap-3 border-t pt-6 text-center text-sm">
-                {cancelling ? (
-                  <div className="flex flex-col gap-3 text-left">
-                    <label className="flex flex-col gap-1.5 font-medium">
-                      {t("cancellation_reason")}
-                      <Textarea
-                        rows={3}
-                        maxLength={1000}
-                        placeholder={t("cancellation_reason_placeholder")}
-                        value={reason}
-                        onChange={(event) => setReason(event.target.value)}
-                      />
-                    </label>
-                    <FormError message={errorKey && t(errorKey)} />
-                    <div className="flex justify-end gap-2">
-                      <Button variant="ghost" onClick={() => setCancelling(false)}>
-                        {t("back")}
-                      </Button>
-                      <Button variant="destructive" disabled={pending} onClick={cancel}>
-                        {t("cancel_event")}
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <p>
-                    {t("need_to_reschedule_or_cancel")}{" "}
-                    {booking.canReschedule && (
-                      <Link
-                        to="/$username/$slug"
-                        params={{ username: booking.host.username, slug: booking.eventType.slug }}
-                        search={{ rescheduleUid: booking.uid }}
-                        className="font-medium underline">
-                        {t("reschedule")}
-                      </Link>
-                    )}
-                    {booking.canReschedule && booking.canCancel && " · "}
-                    {booking.canCancel && (
-                      <button
-                        type="button"
-                        className="font-medium underline"
-                        onClick={() => setCancelling(true)}>
-                        {t("cancel")}
-                      </button>
-                    )}
-                  </p>
-                )}
-              </footer>
+              <ManageFooter
+                booking={booking}
+                username={booking.host.username}
+                slug={booking.eventType.slug}
+                t={t}
+              />
             )}
         </HydratedFieldset>
         <PoweredBy hidden={booking.host?.appearance.hideBranding ?? false} t={t} />

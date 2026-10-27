@@ -27,6 +27,8 @@ export type BookingSnapshot = {
     /** Confirmation emails workflows send instead (Cal's disableStandardEmails.confirmation). */
     disableConfirmationEmails?: { host: boolean; attendee: boolean };
   } | null;
+  /** For a recurring booking, its rule and how many occurrences the series has. */
+  recurring: { freq: number; interval: number; count: number } | null;
   /** The event's questions, to label the answers; null once the event type is deleted. */
   bookingFields: BookingField[] | null;
   organizer: {
@@ -57,6 +59,11 @@ export type BookingEvent = {
   type: BookingEventType;
   booking: BookingSnapshot;
   rescheduledFrom?: BookingSnapshot;
+  /**
+   * Which occurrence of a recurring booking this is (0 first). Like Cal, people are only emailed
+   * about the first; webhooks and calendars still get every occurrence.
+   */
+  seriesIndex?: number;
 };
 
 /** Side effects run after the booking is committed; a failing listener never fails the booking. */

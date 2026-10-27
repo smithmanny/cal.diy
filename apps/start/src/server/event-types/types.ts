@@ -7,6 +7,9 @@ const limitValue = z.number().int().min(1).max(100_000).optional();
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
+/** Every occurrence is inserted in one batch, so a series is capped. */
+export const MAX_RECURRING_COUNT = 100;
+
 const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 
 // Stored in EventType.locations using Cal's existing location shapes, so data stays portable.
@@ -38,6 +41,14 @@ export const eventTypeFields = z.object({
   length: z.number().int().min(1).max(1440),
   /** Cal's metadata.multipleDuration: lengths the booker may pick, `length` being the default. */
   multipleDuration: z.array(z.number().int().min(1).max(1440)).min(1).max(30).nullable(),
+  /** Cal's recurringEvent with RRule frequencies: 0 yearly, 1 monthly, 2 weekly. */
+  recurringEvent: z
+    .object({
+      freq: z.union([z.literal(0), z.literal(1), z.literal(2)]),
+      interval: z.number().int().min(1).max(100),
+      count: z.number().int().min(1).max(MAX_RECURRING_COUNT),
+    })
+    .nullable(),
   hidden: z.boolean(),
   scheduleId: z.number().int().positive().nullable(),
   locations: z.array(eventLocationSchema).max(10),
@@ -93,6 +104,10 @@ export const eventTypeFields = z.object({
 });
 
 export const eventTypeInputSchema = eventTypeFields
+  .refine((input) => !input.recurringEvent || !input.maxActiveBookingsPerBooker, {
+    path: ["recurringEvent"],
+    message: "recurring_event_doesnt_support_booker_booking_limit",
+  })
   .refine((input) => !input.multipleDuration || input.multipleDuration.includes(input.length), {
     path: ["length"],
     message: "event_setup_multiple_duration_default_error",

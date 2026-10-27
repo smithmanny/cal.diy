@@ -215,6 +215,25 @@ describe("EventTypeService", () => {
     expect((await service.get(ownerId, id)).multipleDuration).toBeNull();
   });
 
+  it("stores recurring rules in Cal's shape, capping long series", async () => {
+    const { id } = await service.create(ownerId, {
+      title: "Intro",
+      slug: "intro",
+      description: null,
+      length: 30,
+    });
+    await service.update(ownerId, id, {
+      ...(await baseInput(id)),
+      recurringEvent: { freq: 1, interval: 2, count: 6 },
+    });
+    expect((await service.get(ownerId, id)).recurringEvent).toEqual({ freq: 1, interval: 2, count: 6 });
+    await db
+      .update(eventType)
+      .set({ recurringEvent: { freq: 2, interval: 1, count: 500, dtstart: "2020-01-01" } })
+      .where(eq(eventType.id, id));
+    expect((await service.get(ownerId, id)).recurringEvent).toEqual({ freq: 2, interval: 1, count: 100 });
+  });
+
   it("rejects a URL the same user already uses, but allows it for other users", async () => {
     await service.create(ownerId, { title: "Intro", slug: "intro", description: null, length: 30 });
     await expect(

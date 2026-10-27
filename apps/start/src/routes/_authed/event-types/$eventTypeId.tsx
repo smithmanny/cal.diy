@@ -16,6 +16,7 @@ import { DURATION_MESSAGE_KEYS, DurationEditor } from "~/components/event-types/
 import { Field, Section } from "~/components/event-types/EditorLayout";
 import { LIMITS_MESSAGE_KEYS, LimitsEditor, limitsErrorKey } from "~/components/event-types/LimitsEditor";
 import { LOCATIONS_MESSAGE_KEYS, LocationsEditor } from "~/components/event-types/LocationsEditor";
+import { RECURRING_EDITOR_MESSAGE_KEYS, RecurringEditor } from "~/components/event-types/RecurringEditor";
 import { HydratedFieldset } from "~/components/HydratedFieldset";
 import { errorMessageKey } from "~/lib/errors";
 import { useT } from "~/lib/i18n";
@@ -26,6 +27,8 @@ import { listSchedules } from "~/server/schedules/functions";
 
 const MESSAGE_KEYS = [
   ...ADVANCED_MESSAGE_KEYS,
+  ...RECURRING_EDITOR_MESSAGE_KEYS,
+  "recurring",
   ...DURATION_MESSAGE_KEYS,
   ...BOOKING_QUESTIONS_MESSAGE_KEYS,
   ...LOCATIONS_MESSAGE_KEYS,
@@ -74,6 +77,9 @@ function EventTypeEditorPage() {
       limitsErrorKey(form) ??
       (form.multipleDuration && !form.multipleDuration.length
         ? "event_setup_multiple_duration_error"
+        : null) ??
+      (form.recurringEvent && form.maxActiveBookingsPerBooker
+        ? "recurring_event_doesnt_support_booker_booking_limit"
         : null) ??
       (redirect && !/^https?:\/\/\S+$/i.test(redirect) ? "url_validation_error" : null);
     if (invalid) {
@@ -191,6 +197,10 @@ function EventTypeEditorPage() {
           onChange={(fields) => set("bookingFields", fields)}
           t={t}
         />
+      </Section>
+
+      <Section title={t("recurring")}>
+        <RecurringEditor form={form} set={set} t={t} />
       </Section>
 
       <Section title={t("event_limit_tab_title")}>

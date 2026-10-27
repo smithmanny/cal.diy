@@ -63,7 +63,8 @@ export class EmailService {
 
   async onBookingEvent(event: BookingEvent): Promise<void> {
     const plan = PLANS[event.type];
-    if (!plan) return;
+    // One email covers a whole recurring series, as in Cal.
+    if (!plan || (event.seriesIndex ?? 0) > 0) return;
     const booking = event.booking;
     const manageUrl = `${this.deps.publicUrl}/booking/${booking.uid}`;
     const hideOrganizerEmail = Boolean(booking.eventType?.hideOrganizerEmail);

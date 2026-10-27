@@ -199,6 +199,85 @@ describe("BookingService", () => {
     });
   });
 
+  describe("recurring events", () => {
+    beforeEach(async () => {
+      await db
+        .update(eventType)
+        .set({ recurringEvent: { freq: 2, interval: 1, count: 4 } })
+        .where(eq(eventType.slug, "intro"));
+    });
+
+    it("books every occurrence, checking only the first slot like Cal", async () => {
+      // Busy at the second occurrence: Cal doesn't check it, so neither do we.
+      await db.update(eventType).set({ recurringEvent: null }).where(eq(eventType.slug, "intro"));
+      await book("2030-01-14T10:00:00.000Z", { email: "other@example.com" });
+      await db
+        .update(eventType)
+        .set({ recurringEvent: { freq: 2, interval: 1, count: 4 } })
+        .where(eq(eventType.slug, "intro"));
+      await Promise.all(pending);
+      events.length = 0;
+      const { uid } = await service.create({ ...input(at("10:00")), recurringCount: 3 });
+      const details = await service.getBooking(uid);
+      expect(details.recurring).toMatchObject({ freq: 2, interval: 1, count: 3 });
+      expect(details.recurring?.occurrences.map((occurrence) => occurrence.startTime)).toEqual([
+        "2030-01-07T10:00:00.000Z",
+        "2030-01-14T10:00:00.000Z",
+        "2030-01-21T10:00:00.000Z",
+      ]);
+      expect(details.canReschedule).toBe(false);
+      await Promise.all(pending);
+      const created = events.filter((event) => event.type === "BOOKING_CREATED" && event.booking.recurring);
+      expect(created.map((event) => event.seriesIndex)).toEqual([0, 1, 2]);
+      await expect(service.create({ ...input(at("11:00")), recurringCount: 5 })).rejects.toMatchObject({
+        code: "something_went_wrong",
+      });
+    });
+
+    it("refuses the whole series when the first slot is taken", async () => {
+      await service.create(input(at("10:00")));
+      await expect(service.create({ ...input(at("10:00"), "intro", "b@example.com") })).rejects.toMatchObject(
+        {
+          code: "booking_conflict_error",
+        }
+      );
+      const rows = await db.select({ uid: booking.uid }).from(booking);
+      expect(rows).toHaveLength(4);
+    });
+
+    it("cancels what remains of the series, and lists it once for the host", async () => {
+      const { uid } = await service.create(input(at("10:00")));
+      expect(await service.listForHost(hostId, "recurring", 50)).toEqual([
+        expect.objectContaining({ uid, recurring: { freq: 2, interval: 1, count: 4 } }),
+      ]);
+      const [, second] = (await service.getBooking(uid)).recurring?.occurrences ?? [];
+      await service.cancelAsHost(hostId, second.uid, null);
+      expect((await service.getBooking(uid)).recurring?.occurrences.map((o) => o.status)).toEqual([
+        "ACCEPTED",
+        "CANCELLED",
+        "ACCEPTED",
+        "ACCEPTED",
+      ]);
+      await service.cancel(uid, "Done", null);
+      expect(
+        (await service.getBooking(uid)).recurring?.occurrences.every((o) => o.status === "CANCELLED")
+      ).toBe(true);
+    });
+
+    it("confirms a recurring request as a whole", async () => {
+      await db
+        .update(eventType)
+        .set({ recurringEvent: { freq: 1, interval: 1, count: 2 } })
+        .where(eq(eventType.slug, "approval"));
+      const { uid } = await book(at("10:00"), { slug: "approval" });
+      await service.decide(hostId, uid, true, null);
+      expect((await service.getBooking(uid)).recurring?.occurrences.map((o) => o.status)).toEqual([
+        "ACCEPTED",
+        "ACCEPTED",
+      ]);
+    });
+  });
+
   it("hides links and phone numbers from the public event details", async () => {
     const { eventType: details } = await service.getPublicEvent("host", "intro");
     expect(details.locations).toEqual([{ type: "phone" }, { type: "link" }]);

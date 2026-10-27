@@ -24,6 +24,7 @@ const booking: BookingSnapshot = {
   cancellationReason: null,
   fromReschedule: null,
   bookingFields: null,
+  recurring: null,
   eventType: { id: 1, title: "Intro", slug: "intro", length: 30 },
   organizer: {
     id: 7,
@@ -198,6 +199,17 @@ describe("EmailService", () => {
     expect(sent.map((m) => m.to)).toEqual(["hana@example.com"]);
     await emails.onBookingEvent({ type: "BOOKING_CANCELLED", booking: quiet });
     expect(sent.map((m) => m.to)).toContain("greta@example.com");
+  });
+
+  it("emails once per recurring series, with the series in the heading and times", async () => {
+    const sent: EmailMessage[] = [];
+    const emails = service(async (m) => void sent.push(m));
+    const series = { ...booking, recurring: { freq: 2, interval: 1, count: 3 } };
+    await emails.onBookingEvent({ type: "BOOKING_CREATED", booking: series, seriesIndex: 1 });
+    expect(sent).toHaveLength(0);
+    await emails.onBookingEvent({ type: "BOOKING_CREATED", booking: series, seriesIndex: 0 });
+    expect(sent[1].text).toContain("A new recurring event has been scheduled.");
+    expect(sent[1].text).toContain("Every week for 3 occurrences");
   });
 
   it("only tells the attendee about a rejection, and sends cancellations as CANCEL", async () => {

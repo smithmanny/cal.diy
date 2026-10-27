@@ -1,7 +1,7 @@
 import "@tanstack/react-start/server-only";
 import dayjs from "@calcom/dayjs";
 import type { JsonValue } from "@calcom/db/ids";
-import { cuid } from "@calcom/db/ids";
+import { cuid, uuidv7 } from "@calcom/db/ids";
 import {
   availabilityRange,
   type BusyInterval,
@@ -10,6 +10,7 @@ import {
 } from "@calcom/scheduling/available-slots";
 import { limitCheckRange } from "@calcom/scheduling/limits";
 import { outOfOfficeByDate } from "@calcom/scheduling/out-of-office";
+import { recurringDates } from "@calcom/scheduling/recurring";
 import type { OutOfOfficeData } from "@calcom/scheduling/types";
 import {
   type BookingField,
@@ -31,6 +32,7 @@ import {
   parseEventTypeColor,
   parseIntervalLimit,
   parseMultipleDuration,
+  parseRecurringEvent,
   toPeriodType,
 } from "../event-types/fields";
 import { type EventLocation, eventLocationSchema } from "../event-types/types";
@@ -41,7 +43,7 @@ import { isValidTimeZone } from "../schedules/scheduleMapper";
 import type { TravelScheduleRepository } from "../users/TravelScheduleRepository";
 import type { UserRepository } from "../users/UserRepository";
 import type { BookerVerificationService } from "../verification/BookerVerificationService";
-import type { BookingRepository } from "./BookingRepository";
+import type { BookingRepository, HostBookingFilter, NewBooking } from "./BookingRepository";
 import type { BookingEvent, BookingListener, BookingSnapshot } from "./events";
 import type {
   AppearanceDto,
@@ -80,6 +82,13 @@ function bookingFieldsOf(eventType: { bookingFields: unknown; disableGuests: boo
 }
 
 type EventTypeRow = NonNullable<Awaited<ReturnType<EventTypeRepository["findByUserIdAndSlug"]>>>;
+
+/** The booker may book fewer occurrences than the event offers, never more. */
+function recurringCount(max: number, requested: number | undefined): number {
+  if (requested === undefined) return max;
+  if (requested > max) throw new AppError("something_went_wrong");
+  return requested;
+}
 
 /** Cal's validateEventLength: the booker's pick must be one the host offers. */
 function eventLength(
@@ -226,6 +235,7 @@ export class BookingService {
         bookingFields: bookingFieldsOf(eventType),
         // Cal falls back to the host's zone when the event locks one without naming it.
         requiresBookerEmailVerification: eventType.requiresBookerEmailVerification,
+        recurringEvent: parseRecurringEvent(eventType.recurringEvent),
         lockedTimeZone: eventType.lockTimeZoneToggleOnBookingPage
           ? eventType.lockedTimeZone || host.timeZone
           : null,
@@ -310,31 +320,47 @@ export class BookingService {
     );
     const attendeeBase = { timeZone: input.timeZone, locale: input.locale };
 
-    const uid = cuid();
-    const created = await this.deps.bookingRepo.insertIfSlotFree(
-      {
-        uid,
+    // A recurring event books its occurrences together; moving one occurrence moves only that one.
+    const rule = original ? null : parseRecurringEvent(eventType.recurringEvent);
+    const starts = rule
+      ? recurringDates(start, input.timeZone, {
+          ...rule,
+          count: recurringCount(rule.count, input.recurringCount),
+        })
+      : [start];
+    const recurringEventId = rule ? uuidv7() : (original?.recurringEventId ?? null);
+    const bookings = starts.map(
+      (occurrenceStart): NewBooking => ({
+        uid: cuid(),
         userId: host.id,
         userPrimaryEmail: host.email,
         eventTypeId: eventType.id,
         title,
         description: notes,
-        startTime: start,
-        endTime: end,
+        startTime: occurrenceStart,
+        endTime: new Date(occurrenceStart.getTime() + length * 60_000),
         location,
         status,
         responses: responses as { [key: string]: JsonValue },
         fromReschedule: original?.uid ?? null,
+        recurringEventId,
         attendees: [
           { ...attendeeBase, name, email, phoneNumber: attendeePhone },
           ...guests.map((guest) => ({ ...attendeeBase, name: "", email: guest, phoneNumber: null })),
         ],
-      },
-      { replacesUid: original?.uid }
+      })
     );
+    const [firstBooking, ...rest] = bookings;
+    const created = await this.deps.bookingRepo.insertSeriesIfFirstSlotFree([firstBooking, ...rest], {
+      replacesUid: original?.uid,
+    });
     if (!created) throw new AppError("booking_conflict_error", 409);
+    const { uid } = firstBooking;
 
-    await this.emitCreated(uid, original?.uid ?? null);
+    await this.emitCreated(
+      bookings.map((occurrence) => occurrence.uid),
+      original?.uid ?? null
+    );
     return {
       uid,
       status,
@@ -355,18 +381,25 @@ export class BookingService {
     };
   }
 
-  private async emitCreated(uid: string, rescheduledFromUid: string | null): Promise<void> {
-    const snapshot = await this.snapshot(uid);
-    if (!snapshot) return;
+  private async emitCreated(uids: string[], rescheduledFromUid: string | null): Promise<void> {
     if (rescheduledFromUid) {
-      const previous = await this.snapshot(rescheduledFromUid);
-      this.emit({ type: "BOOKING_RESCHEDULED", booking: snapshot, rescheduledFrom: previous ?? undefined });
+      const [snapshot, previous] = await Promise.all([
+        this.snapshot(uids[0]),
+        this.snapshot(rescheduledFromUid),
+      ]);
+      if (snapshot)
+        this.emit({ type: "BOOKING_RESCHEDULED", booking: snapshot, rescheduledFrom: previous ?? undefined });
       return;
     }
-    this.emit({
-      type: snapshot.status === "PENDING" ? "BOOKING_REQUESTED" : "BOOKING_CREATED",
-      booking: snapshot,
-    });
+    for (const [seriesIndex, uid] of uids.entries()) {
+      const snapshot = await this.snapshot(uid);
+      if (!snapshot) continue;
+      this.emit({
+        type: snapshot.status === "PENDING" ? "BOOKING_REQUESTED" : "BOOKING_CREATED",
+        booking: snapshot,
+        seriesIndex: snapshot.recurring ? seriesIndex : undefined,
+      });
+    }
   }
 
   /** The slot list is the source of truth for what may be booked (hours, buffers, notice, window). */
@@ -468,7 +501,10 @@ export class BookingService {
       rescheduled: Boolean(found.rescheduled),
       notes: typeof responses.notes === "string" ? responses.notes : null,
       canCancel: !found.eventType?.disableCancelling,
+      recurring: await this.recurringDetails(found),
+      // Like Cal's booking page, a series can be cancelled but not moved as a whole.
       canReschedule:
+        !found.recurringEventId &&
         !found.eventType?.disableRescheduling &&
         !isWithinRescheduleNotice(
           found.startTime,
@@ -510,41 +546,79 @@ export class BookingService {
     await this.cancelFound(found, reason, cancelledBy);
   }
 
+  /**
+   * Cancels the booking, or for a recurring booking with `allRemaining`, every occurrence that
+   * hasn't started yet (Cal's "cancel all remaining").
+   */
   private async cancelFound(
     found: NonNullable<Awaited<ReturnType<BookingRepository["findByUid"]>>>,
     reason: string | null,
-    cancelledBy: string | null
+    cancelledBy: string | null,
+    allRemaining = true
   ): Promise<void> {
-    const { uid } = found;
     if (found.status === "CANCELLED" || found.status === "REJECTED")
       throw new AppError("event_cancelled", 409);
-    await this.deps.bookingRepo.updateStatus(uid, {
+    const now = this.deps.now?.() ?? new Date();
+    const remaining =
+      allRemaining && found.recurringEventId
+        ? (await this.deps.bookingRepo.findSeries(found.recurringEventId))
+            .filter((occurrence) => occurrence.status !== "CANCELLED" && occurrence.status !== "REJECTED")
+            .filter((occurrence) => occurrence.uid === found.uid || occurrence.startTime >= now)
+            .map((occurrence) => occurrence.uid)
+        : [found.uid];
+    await this.deps.bookingRepo.updateStatusMany(remaining, {
       status: "CANCELLED",
       cancellationReason: reason,
       cancelledBy,
     });
-    const snapshot = await this.snapshot(uid);
-    if (snapshot) this.emit({ type: "BOOKING_CANCELLED", booking: snapshot });
+    await this.emitForEach(remaining, "BOOKING_CANCELLED");
   }
 
-  async listForHost(
-    hostId: number,
-    filter: "upcoming" | "past" | "cancelled" | "unconfirmed",
-    limit: number
-  ) {
+  /** One event per booking; for a series, marked so only the first notifies people. */
+  private async emitForEach(uids: string[], type: BookingEvent["type"]): Promise<void> {
+    for (const [index, uid] of uids.entries()) {
+      const snapshot = await this.snapshot(uid);
+      if (snapshot) this.emit({ type, booking: snapshot, seriesIndex: uids.length > 1 ? index : undefined });
+    }
+  }
+
+  async listForHost(hostId: number, filter: HostBookingFilter, limit: number) {
     const rows = await this.deps.bookingRepo.findManyForHost({
       userId: hostId,
       filter,
       now: this.deps.now?.() ?? new Date(),
       limit,
     });
-    return rows.map((row) => ({ ...row, eventTypeColor: parseEventTypeColor(row.eventTypeColor) }));
+    const listed = rows.map(({ recurringEvent, ...row }) => {
+      const rule = parseRecurringEvent(recurringEvent);
+      return {
+        ...row,
+        eventTypeColor: parseEventTypeColor(row.eventTypeColor),
+        recurring: row.recurringEventId && rule ? { ...rule, count: 1 } : null,
+      };
+    });
+    if (filter !== "recurring") return listed;
+    // Cal's recurring tab shows each series once, at its next occurrence, with how many remain.
+    const series = new Map<string, (typeof listed)[number]>();
+    for (const row of listed) {
+      const key = row.recurringEventId ?? row.uid;
+      const first = series.get(key);
+      if (!first) series.set(key, row);
+      else if (first.recurring) first.recurring.count++;
+    }
+    return [...series.values()];
   }
 
-  async cancelAsHost(hostId: number, uid: string, reason: string | null): Promise<void> {
+  async cancelAsHost(
+    hostId: number,
+    uid: string,
+    reason: string | null,
+    allRemaining = false
+  ): Promise<void> {
     const found = await this.deps.bookingRepo.findByUid(uid);
     if (!found || found.userId !== hostId) throw new AppError("booking_not_found", 404);
-    await this.cancelFound(found, reason, found.host?.email ?? null);
+    // From the host's list, one occurrence at a time unless they cancel the series.
+    await this.cancelFound(found, reason, found.host?.email ?? null, allRemaining);
   }
 
   /** Host-only decisions on bookings that require confirmation. */
@@ -552,12 +626,17 @@ export class BookingService {
     const found = await this.deps.bookingRepo.findByUid(uid);
     if (!found || found.userId !== hostId) throw new AppError("booking_not_found", 404);
     if (found.status !== "PENDING") throw new AppError("something_went_wrong", 409);
-    await this.deps.bookingRepo.updateStatus(
-      uid,
+    // Like Cal, a recurring request is confirmed or rejected as a whole.
+    const uids = found.recurringEventId
+      ? (await this.deps.bookingRepo.findSeries(found.recurringEventId))
+          .filter((occurrence) => occurrence.status === "PENDING")
+          .map((occurrence) => occurrence.uid)
+      : [uid];
+    await this.deps.bookingRepo.updateStatusMany(
+      uids,
       accept ? { status: "ACCEPTED" } : { status: "REJECTED", rejectionReason: reason }
     );
-    const snapshot = await this.snapshot(uid);
-    if (snapshot) this.emit({ type: accept ? "BOOKING_CREATED" : "BOOKING_REJECTED", booking: snapshot });
+    await this.emitForEach(uids, accept ? "BOOKING_CREATED" : "BOOKING_REJECTED");
   }
 
   async snapshot(uid: string): Promise<BookingSnapshot | null> {
@@ -587,9 +666,38 @@ export class BookingService {
           }
         : null,
       bookingFields: found.eventType ? bookingFieldsOf(found.eventType) : null,
+      recurring: await this.recurringOf(found),
       organizer: { ...found.host, locale: found.host.locale ?? "en" },
       attendees: found.attendees,
     };
+  }
+
+  private async recurringDetails(found: {
+    recurringEventId: string | null;
+    eventType: { recurringEvent: unknown } | null;
+  }): Promise<BookingDetailsDto["recurring"]> {
+    if (!found.recurringEventId) return null;
+    const rule = parseRecurringEvent(found.eventType?.recurringEvent);
+    const series = await this.deps.bookingRepo.findSeries(found.recurringEventId);
+    return {
+      freq: rule?.freq ?? 2,
+      interval: rule?.interval ?? 1,
+      count: series.length,
+      occurrences: series.map((occurrence) => ({
+        uid: occurrence.uid,
+        startTime: occurrence.startTime.toISOString(),
+        endTime: occurrence.endTime.toISOString(),
+        status: occurrence.status,
+      })),
+    };
+  }
+
+  private async recurringOf(found: {
+    recurringEventId: string | null;
+    eventType: { recurringEvent: unknown } | null;
+  }): Promise<BookingSnapshot["recurring"]> {
+    const details = await this.recurringDetails(found);
+    return details && { freq: details.freq, interval: details.interval, count: details.count };
   }
 
   private emit(event: BookingEvent) {

@@ -2,6 +2,7 @@ import { fieldLabel, formatResponse, userFieldAnswers } from "~/lib/booking-fiel
 import { formatLongDate, formatTime } from "~/lib/date-utils";
 import type { Messages } from "~/lib/i18n";
 import { createT } from "~/lib/i18n";
+import { RECURRING_MESSAGE_KEYS, recurringSummary } from "~/lib/recurring";
 import type { BookingSnapshot } from "../bookings/events";
 import { emailButton, emailLayout, emailParagraph, htmlEscape } from "./layout";
 
@@ -66,8 +67,19 @@ const CONTENT: Record<EmailKind, Content> = {
   },
 };
 
+// Cal's headings for the first email about a recurring booking.
+const RECURRING_HEADINGS: Partial<Record<EmailKind, string>> = {
+  attendee_scheduled: "your_event_has_been_scheduled_recurring",
+  attendee_requested: "booking_submitted_recurring",
+  attendee_rejected: "event_request_declined_recurring",
+  organizer_scheduled: "new_event_scheduled_recurring",
+  organizer_requested: "event_awaiting_approval_recurring",
+};
+
 export const EMAIL_MESSAGE_KEYS = [
   ...new Set(Object.values(CONTENT).flatMap((c) => [c.subjectKey, c.headingKey])),
+  ...Object.values(RECURRING_HEADINGS),
+  ...RECURRING_MESSAGE_KEYS,
   "what",
   "when",
   "who",
@@ -90,8 +102,11 @@ export function renderBookingEmail(
   messages: Messages,
   manageUrl: string
 ): { subject: string; html: string; text: string } {
-  const t = createT(messages);
-  const content = CONTENT[kind];
+  const t = createT(messages, recipient.locale);
+  const content = {
+    ...CONTENT[kind],
+    headingKey: (booking.recurring && RECURRING_HEADINGS[kind]) || CONTENT[kind].headingKey,
+  };
   const attendee = booking.attendees[0];
   const eventTitle = booking.eventType?.title ?? booking.title;
   const date = `${formatTime(booking.startTime, recipient.timeZone, recipient.locale)} - ${formatTime(booking.endTime, recipient.timeZone, recipient.locale)}, ${formatLongDate(booking.startTime, recipient.timeZone, recipient.locale)}`;
@@ -108,7 +123,12 @@ export function renderBookingEmail(
   const notes = typeof booking.responses.notes === "string" ? booking.responses.notes : null;
   const rows: [string, string | null][] = [
     [t("what"), booking.title],
-    [t("when"), `${date} (${recipient.timeZone})`],
+    [
+      t("when"),
+      [`${date} (${recipient.timeZone})`, booking.recurring ? recurringSummary(booking.recurring, t) : null]
+        .filter(Boolean)
+        .join("\n"),
+    ],
     [
       t("who"),
       [

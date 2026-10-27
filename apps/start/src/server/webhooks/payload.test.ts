@@ -21,6 +21,7 @@ const snapshot: BookingSnapshot = {
   responses: { name: "Greta", email: "greta@example.com", notes: "Hi", company: "Acme" },
   cancellationReason: null,
   fromReschedule: null,
+  recurring: null,
   bookingFields: withSystemFields([
     { name: "company", type: "text", label: "Company", required: false, editable: "user" },
   ]),

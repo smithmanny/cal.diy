@@ -1,3 +1,4 @@
+import { recurringDates } from "@calcom/scheduling/recurring";
 import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { BookerSidebar } from "~/components/booker/BookerSidebar";
@@ -12,11 +13,13 @@ import { HourCycleProvider } from "~/lib/hour-cycle";
 import { useT } from "~/lib/i18n";
 import { LOCATION_LABEL_KEYS } from "~/lib/location-labels";
 import { loadMessages } from "~/lib/messages";
+import { RECURRING_MESSAGE_KEYS } from "~/lib/recurring";
 import { NOINDEX_META } from "~/lib/seo";
 import { createBooking, getPublicEvent, sendBookerVerificationCode } from "~/server/bookings/functions";
 
 const MESSAGE_KEYS = [
   ...BOOKING_FIELD_MESSAGE_KEYS,
+  ...RECURRING_MESSAGE_KEYS,
   "duration",
   "multiple_duration_mins",
   "invalid_event_length",
@@ -91,6 +94,7 @@ function BookerPage() {
   const t = useT();
   const navigate = useNavigate();
   const [duration, setDuration] = useState(event.eventType.length);
+  const [recurringCount, setRecurringCount] = useState(event.eventType.recurringEvent?.count ?? 1);
   const hasDurationChoice = event.eventType.durations.length > 1;
   const slots = useMonthSlots({
     username,
@@ -114,6 +118,7 @@ function BookerPage() {
         responses: submission.responses,
         duration: hasDurationChoice ? duration : undefined,
         verificationCode: submission.verificationCode,
+        recurringCount: event.eventType.recurringEvent && !rescheduleUid ? recurringCount : undefined,
         rescheduleUid: submission.rescheduleUid ?? rescheduleUid,
       },
     });
@@ -137,6 +142,8 @@ function BookerPage() {
               rescheduling={Boolean(rescheduleUid)}
               timeZone={slots.timeZone}
               onTimeZoneChange={slots.setTimeZone}
+              recurringCount={recurringCount}
+              onRecurringCountChange={setRecurringCount}
               duration={duration}
               onDurationChange={(minutes) => {
                 setDuration(minutes);
@@ -152,6 +159,14 @@ function BookerPage() {
                   locale={locale}
                   locations={event.eventType.locations}
                   fields={event.eventType.bookingFields}
+                  occurrences={
+                    event.eventType.recurringEvent && !rescheduleUid
+                      ? recurringDates(new Date(selectedSlot), slots.timeZone, {
+                          ...event.eventType.recurringEvent,
+                          count: recurringCount,
+                        }).map((date) => date.toISOString())
+                      : undefined
+                  }
                   view={rescheduleUid ? "reschedule" : "booking"}
                   onSendCode={
                     event.eventType.requiresBookerEmailVerification && !rescheduleUid

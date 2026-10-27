@@ -1,3 +1,4 @@
+import type { RecurringRule } from "@calcom/scheduling/recurring";
 import { z } from "zod";
 import type { BookingField, BookingResponseValue } from "~/lib/booking-fields";
 
@@ -26,6 +27,8 @@ export const createBookingSchema = z.object({
   }),
   rescheduleUid: z.string().max(100).optional(),
   duration: z.number().int().min(1).max(1440).optional(),
+  /** How many occurrences of a recurring event to book; up to the event's count, which is the default. */
+  recurringCount: z.number().int().min(1).max(100).optional(),
   /** The code emailed to the booker, for event types that require booker email verification. */
   verificationCode: z
     .string()
@@ -77,6 +80,8 @@ export type PublicEventDto = {
     requiresConfirmation: boolean;
     locations: PublicEventLocation[];
     bookingFields: BookingField[];
+    /** For recurring events, the rule; bookers may book fewer than `count` occurrences. */
+    recurringEvent: RecurringRule | null;
     /** Bookers confirm their email with an emailed code before booking. */
     requiresBookerEmailVerification: boolean;
     /** Bookers see times in this zone and can't change it. */
@@ -99,6 +104,13 @@ export type BookingDetailsDto = {
   /** Whether the booker may still cancel or move it, per the event type's settings. */
   canCancel: boolean;
   canReschedule: boolean;
+  /** For a recurring booking: its rule and every occurrence, so the page can list them. */
+  recurring: {
+    freq: number;
+    interval: number;
+    count: number;
+    occurrences: { uid: string; startTime: string; endTime: string; status: string }[];
+  } | null;
   answers: BookingAnswerDto[];
   /** `email` is null when the event type hides it from attendees. */
   host: {

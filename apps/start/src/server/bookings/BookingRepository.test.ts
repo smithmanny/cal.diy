@@ -34,6 +34,7 @@ function newBooking(start: string, overrides: Partial<NewBooking> = {}): NewBook
     status: "ACCEPTED",
     responses: { name: "Guest", email: "guest@example.com" },
     fromReschedule: null,
+    recurringEventId: null,
     attendees: [
       { name: "Guest", email: "Guest@Example.com", timeZone: "UTC", locale: "en", phoneNumber: null },
     ],

@@ -11,14 +11,16 @@ import { errorMessageKey } from "~/lib/errors";
 import { useT } from "~/lib/i18n";
 import { LOCATION_LABEL_KEYS } from "~/lib/location-labels";
 import { loadMessages } from "~/lib/messages";
+import { RECURRING_MESSAGE_KEYS, recurringSummary } from "~/lib/recurring";
 import { cancelBookingAsHost, decideBooking, listHostBookings } from "~/server/bookings/functions";
 
-const STATUSES = ["upcoming", "unconfirmed", "past", "cancelled"] as const;
+const STATUSES = ["upcoming", "unconfirmed", "recurring", "past", "cancelled"] as const;
 type Status = (typeof STATUSES)[number];
 
 const EMPTY_KEYS: Record<Status, string> = {
   upcoming: "upcoming_bookings",
   unconfirmed: "unconfirmed_bookings",
+  recurring: "recurring_bookings",
   past: "past_bookings",
   cancelled: "cancelled_bookings",
 };
@@ -27,6 +29,7 @@ const PAGE_SIZE = 50;
 
 const MESSAGE_KEYS = [
   ...STATUSES,
+  ...RECURRING_MESSAGE_KEYS,
   ...Object.values(EMPTY_KEYS),
   ...Object.values(LOCATION_LABEL_KEYS),
   "bookings",
@@ -67,7 +70,13 @@ function BookingsPage() {
 
   const cancel = (uid: string) => {
     const reason = window.prompt(t("cancellation_reason"));
-    if (reason !== null) run(() => cancelBookingAsHost({ data: { uid, reason: reason || undefined } }));
+    if (reason !== null)
+      run(() =>
+        cancelBookingAsHost({
+          // In the recurring tab a row stands for the series, so cancelling cancels what remains of it.
+          data: { uid, reason: reason || undefined, allRemaining: status === "recurring" },
+        })
+      );
   };
   const reject = (uid: string) => {
     const reason = window.prompt(`${t("rejection_reason_title")}\n${t("rejection_reason")}`);
@@ -107,6 +116,11 @@ function BookingsPage() {
                   {formatTime(booking.startTime, user.timeZone, locale, user.hour12)} -{" "}
                   {formatTime(booking.endTime, user.timeZone, locale, user.hour12)}
                 </div>
+                {status === "recurring" && booking.recurring && (
+                  <div className="text-muted-foreground text-xs">
+                    {recurringSummary(booking.recurring, t)}
+                  </div>
+                )}
                 {booking.status === "PENDING" && <Badge variant="warning">{t("unconfirmed")}</Badge>}
                 {booking.status === "REJECTED" && <Badge variant="error">{t("rejected")}</Badge>}
               </div>
@@ -145,7 +159,7 @@ function BookingsPage() {
                     </Button>
                   </>
                 )}
-                {status === "upcoming" && (
+                {(status === "upcoming" || status === "recurring") && (
                   <Button size="sm" variant="outline" onClick={() => cancel(booking.uid)}>
                     {t("cancel_event")}
                   </Button>

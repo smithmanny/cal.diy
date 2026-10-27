@@ -1,11 +1,12 @@
 import type { JsonValue } from "@calcom/db/ids";
 import type { IntervalLimit } from "@calcom/scheduling/limits";
-import { type EventTypeDto, eventTypeFields, intervalLimitSchema } from "./types";
+import { type EventTypeDto, eventTypeFields, intervalLimitSchema, MAX_RECURRING_COUNT } from "./types";
 
 type Metadata = { [key: string]: JsonValue };
 
 const thresholdSchema = eventTypeFields.shape.requiresConfirmationThreshold.unwrap();
 const colorSchema = eventTypeFields.shape.eventTypeColor.unwrap();
+const recurringSchema = eventTypeFields.shape.recurringEvent.unwrap();
 const flag = (value: unknown) => value === true;
 
 // Readers for event type columns that hold enums or JSON written by Cal or older code.
@@ -63,4 +64,16 @@ export function parseMultipleDuration(metadata: unknown): number[] | null {
   if (!Array.isArray(value)) return null;
   const lengths = value.filter((item): item is number => Number.isInteger(item) && Number(item) > 0);
   return lengths.length ? [...new Set(lengths)].sort((a, b) => a - b) : null;
+}
+
+/** Cal's recurringEvent, keeping only the parts this app schedules with. */
+export function parseRecurringEvent(value: unknown): EventTypeDto["recurringEvent"] {
+  // Cal allows longer series; book at most our cap of them.
+  const record = value && typeof value === "object" ? (value as Record<string, unknown>) : null;
+  const count =
+    typeof record?.count === "number" ? Math.min(record.count, MAX_RECURRING_COUNT) : record?.count;
+  const parsed = recurringSchema.safeParse(record && { ...record, count });
+  return parsed.success
+    ? { freq: parsed.data.freq, interval: parsed.data.interval, count: parsed.data.count }
+    : null;
 }

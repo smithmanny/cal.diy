@@ -1,8 +1,46 @@
-import { ClockIcon, GlobeIcon, MapPinIcon } from "lucide-react";
+import { Input } from "@coss/ui/components/input";
+import { ClockIcon, GlobeIcon, MapPinIcon, RepeatIcon } from "lucide-react";
 import type { TFunction } from "~/lib/i18n";
 import { LOCATION_LABEL_KEYS } from "~/lib/location-labels";
+import { recurringSummary } from "~/lib/recurring";
 import type { PublicEventDto } from "~/server/bookings/types";
 import { TimeZoneSelect } from "../TimeZoneSelect";
+
+/** Cal's "Every week for [n] occurrences", where the booker can book fewer than the host allows. */
+function RecurringCount({
+  rule,
+  value,
+  onChange,
+  disabled,
+  t,
+}: {
+  rule: { freq: number; interval: number; count: number };
+  value: number;
+  onChange: (count: number) => void;
+  disabled: boolean;
+  t: TFunction;
+}) {
+  const [before] = recurringSummary({ ...rule, count: value }, t).split(` ${value} `);
+  return (
+    <label className="flex flex-wrap items-center gap-2 text-sm">
+      <RepeatIcon className="size-4 text-muted-foreground" />
+      {before}
+      <Input
+        type="number"
+        min={1}
+        max={rule.count}
+        className="w-16"
+        aria-label={t("occurrence", { count: 2 })}
+        disabled={disabled}
+        value={value}
+        onChange={(event) =>
+          onChange(Math.min(rule.count, Math.max(1, Math.floor(Number(event.target.value) || 1))))
+        }
+      />
+      {t("occurrence", { count: value })}
+    </label>
+  );
+}
 
 export function BookerSidebar({
   event,
@@ -11,6 +49,8 @@ export function BookerSidebar({
   onTimeZoneChange,
   duration,
   onDurationChange,
+  recurringCount,
+  onRecurringCountChange,
   t,
 }: {
   event: PublicEventDto;
@@ -19,6 +59,8 @@ export function BookerSidebar({
   onTimeZoneChange: (timeZone: string) => void;
   duration: number;
   onDurationChange: (minutes: number) => void;
+  recurringCount: number;
+  onRecurringCountChange: (count: number) => void;
   t: TFunction;
 }) {
   const { eventType, host } = event;
@@ -60,6 +102,15 @@ export function BookerSidebar({
           {location.address ?? t(LOCATION_LABEL_KEYS[location.type] ?? location.type)}
         </p>
       ))}
+      {eventType.recurringEvent && (
+        <RecurringCount
+          rule={eventType.recurringEvent}
+          value={recurringCount}
+          onChange={onRecurringCountChange}
+          disabled={rescheduling}
+          t={t}
+        />
+      )}
       {eventType.requiresConfirmation && (
         <p className="text-muted-foreground text-xs">{t("requires_confirmation")}</p>
       )}

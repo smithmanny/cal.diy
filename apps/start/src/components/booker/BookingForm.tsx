@@ -86,6 +86,7 @@ export function BookingForm({
   onBack,
   onSubmit,
   onSendCode,
+  occurrences,
   t,
 }: {
   slot: string;
@@ -96,6 +97,8 @@ export function BookingForm({
   view: BookingView;
   onBack: () => void;
   onSubmit: (submission: BookingSubmission) => Promise<void>;
+  /** Start times of every occurrence when booking a recurring event. */
+  occurrences?: string[];
   /** Set when the event type requires booker email verification; emails a code. */
   onSendCode?: (email: string) => Promise<void>;
   t: TFunction;
@@ -175,9 +178,19 @@ export function BookingForm({
         <ArrowLeftIcon />
         {t("back")}
       </Button>
-      <p className="font-medium">
-        {formatLongDate(slot, timeZone, locale)}, {formatTime(slot, timeZone, locale, hour12)}
-      </p>
+      {occurrences && occurrences.length > 1 ? (
+        <ul className="font-medium text-sm">
+          {occurrences.map((start) => (
+            <li key={start}>
+              {formatLongDate(start, timeZone, locale)}, {formatTime(start, timeZone, locale, hour12)}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="font-medium">
+          {formatLongDate(slot, timeZone, locale)}, {formatTime(slot, timeZone, locale, hour12)}
+        </p>
+      )}
       {shown.map((field) => {
         const fieldError = fieldErrors[field.name];
         return (

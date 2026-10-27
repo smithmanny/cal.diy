@@ -13,6 +13,7 @@ import {
   gt,
   gte,
   inArray,
+  isNotNull,
   lt,
   lte,
   ne,
@@ -39,6 +40,7 @@ const detailColumns = {
   userId: booking.userId,
   eventTypeId: booking.eventTypeId,
   metadata: booking.metadata,
+  recurringEventId: booking.recurringEventId,
 };
 
 /** Accepted bookings, and pending ones whose event type says unconfirmed bookings block the slot. */
@@ -72,6 +74,8 @@ export type NewBooking = {
   status: BookingStatus;
   responses: { [key: string]: JsonValue };
   fromReschedule: string | null;
+  /** Shared by every occurrence of a recurring booking. */
+  recurringEventId: string | null;
   /** The booker first, then any guests they added. */
   attendees: [NewAttendee, ...NewAttendee[]];
 };
@@ -83,6 +87,8 @@ export type NewAttendee = {
   locale: string;
   phoneNumber: string | null;
 };
+
+export type HostBookingFilter = "upcoming" | "recurring" | "past" | "cancelled" | "unconfirmed";
 
 export type BusyBooking = { start: Date; end: Date; beforeBuffer: number; afterBuffer: number };
 
@@ -143,44 +149,87 @@ export class BookingRepository {
    * uid. Returns false when the slot was taken in the meantime.
    */
   async insertIfSlotFree(data: NewBooking, options: { replacesUid?: string } = {}): Promise<boolean> {
-    const { attendees: newAttendees, ...bookingValues } = data;
+    return this.insertSeriesIfFirstSlotFree([data], options);
+  }
+
+  /**
+   * A recurring booking's occurrences, all or none: the first is inserted only if its slot is free
+   * (like Cal, which checks availability for the first occurrence), the rest only if the first was.
+   */
+  async insertSeriesIfFirstSlotFree(
+    bookings: [NewBooking, ...NewBooking[]],
+    options: { replacesUid?: string } = {}
+  ): Promise<boolean> {
+    const [first] = bookings;
     const slotIsFree = notExists(
       this.db
         .select({ one: sql`1` })
         .from(booking)
         .where(
           and(
-            eq(booking.userId, data.userId),
+            eq(booking.userId, first.userId),
             blocksTime(this.db),
-            lt(booking.startTime, data.endTime),
-            gt(booking.endTime, data.startTime),
+            lt(booking.startTime, first.endTime),
+            gt(booking.endTime, first.startTime),
             // A reschedule may overlap the booking it replaces.
             options.replacesUid ? ne(booking.uid, options.replacesUid) : undefined
           )
         )
     );
-    const insertedBooking = this.db.select({ id: booking.id }).from(booking).where(eq(booking.uid, data.uid));
-    await this.db.batch([
-      this.db.run(
-        conditionalInsert(booking, { ...bookingValues, iCalUID: `${data.uid}@cal.diy` }, slotIsFree)
-      ),
-      ...newAttendees.map((newAttendee) =>
+    const inserted = (uid: string) =>
+      this.db.select({ id: booking.id }).from(booking).where(eq(booking.uid, uid));
+    const firstInserted = inserted(first.uid);
+    const statements = bookings.flatMap(({ attendees: newAttendees, ...bookingValues }, index) => {
+      const insertedBooking = inserted(bookingValues.uid);
+      return [
         this.db.run(
           conditionalInsert(
-            attendee,
-            { ...newAttendee, email: newAttendee.email.toLowerCase(), bookingId: sql`(${insertedBooking})` },
-            exists(insertedBooking)
+            booking,
+            { ...bookingValues, iCalUID: `${bookingValues.uid}@cal.diy` },
+            index === 0 ? slotIsFree : exists(firstInserted)
           )
-        )
-      ),
+        ),
+        ...newAttendees.map((newAttendee) =>
+          this.db.run(
+            conditionalInsert(
+              attendee,
+              {
+                ...newAttendee,
+                email: newAttendee.email.toLowerCase(),
+                bookingId: sql`(${insertedBooking})`,
+              },
+              exists(insertedBooking)
+            )
+          )
+        ),
+      ];
+    });
+    const [head, ...tail] = statements;
+    await this.db.batch([
+      head,
+      ...tail,
       // Cancelling the original in the same batch means a reschedule never leaves two live bookings.
       this.db
         .update(booking)
         .set({ status: "CANCELLED", rescheduled: true })
-        .where(and(eq(booking.uid, options.replacesUid ?? ""), exists(insertedBooking))),
+        .where(and(eq(booking.uid, options.replacesUid ?? ""), exists(firstInserted))),
     ]);
-    const [created] = await insertedBooking.limit(1);
+    const [created] = await firstInserted.limit(1);
     return Boolean(created);
+  }
+
+  /** The other bookings of a recurring series, oldest first. */
+  findSeries(recurringEventId: string) {
+    return this.db
+      .select({
+        uid: booking.uid,
+        startTime: booking.startTime,
+        endTime: booking.endTime,
+        status: booking.status,
+      })
+      .from(booking)
+      .where(eq(booking.recurringEventId, recurringEventId))
+      .orderBy(asc(booking.startTime));
   }
 
   /** The event type's accepted bookings starting in [from, to], for booking and duration limits. */
@@ -271,6 +320,7 @@ export class BookingRepository {
               bookingFields: eventType.bookingFields,
               disableGuests: eventType.disableGuests,
               disableCancelling: eventType.disableCancelling,
+              recurringEvent: eventType.recurringEvent,
               disableRescheduling: eventType.disableRescheduling,
               minimumRescheduleNotice: eventType.minimumRescheduleNotice,
               hideCalendarNotes: eventType.hideCalendarNotes,
@@ -307,7 +357,20 @@ export class BookingRepository {
       cancelledBy?: string | null;
     }
   ) {
-    await this.db.update(booking).set(data).where(eq(booking.uid, uid));
+    await this.updateStatusMany([uid], data);
+  }
+
+  async updateStatusMany(
+    uids: string[],
+    data: {
+      status: BookingStatus;
+      cancellationReason?: string | null;
+      rejectionReason?: string | null;
+      rescheduled?: boolean;
+      cancelledBy?: string | null;
+    }
+  ) {
+    if (uids.length) await this.db.update(booking).set(data).where(inArray(booking.uid, uids));
   }
 
   async updateLocationAndMetadata(
@@ -325,18 +388,25 @@ export class BookingRepository {
     limit,
   }: {
     userId: number;
-    filter: "upcoming" | "past" | "cancelled" | "unconfirmed";
+    filter: HostBookingFilter;
     now: Date;
     limit: number;
   }) {
     const conditions: Record<typeof filter, SQL | undefined> = {
+      recurring: and(
+        gt(booking.endTime, now),
+        isNotNull(booking.recurringEventId),
+        inArray(booking.status, ["ACCEPTED", "PENDING"])
+      ),
       upcoming: and(gt(booking.endTime, now), eq(booking.status, "ACCEPTED")),
       past: and(lt(booking.endTime, now), inArray(booking.status, ["ACCEPTED", "PENDING"])),
       cancelled: inArray(booking.status, ["CANCELLED", "REJECTED"]),
       unconfirmed: and(gt(booking.endTime, now), eq(booking.status, "PENDING")),
     };
     const order =
-      filter === "upcoming" || filter === "unconfirmed" ? asc(booking.startTime) : desc(booking.startTime);
+      filter === "upcoming" || filter === "unconfirmed" || filter === "recurring"
+        ? asc(booking.startTime)
+        : desc(booking.startTime);
     const rows = await this.db
       .select({
         uid: booking.uid,
@@ -347,6 +417,8 @@ export class BookingRepository {
         location: booking.location,
         eventTypeTitle: eventType.title,
         eventTypeColor: eventType.eventTypeColor,
+        recurringEventId: booking.recurringEventId,
+        recurringEvent: eventType.recurringEvent,
         id: booking.id,
       })
       .from(booking)

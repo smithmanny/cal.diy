@@ -63,7 +63,7 @@ export const listHostBookings = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .validator(
     z.object({
-      filter: z.enum(["upcoming", "past", "cancelled", "unconfirmed"]),
+      filter: z.enum(["upcoming", "recurring", "past", "cancelled", "unconfirmed"]),
       limit: z.number().int().min(1).max(500),
     })
   )
@@ -78,9 +78,11 @@ export const listHostBookings = createServerFn({ method: "GET" })
 
 export const cancelBookingAsHost = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator(uidSchema.extend({ reason: z.string().max(1000).optional() }))
+  .validator(
+    uidSchema.extend({ reason: z.string().max(1000).optional(), allRemaining: z.boolean().default(false) })
+  )
   .handler(async ({ context, data }) =>
-    (await getBookingService()).cancelAsHost(context.userId, data.uid, data.reason ?? null)
+    (await getBookingService()).cancelAsHost(context.userId, data.uid, data.reason ?? null, data.allRemaining)
   );
 
 export const decideBooking = createServerFn({ method: "POST" })
