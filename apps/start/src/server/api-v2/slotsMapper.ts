@@ -86,6 +86,7 @@ function toSlotsOutput(
     if (options.format === "range")
       entry.end = isoInTimeZone(new Date(start.getTime() + options.length * 60_000), options.timeZone);
     if (slots.seats) entry.attendeesCount = slots.seats.taken[slot] ?? 0;
+    if (slots.seats?.bookingUids[slot]) entry.bookingUid = slots.seats.bookingUids[slot];
     output[day] ??= [];
     output[day].push(entry);
   }

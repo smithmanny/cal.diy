@@ -202,7 +202,10 @@ function toBookingWindow(window: z.infer<typeof bookingWindowSchema>): Partial<E
   };
 }
 
-function fromBookingWindow(dto: EventTypeDto) {
+/** Everything the output shows; private links aren't part of Cal's event type output. */
+type EventTypeOutputSource = Omit<EventTypeDto, "privateLinks">;
+
+function fromBookingWindow(dto: EventTypeOutputSource) {
   if (dto.periodType === "RANGE")
     return { type: "range", value: [dto.periodStartDate, dto.periodEndDate], disabled: false };
   if (dto.periodType === "ROLLING" || dto.periodType === "ROLLING_WINDOW")
@@ -315,7 +318,7 @@ function applyEventTypeInput(current: EventTypeInput, input: EventTypeApiInput):
   return { ...current, ...simpleFields(input), ...nestedFields(input) };
 }
 
-function bookingFieldsOutput(dto: EventTypeDto) {
+function bookingFieldsOutput(dto: EventTypeOutputSource) {
   return dto.bookingFields.map((field) => ({
     type: field.name === "location" ? "radioInput" : field.type,
     slug: field.name,
@@ -328,7 +331,7 @@ function bookingFieldsOutput(dto: EventTypeDto) {
   }));
 }
 
-function optionalOutputs(dto: EventTypeDto) {
+function optionalOutputs(dto: EventTypeOutputSource) {
   return {
     bookingLimitsCount: fromLimits(dto.bookingLimits),
     bookingLimitsDuration: fromLimits(dto.durationLimits),
@@ -370,7 +373,7 @@ function optionalOutputs(dto: EventTypeDto) {
 }
 
 /** Cal's EventTypeOutput_2024_06_14. */
-function toEventTypeOutput(dto: EventTypeDto, owner: OwnerRow, origin: string) {
+function toEventTypeOutput(dto: EventTypeOutputSource, owner: OwnerRow, origin: string) {
   return {
     id: dto.id,
     ownerId: owner.id,

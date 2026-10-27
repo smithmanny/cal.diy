@@ -1,6 +1,7 @@
 import "@tanstack/react-start/server-only";
 
 import type { z } from "zod";
+import type { BookingActionsService } from "../bookings/BookingActionsService";
 import type { BookingService } from "../bookings/BookingService";
 import { AppError } from "../errors";
 import type { EventTypeRepository } from "../event-types/EventTypeRepository";
@@ -8,19 +9,24 @@ import type { ApiBookingRepository, ApiBookingRow } from "./ApiBookingRepository
 import type { ApiUserRepository } from "./ApiUserRepository";
 import type { ApiUser } from "./auth";
 import {
+  type addGuestsInputSchema,
   type BookingOutput,
   type CreateBookingApiInput,
   type cancelBookingInputSchema,
   type ListBookingsApiQuery,
   listSort,
+  type markAbsentInputSchema,
   type rescheduleBookingInputSchema,
   toBookingOutput,
+  toEditableLocation,
   toResponses,
+  type updateLocationInputSchema,
 } from "./bookingMapper";
-import { Paginated, pagination } from "./http";
+import { ApiInputError, Paginated, pagination } from "./http";
 
 type Deps = {
   bookings: BookingService;
+  actions: BookingActionsService;
   apiBookings: ApiBookingRepository;
   eventTypeRepo: EventTypeRepository;
   users: ApiUserRepository;
@@ -29,6 +35,7 @@ type Deps = {
 
 type CancelInput = z.infer<typeof cancelBookingInputSchema>;
 type RescheduleInput = z.infer<typeof rescheduleBookingInputSchema>;
+type MarkAbsentInput = z.infer<typeof markAbsentInputSchema>;
 
 /** Cal's API v2 bookings endpoints, on top of the same BookingService the booking pages use. */
 class ApiBookingService {
@@ -135,6 +142,37 @@ class ApiBookingService {
   /** Host-only, for bookings that require confirmation. */
   async decide(uid: string, actor: ApiUser, accept: boolean, reason: string | null): Promise<BookingOutput> {
     await this.deps.bookings.decide(actor.id, uid, accept, reason);
+    return this.get(uid);
+  }
+
+  /** Host-only. The app tracks attendees' no-shows; a host no-show can't be recorded here. */
+  async markAbsent(uid: string, actor: ApiUser, input: MarkAbsentInput): Promise<BookingOutput> {
+    if (input.host) throw new ApiInputError("host - marking the host absent is not supported");
+    const attendees = (input.attendees ?? []).map(({ email, absent }) => ({ email, noShow: absent }));
+    if (attendees.length) await this.deps.actions.markNoShow(actor.id, uid, attendees);
+    return this.get(uid);
+  }
+
+  /** Host-only; the service takes only the guests' emails, as the app's add guests dialog does. */
+  async addGuests(
+    uid: string,
+    actor: ApiUser,
+    input: z.infer<typeof addGuestsInputSchema>
+  ): Promise<BookingOutput> {
+    await this.deps.actions.addGuests(
+      actor.id,
+      uid,
+      input.guests.map((guest) => guest.email)
+    );
+    return this.get(uid);
+  }
+
+  async updateLocation(
+    uid: string,
+    actor: ApiUser,
+    input: z.infer<typeof updateLocationInputSchema>
+  ): Promise<BookingOutput> {
+    await this.deps.actions.editLocation(actor.id, uid, toEditableLocation(input.location));
     return this.get(uid);
   }
 

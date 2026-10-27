@@ -379,7 +379,11 @@ describe("slots", () => {
     const output = toSlotsOutput(
       {
         slots: ["2030-07-01T21:30:00.000Z", "2030-07-01T22:30:00.000Z"],
-        seats: { total: 3, taken: { "2030-07-01T22:30:00.000Z": 2 } },
+        seats: {
+          total: 3,
+          taken: { "2030-07-01T22:30:00.000Z": 2 },
+          bookingUids: { "2030-07-01T22:30:00.000Z": "seated-uid" },
+        },
         outOfOffice: {},
       },
       { timeZone: "Europe/Rome", format: "range", length: 30 }
@@ -389,7 +393,12 @@ describe("slots", () => {
         { start: "2030-07-01T23:30:00.000+02:00", end: "2030-07-02T00:00:00.000+02:00", attendeesCount: 0 },
       ],
       "2030-07-02": [
-        { start: "2030-07-02T00:30:00.000+02:00", end: "2030-07-02T01:00:00.000+02:00", attendeesCount: 2 },
+        {
+          start: "2030-07-02T00:30:00.000+02:00",
+          end: "2030-07-02T01:00:00.000+02:00",
+          attendeesCount: 2,
+          bookingUid: "seated-uid",
+        },
       ],
     });
   });
