@@ -20,6 +20,7 @@ import { DURATION_MESSAGE_KEYS, DurationEditor } from "~/components/event-types/
 import { Field, Section } from "~/components/event-types/EditorLayout";
 import { LIMITS_MESSAGE_KEYS, LimitsEditor, limitsErrorKey } from "~/components/event-types/LimitsEditor";
 import { LOCATIONS_MESSAGE_KEYS, LocationsEditor } from "~/components/event-types/LocationsEditor";
+import { PRIVATE_LINKS_MESSAGE_KEYS, PrivateLinksEditor } from "~/components/event-types/PrivateLinksEditor";
 import { RECURRING_EDITOR_MESSAGE_KEYS, RecurringEditor } from "~/components/event-types/RecurringEditor";
 import { HydratedFieldset } from "~/components/HydratedFieldset";
 import { errorMessageKey } from "~/lib/errors";
@@ -31,6 +32,7 @@ import { listSchedules } from "~/server/schedules/functions";
 
 const MESSAGE_KEYS = [
   ...ADVANCED_MESSAGE_KEYS,
+  ...PRIVATE_LINKS_MESSAGE_KEYS,
   ...RECURRING_EDITOR_MESSAGE_KEYS,
   "recurring",
   ...DURATION_MESSAGE_KEYS,
@@ -214,6 +216,7 @@ function EventTypeEditorPage() {
 
       <Section title={t("advanced")}>
         <AdvancedEditor form={form} set={set} t={t} />
+        <PrivateLinksEditor form={form} set={set} origin={origin} t={t} />
       </Section>
 
       <div>

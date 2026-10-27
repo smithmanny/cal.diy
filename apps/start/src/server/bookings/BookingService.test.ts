@@ -1,9 +1,10 @@
 import type { Database } from "@calcom/db/database";
-import { attendee, booking, eventType, user } from "@calcom/db/schema";
+import { attendee, booking, eventType, hashedLink, user } from "@calcom/db/schema";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createTestDb } from "../../test/testDb";
 import { EventTypeRepository } from "../event-types/EventTypeRepository";
+import { HashedLinkRepository } from "../event-types/HashedLinkRepository";
 import { HolidayRepository } from "../holidays/HolidayRepository";
 import { HolidayService } from "../holidays/HolidayService";
 import { OutOfOfficeRepository } from "../out-of-office/OutOfOfficeRepository";
@@ -75,6 +76,7 @@ beforeEach(async () => {
     holidayService: new HolidayService({ repo: new HolidayRepository(db), fetchHolidays: null }),
     listeners: [async (event) => void events.push(event)],
     runInBackground: (promise) => void pending.push(promise),
+    hashedLinkRepo: new HashedLinkRepository(db),
   };
   service = new BookingService(serviceDeps);
 });
@@ -197,6 +199,36 @@ describe("BookingService", () => {
     ).rejects.toMatchObject({
       code: "something_went_wrong",
     });
+  });
+
+  it("lets private links lead to the event until they're used up or past their date", async () => {
+    const [{ id: introId }] = await db
+      .select({ id: eventType.id })
+      .from(eventType)
+      .where(eq(eventType.slug, "intro"));
+    await db.insert(hashedLink).values([
+      { link: "twice-link-1", eventTypeId: introId, maxUsageCount: 2 },
+      { link: "dated-link-1", eventTypeId: introId, expiresAt: new Date("2000-01-01T00:00:00Z") },
+    ]);
+    expect(await service.resolvePrivateLink("twice-link-1", "intro")).toEqual({
+      username: "host",
+      slug: "intro",
+    });
+    await expect(service.resolvePrivateLink("twice-link-1", "approval")).rejects.toMatchObject({
+      code: "private_link_expired",
+    });
+    await expect(service.resolvePrivateLink("dated-link-1", "intro")).rejects.toMatchObject({
+      code: "private_link_expired",
+    });
+
+    await service.create({ ...input(at("10:00")), hashedLink: "twice-link-1" });
+    await service.create({ ...input(at("11:00"), "intro", "b@example.com"), hashedLink: "twice-link-1" });
+    await expect(
+      service.create({ ...input(at("12:00"), "intro", "c@example.com"), hashedLink: "twice-link-1" })
+    ).rejects.toMatchObject({ code: "private_link_expired" });
+    await expect(
+      service.create({ ...input(at("12:00"), "approval", "c@example.com"), hashedLink: "twice-link-1" })
+    ).rejects.toMatchObject({ code: "private_link_expired" });
   });
 
   describe("seats", () => {

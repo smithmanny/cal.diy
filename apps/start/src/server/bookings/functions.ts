@@ -19,6 +19,10 @@ export const getPublicEvent = createServerFn({ method: "GET" })
   .validator(usernameSchema.extend({ slug: z.string().min(1).max(200) }))
   .handler(async ({ data }) => (await getBookingService()).getPublicEvent(data.username, data.slug));
 
+export const resolvePrivateLink = createServerFn({ method: "GET" })
+  .validator(z.object({ link: z.string().min(1).max(64), slug: z.string().min(1).max(200) }))
+  .handler(async ({ data }) => (await getBookingService()).resolvePrivateLink(data.link, data.slug));
+
 export const getAvailableSlots = createServerFn({ method: "GET" })
   .validator(slotsQuerySchema)
   .handler(async ({ data }) => (await getBookingService()).getAvailableSlots(data));

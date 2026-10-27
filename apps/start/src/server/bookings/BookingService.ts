@@ -35,6 +35,7 @@ import {
   parseRecurringEvent,
   toPeriodType,
 } from "../event-types/fields";
+import type { HashedLinkRepository } from "../event-types/HashedLinkRepository";
 import { type EventLocation, eventLocationSchema } from "../event-types/types";
 import type { HolidayService } from "../holidays/HolidayService";
 import type { OutOfOfficeRepository } from "../out-of-office/OutOfOfficeRepository";
@@ -67,6 +68,7 @@ type Deps = {
   oooRepo: Pick<OutOfOfficeRepository, "findOverlappingIncludeReasonAndUsers">;
   holidayService: Pick<HolidayService, "blockedDays">;
   bookerVerification?: Pick<BookerVerificationService, "send" | "verify">;
+  hashedLinkRepo?: Pick<HashedLinkRepository, "findByLink" | "incrementUsage">;
   busyTimesProviders?: BusyTimesProvider[];
   listeners?: BookingListener[];
   runInBackground?: (promise: Promise<unknown>) => void;
@@ -375,6 +377,7 @@ export class BookingService {
         ],
       })
     );
+    if (input.hashedLink) await this.consumePrivateLink(input.hashedLink, eventType.id);
     const [firstBooking, ...rest] = bookings;
     const created = await this.deps.bookingRepo.insertSeriesIfFirstSlotFree([firstBooking, ...rest], {
       replacesUid: original?.uid,
@@ -449,6 +452,7 @@ export class BookingService {
       data: { description: notes, responses: responses as { [key: string]: JsonValue } },
     };
 
+    if (input.hashedLink) await this.consumePrivateLink(input.hashedLink, eventType.id);
     const existing = (
       await repo.findSeatedForEventType({ eventTypeId: eventType.id, from: start, to: end })
     ).find((seated) => seated.start.getTime() === start.getTime());
@@ -635,6 +639,33 @@ export class BookingService {
       responses,
       defaultTemplate: messages.event_between_users ?? "{{eventName}} between {{host}} and {{attendeeName}}",
     });
+  }
+
+  /** Where a private link leads, if it is still valid (Cal's HashedLinkService.validate). */
+  async resolvePrivateLink(link: string, slug: string): Promise<{ username: string; slug: string }> {
+    const found = await this.validPrivateLink(link);
+    if (found.slug !== slug || !found.username) throw new AppError("private_link_expired", 404);
+    return { username: found.username, slug: found.slug };
+  }
+
+  private async validPrivateLink(link: string) {
+    const found = await this.deps.hashedLinkRepo?.findByLink(link);
+    if (!found) throw new AppError("private_link_expired", 404);
+    const now = this.deps.now?.() ?? new Date();
+    const expired = found.expiresAt
+      ? found.expiresAt < now
+      : found.maxUsageCount > 0 && found.usageCount >= found.maxUsageCount;
+    if (expired) throw new AppError("private_link_expired", 404);
+    return found;
+  }
+
+  /** Counts a booking against a usage-limited link; dated links aren't counted, as in Cal. */
+  private async consumePrivateLink(link: string, eventTypeId: number): Promise<void> {
+    const found = await this.validPrivateLink(link);
+    if (found.eventTypeId !== eventTypeId) throw new AppError("private_link_expired", 404);
+    if (found.expiresAt || found.maxUsageCount <= 0) return;
+    if (!(await this.deps.hashedLinkRepo?.incrementUsage(found.id)))
+      throw new AppError("private_link_expired", 404);
   }
 
   /** Emails the booker a code, only for event types that ask for one. */

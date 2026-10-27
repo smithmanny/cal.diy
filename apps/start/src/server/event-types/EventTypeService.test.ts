@@ -1,11 +1,12 @@
 import type { Database } from "@calcom/db/database";
-import { eventType, schedule, user } from "@calcom/db/schema";
+import { eventType, hashedLink, schedule, user } from "@calcom/db/schema";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createTestDb } from "../../test/testDb";
 import { ScheduleRepository } from "../schedules/ScheduleRepository";
 import { EventTypeRepository } from "./EventTypeRepository";
 import { EventTypeService } from "./EventTypeService";
+import { HashedLinkRepository } from "./HashedLinkRepository";
 import type { EventTypeInput } from "./types";
 
 let db: Database;
@@ -18,6 +19,7 @@ beforeEach(async () => {
   service = new EventTypeService({
     eventTypeRepo: new EventTypeRepository(db),
     scheduleRepo: new ScheduleRepository(db),
+    hashedLinkRepo: new HashedLinkRepository(db),
   });
   [{ id: ownerId }, { id: otherId }] = await db
     .insert(user)
@@ -232,6 +234,63 @@ describe("EventTypeService", () => {
       .set({ recurringEvent: { freq: 2, interval: 1, count: 500, dtstart: "2020-01-01" } })
       .where(eq(eventType.id, id));
     expect((await service.get(ownerId, id)).recurringEvent).toEqual({ freq: 2, interval: 1, count: 100 });
+  });
+
+  it("keeps private links in sync, ending dated ones at the end of the host's day", async () => {
+    const { id } = await service.create(ownerId, {
+      title: "Intro",
+      slug: "intro",
+      description: null,
+      length: 30,
+    });
+    const input = await baseInput(id);
+    await service.update(
+      ownerId,
+      id,
+      {
+        ...input,
+        privateLinks: [
+          { link: "aaaaaaaaaaaa", expiresAt: null, maxUsageCount: 3 },
+          { link: "bbbbbbbbbbbb", expiresAt: "2030-01-07", maxUsageCount: 1 },
+        ],
+      },
+      "America/New_York"
+    );
+    const [dated] = await db.select().from(hashedLink).where(eq(hashedLink.link, "bbbbbbbbbbbb"));
+    expect(dated.expiresAt?.toISOString()).toBe("2030-01-08T04:59:59.999Z");
+    expect((await service.get(ownerId, id, "America/New_York")).privateLinks).toEqual([
+      { link: "aaaaaaaaaaaa", expiresAt: null, maxUsageCount: 3, usageCount: 0 },
+      { link: "bbbbbbbbbbbb", expiresAt: "2030-01-07", maxUsageCount: 1, usageCount: 0 },
+    ]);
+
+    await db.update(hashedLink).set({ usageCount: 2 }).where(eq(hashedLink.link, "aaaaaaaaaaaa"));
+    const withUsage = await baseInput(id);
+    await expect(
+      service.update(ownerId, id, {
+        ...withUsage,
+        privateLinks: [{ link: "aaaaaaaaaaaa", expiresAt: null, maxUsageCount: 1 }],
+      })
+    ).rejects.toMatchObject({ code: "usage_count_error" });
+    await service.update(ownerId, id, {
+      ...withUsage,
+      privateLinks: [{ link: "aaaaaaaaaaaa", expiresAt: null, maxUsageCount: 5 }],
+    });
+    expect(await db.select({ link: hashedLink.link, usage: hashedLink.usageCount }).from(hashedLink)).toEqual(
+      [{ link: "aaaaaaaaaaaa", usage: 2 }]
+    );
+
+    const { id: otherId } = await service.create(ownerId, {
+      title: "Other",
+      slug: "other",
+      description: null,
+      length: 30,
+    });
+    await expect(
+      service.update(ownerId, otherId, {
+        ...(await baseInput(otherId)),
+        privateLinks: [{ link: "aaaaaaaaaaaa", expiresAt: null, maxUsageCount: 1 }],
+      })
+    ).rejects.toMatchObject({ code: "something_went_wrong" });
   });
 
   it("rejects a URL the same user already uses, but allows it for other users", async () => {

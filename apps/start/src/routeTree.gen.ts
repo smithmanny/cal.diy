@@ -27,6 +27,7 @@ import { Route as AuthedEventTypesIndexRouteImport } from './routes/_authed/even
 import { Route as AuthedEventTypesEventTypeIdRouteImport } from './routes/_authed/event-types/$eventTypeId'
 import { Route as AuthedSettingsIndexRouteImport } from './routes/_authed/settings/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as DLinkSlugRouteImport } from './routes/d/$link/$slug'
 import { Route as AuthedSettingsDeveloperApiKeysRouteImport } from './routes/_authed/settings/developer/api-keys'
 import { Route as AuthedSettingsMyAccountAppearanceRouteImport } from './routes/_authed/settings/my-account/appearance'
 import { Route as AuthedSettingsMyAccountCalendarsRouteImport } from './routes/_authed/settings/my-account/calendars'
@@ -131,6 +132,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DLinkSlugRoute = DLinkSlugRouteImport.update({
+  id: '/d/$link/$slug',
+  path: '/d/$link/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthedSettingsDeveloperApiKeysRoute =
   AuthedSettingsDeveloperApiKeysRouteImport.update({
     id: '/developer/api-keys',
@@ -219,6 +225,7 @@ export interface FileRoutesByFullPath {
   '/bookings/$status': typeof AuthedBookingsStatusRoute
   '/event-types/$eventTypeId': typeof AuthedEventTypesEventTypeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/d/$link/$slug': typeof DLinkSlugRoute
   '/availability/': typeof AuthedAvailabilityIndexRoute
   '/event-types/': typeof AuthedEventTypesIndexRoute
   '/settings/': typeof AuthedSettingsIndexRoute
@@ -249,6 +256,7 @@ export interface FileRoutesByTo {
   '/bookings/$status': typeof AuthedBookingsStatusRoute
   '/event-types/$eventTypeId': typeof AuthedEventTypesEventTypeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/d/$link/$slug': typeof DLinkSlugRoute
   '/availability': typeof AuthedAvailabilityIndexRoute
   '/event-types': typeof AuthedEventTypesIndexRoute
   '/settings': typeof AuthedSettingsIndexRoute
@@ -282,6 +290,7 @@ export interface FileRoutesById {
   '/_authed/bookings/$status': typeof AuthedBookingsStatusRoute
   '/_authed/event-types/$eventTypeId': typeof AuthedEventTypesEventTypeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/d/$link/$slug': typeof DLinkSlugRoute
   '/_authed/availability/': typeof AuthedAvailabilityIndexRoute
   '/_authed/event-types/': typeof AuthedEventTypesIndexRoute
   '/_authed/settings/': typeof AuthedSettingsIndexRoute
@@ -315,6 +324,7 @@ export interface FileRouteTypes {
     | '/bookings/$status'
     | '/event-types/$eventTypeId'
     | '/api/auth/$'
+    | '/d/$link/$slug'
     | '/availability/'
     | '/event-types/'
     | '/settings/'
@@ -345,6 +355,7 @@ export interface FileRouteTypes {
     | '/bookings/$status'
     | '/event-types/$eventTypeId'
     | '/api/auth/$'
+    | '/d/$link/$slug'
     | '/availability'
     | '/event-types'
     | '/settings'
@@ -377,6 +388,7 @@ export interface FileRouteTypes {
     | '/_authed/bookings/$status'
     | '/_authed/event-types/$eventTypeId'
     | '/api/auth/$'
+    | '/d/$link/$slug'
     | '/_authed/availability/'
     | '/_authed/event-types/'
     | '/_authed/settings/'
@@ -406,6 +418,7 @@ export interface RootRouteChildren {
   BookingUidRoute: typeof BookingUidRoute
   UsernameIndexRoute: typeof UsernameIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  DLinkSlugRoute: typeof DLinkSlugRoute
   ApiIntegrationsGooglecalendarAddRoute: typeof ApiIntegrationsGooglecalendarAddRoute
   ApiIntegrationsGooglecalendarCallbackRoute: typeof ApiIntegrationsGooglecalendarCallbackRoute
 }
@@ -536,6 +549,13 @@ declare module '@tanstack/react-router' {
       path: '/api/auth/$'
       fullPath: '/api/auth/$'
       preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/d/$link/$slug': {
+      id: '/d/$link/$slug'
+      path: '/d/$link/$slug'
+      fullPath: '/d/$link/$slug'
+      preLoaderRoute: typeof DLinkSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authed/settings/developer/api-keys': {
@@ -695,6 +715,7 @@ const rootRouteChildren: RootRouteChildren = {
   BookingUidRoute: BookingUidRoute,
   UsernameIndexRoute: UsernameIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  DLinkSlugRoute: DLinkSlugRoute,
   ApiIntegrationsGooglecalendarAddRoute: ApiIntegrationsGooglecalendarAddRoute,
   ApiIntegrationsGooglecalendarCallbackRoute:
     ApiIntegrationsGooglecalendarCallbackRoute,

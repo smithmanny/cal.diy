@@ -14,7 +14,9 @@ export const listEventTypes = createServerFn({ method: "GET" })
 export const getEventType = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .validator(idSchema)
-  .handler(async ({ context, data }) => (await getEventTypeService()).get(context.userId, data.id));
+  .handler(async ({ context, data }) =>
+    (await getEventTypeService()).get(context.userId, data.id, context.userTimeZone)
+  );
 
 export const createEventType = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
@@ -25,7 +27,7 @@ export const updateEventType = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator(idSchema.extend({ eventType: eventTypeInputSchema }))
   .handler(async ({ context, data }) =>
-    (await getEventTypeService()).update(context.userId, data.id, data.eventType)
+    (await getEventTypeService()).update(context.userId, data.id, data.eventType, context.userTimeZone)
   );
 
 export const setEventTypeHidden = createServerFn({ method: "POST" })

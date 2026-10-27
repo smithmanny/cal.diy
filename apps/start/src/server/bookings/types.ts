@@ -27,6 +27,8 @@ export const createBookingSchema = z.object({
   }),
   rescheduleUid: z.string().max(100).optional(),
   duration: z.number().int().min(1).max(1440).optional(),
+  /** The private link the booker came through, which counts one use. */
+  hashedLink: z.string().max(64).optional(),
   /** How many occurrences of a recurring event to book; up to the event's count, which is the default. */
   recurringCount: z.number().int().min(1).max(100).optional(),
   /** The code emailed to the booker, for event types that require booker email verification. */

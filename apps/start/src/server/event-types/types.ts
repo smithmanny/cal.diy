@@ -105,6 +105,20 @@ export const eventTypeFields = z.object({
   /** Cal's metadata.disableStandardEmails.confirmation: leave confirmations to workflows. */
   disableConfirmationEmails: z.object({ host: z.boolean(), attendee: z.boolean() }),
   bookingFields: z.array(bookingFieldInputSchema).max(50),
+  /**
+   * Cal's private links. A link expires at the end of `expiresAt` (host's time zone) if set,
+   * otherwise after `maxUsageCount` bookings. `usageCount` is shown, never written.
+   */
+  privateLinks: z
+    .array(
+      z.object({
+        link: z.string().regex(/^[A-Za-z0-9_-]{8,64}$/),
+        expiresAt: isoDate.nullable(),
+        maxUsageCount: z.number().int().min(1).max(100_000),
+        usageCount: z.number().int().min(0).optional(),
+      })
+    )
+    .max(50),
 });
 
 export const eventTypeInputSchema = eventTypeFields

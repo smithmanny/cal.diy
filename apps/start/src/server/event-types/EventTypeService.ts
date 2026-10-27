@@ -1,5 +1,6 @@
 import "@tanstack/react-start/server-only";
 
+import dayjs from "@calcom/dayjs";
 import type { JsonValue } from "@calcom/db/ids";
 import slugify from "@calcom/lib/slugify";
 import {
@@ -23,6 +24,7 @@ import {
   parseRecurringEvent,
   toPeriodType,
 } from "./fields";
+import type { HashedLinkRepository } from "./HashedLinkRepository";
 import {
   type EventLocation,
   type EventTypeDto,
@@ -35,6 +37,10 @@ import {
 type Deps = {
   eventTypeRepo: EventTypeRepository;
   scheduleRepo: Pick<ScheduleRepository, "existsForUser">;
+  hashedLinkRepo?: Pick<
+    HashedLinkRepository,
+    "findByEventTypeId" | "findTakenElsewhere" | "replaceForEventType"
+  >;
 };
 
 function parseLocations(value: unknown): EventLocation[] {
@@ -50,6 +56,7 @@ const dayKeyUtc = (date: Date) => date.toISOString().slice(0, 10);
 
 function toDto(row: EventTypeRow): EventTypeDto {
   return {
+    privateLinks: [],
     id: row.id,
     title: row.title,
     slug: row.slug,
@@ -132,8 +139,43 @@ export class EventTypeService {
     return rows.map((row) => ({ ...row, eventTypeColor: parseEventTypeColor(row.eventTypeColor) }));
   }
 
-  async get(userId: number, id: number): Promise<EventTypeDto> {
-    return toDto(await this.findOwned(userId, id));
+  /** `timeZone` is the host's, in which private link expiry dates are whole days. */
+  async get(userId: number, id: number, timeZone = "UTC"): Promise<EventTypeDto> {
+    const dto = toDto(await this.findOwned(userId, id));
+    const links = (await this.deps.hashedLinkRepo?.findByEventTypeId(id)) ?? [];
+    return {
+      ...dto,
+      privateLinks: links.map((link) => ({
+        link: link.link,
+        expiresAt: link.expiresAt ? dayjs(link.expiresAt).tz(timeZone).format("YYYY-MM-DD") : null,
+        maxUsageCount: Math.max(1, link.maxUsageCount),
+        usageCount: link.usageCount,
+      })),
+    };
+  }
+
+  /** Cal expires dated links at the end of that day, in the host's time zone. */
+  private async savePrivateLinks(id: number, input: EventTypeInput, timeZone: string): Promise<void> {
+    const repo = this.deps.hashedLinkRepo;
+    if (!repo) return;
+    const links = input.privateLinks.map((entry) => entry.link);
+    if (new Set(links).size !== links.length || (await repo.findTakenElsewhere(id, links)).length)
+      throw new AppError("something_went_wrong", 409);
+    const existing = new Map((await repo.findByEventTypeId(id)).map((link) => [link.link, link.usageCount]));
+    if (
+      input.privateLinks.some(
+        (entry) => !entry.expiresAt && entry.maxUsageCount < (existing.get(entry.link) ?? 0)
+      )
+    )
+      throw new AppError("usage_count_error");
+    await repo.replaceForEventType(
+      id,
+      input.privateLinks.map((entry) => ({
+        link: entry.link,
+        expiresAt: entry.expiresAt ? dayjs.tz(entry.expiresAt, timeZone).endOf("day").toDate() : null,
+        maxUsageCount: entry.maxUsageCount,
+      }))
+    );
   }
 
   async create(userId: number, input: NewEventTypeInput): Promise<{ id: number }> {
@@ -156,7 +198,7 @@ export class EventTypeService {
     ]);
   }
 
-  async update(userId: number, id: number, input: EventTypeInput): Promise<void> {
+  async update(userId: number, id: number, input: EventTypeInput, timeZone = "UTC"): Promise<void> {
     const row = await this.findOwned(userId, id);
     const slug = await this.assertSlugAvailable(userId, input.slug, id);
     if (
@@ -229,6 +271,7 @@ export class EventTypeService {
       eventName: input.eventName || null,
       bookingFields: applyBookingFields(row, input),
     });
+    await this.savePrivateLinks(id, input, timeZone);
   }
 
   async setHidden(userId: number, id: number, hidden: boolean): Promise<void> {
