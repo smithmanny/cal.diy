@@ -1,30 +1,16 @@
+import type { BusyInterval } from "@calcom/scheduling/available-slots";
+import type { CalendarClient, CalendarEventInput, CalendarListEntry, CreatedCalendarEvent } from "../types";
 import type { GoogleOAuthConfig, GoogleTokens } from "./oauth";
 import { refreshTokens } from "./oauth";
 
-export type GoogleCalendarListEntry = { id: string; summary: string; primary?: boolean; accessRole: string };
-
-export type GoogleEventInput = {
-  summary: string;
-  description: string;
-  start: Date;
-  end: Date;
-  timeZone: string;
-  location: string | null;
-  attendees: { email: string; displayName?: string }[];
-  /** Asks Google to attach a Meet conference; `requestId` makes the request idempotent. */
-  meetRequestId?: string;
-  /** Hides the details from people the calendar is shared with (Cal's hideCalendarEventDetails). */
-  private?: boolean;
-};
-
-export type CreatedGoogleEvent = { id: string; meetUrl: string | null; iCalUID: string | null };
+type GoogleCalendarListEntry = { id: string; summary: string; primary?: boolean; accessRole: string };
 
 /**
  * A minimal fetch-based Google Calendar client (googleapis needs Node APIs Workers don't have).
  * Refreshes the access token when it's about to expire and reports new tokens via `onTokens`
  * so they can be persisted.
  */
-export class GoogleCalendarClient {
+export class GoogleCalendarClient implements CalendarClient {
   constructor(
     private tokens: GoogleTokens,
     private readonly config: GoogleOAuthConfig,
@@ -32,15 +18,19 @@ export class GoogleCalendarClient {
     private readonly fetchImpl: typeof fetch = fetch
   ) {}
 
-  async listCalendars(): Promise<GoogleCalendarListEntry[]> {
+  async listCalendars(): Promise<CalendarListEntry[]> {
     const json = await this.request<{ items?: GoogleCalendarListEntry[] }>(
       "GET",
       "/users/me/calendarList?minAccessRole=reader"
     );
-    return json.items ?? [];
+    return (json.items ?? []).map((calendar) => ({
+      id: calendar.id,
+      name: calendar.summary,
+      primary: Boolean(calendar.primary),
+    }));
   }
 
-  async freeBusy(calendarIds: string[], from: Date, to: Date): Promise<{ start: Date; end: Date }[]> {
+  async busyTimes(calendarIds: string[], from: Date, to: Date): Promise<BusyInterval[]> {
     if (!calendarIds.length) return [];
     const json = await this.request<{
       calendars: Record<string, { busy?: { start: string; end: string }[] }>;
@@ -54,7 +44,7 @@ export class GoogleCalendarClient {
     );
   }
 
-  async createEvent(calendarId: string, event: GoogleEventInput): Promise<CreatedGoogleEvent> {
+  async createEvent(calendarId: string, event: CalendarEventInput): Promise<CreatedCalendarEvent> {
     const body = {
       summary: event.summary,
       description: event.description,
@@ -64,9 +54,10 @@ export class GoogleCalendarClient {
       attendees: event.attendees,
       reminders: { useDefault: true },
       ...(event.private && { visibility: "private" }),
-      ...(event.meetRequestId && {
+      // The booking uid as requestId makes the Meet request idempotent.
+      ...(event.googleMeet && {
         conferenceData: {
-          createRequest: { requestId: event.meetRequestId, conferenceSolutionKey: { type: "hangoutsMeet" } },
+          createRequest: { requestId: event.uid, conferenceSolutionKey: { type: "hangoutsMeet" } },
         },
       }),
     };
@@ -74,7 +65,6 @@ export class GoogleCalendarClient {
     const path = `/calendars/${encodeURIComponent(calendarId)}/events?conferenceDataVersion=1&sendUpdates=none`;
     const created = await this.request<{
       id: string;
-      iCalUID?: string;
       hangoutLink?: string;
       conferenceData?: { entryPoints?: { entryPointType: string; uri: string }[] };
     }>("POST", path, body);
@@ -82,7 +72,7 @@ export class GoogleCalendarClient {
       created.hangoutLink ??
       created.conferenceData?.entryPoints?.find((entry) => entry.entryPointType === "video")?.uri ??
       null;
-    return { id: created.id, meetUrl, iCalUID: created.iCalUID ?? null };
+    return { id: created.id, meetUrl };
   }
 
   async deleteEvent(calendarId: string, eventId: string): Promise<void> {

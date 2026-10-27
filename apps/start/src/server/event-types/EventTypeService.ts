@@ -41,6 +41,8 @@ type Deps = {
     HashedLinkRepository,
     "findByEventTypeId" | "findTakenElsewhere" | "replaceForEventType"
   >;
+  /** Where new event types meet: the user's default conferencing app, as in Cal. */
+  defaultLocation?: (userId: number) => Promise<EventLocation | null>;
 };
 
 function parseLocations(value: unknown): EventLocation[] {
@@ -182,12 +184,14 @@ export class EventTypeService {
   async create(userId: number, input: NewEventTypeInput): Promise<{ id: number }> {
     const slug = await this.assertSlugAvailable(userId, input.slug || input.title);
     const position = (await this.deps.eventTypeRepo.findMaxPositionForUser(userId)) + 1;
+    const location = await this.deps.defaultLocation?.(userId);
     return this.deps.eventTypeRepo.create(userId, {
       title: input.title,
       slug,
       description: input.description,
       length: input.length,
       position,
+      ...(location && { locations: [location] }),
     });
   }
 

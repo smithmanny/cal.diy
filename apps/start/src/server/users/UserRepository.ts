@@ -162,4 +162,17 @@ export class UserRepository {
       .limit(1);
     return found ?? null;
   }
+
+  async findMetadata(userId: number): Promise<unknown> {
+    const [found] = await this.db
+      .select({ metadata: user.metadata })
+      .from(user)
+      .where(eq(user.id, userId))
+      .limit(1);
+    return found?.metadata ?? null;
+  }
+
+  async updateMetadata(userId: number, metadata: { [key: string]: JsonValue }): Promise<void> {
+    await this.db.update(user).set({ metadata }).where(eq(user.id, userId));
+  }
 }
