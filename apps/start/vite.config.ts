@@ -5,6 +5,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
+import { buildEmbedPlugin } from "./scripts/build-embed.ts";
 import { copyLocalesPlugin } from "./scripts/copy-locales.ts";
 
 // See resolve.dedupe below. Dedupe only applies to code Vite processes, so these are inlined in dev too.
@@ -45,6 +46,7 @@ export default defineConfig(({ command, mode }) => {
         : { noExternal: BETTER_AUTH_INLINE },
     plugins: [
       copyLocalesPlugin(),
+      buildEmbedPlugin(),
       tailwindcss(),
       ...(target === "cloudflare" ? [cloudflare({ viteEnvironment: { name: "ssr" } })] : []),
       tanstackStart(),

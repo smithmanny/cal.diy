@@ -57,6 +57,7 @@ export function ThemeScope({
       ref={ref}
       // The system-theme script may add "dark" before React hydrates.
       suppressHydrationWarning
+      data-theme-scope=""
       data-brand={brand ? "" : undefined}
       style={brand}
       className={`min-h-screen bg-background text-foreground ${theme === "dark" ? "dark" : ""} ${className}`}>

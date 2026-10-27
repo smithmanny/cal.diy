@@ -5,6 +5,7 @@ import {
   BookingFieldsError,
   doesEmailMatchEntry,
   parseBookingFields,
+  prefillFromSearch,
   toBookingFieldInput,
   validateBookingResponses,
   withSystemFields,
@@ -210,5 +211,29 @@ describe("doesEmailMatchEntry", () => {
     expect(doesEmailMatchEntry("ann@acme.com", "@acme.com")).toBe(true);
     expect(doesEmailMatchEntry("ann@acme.com", "acme.com")).toBe(true);
     expect(doesEmailMatchEntry("ann@notacme.com", "acme.com")).toBe(false);
+  });
+});
+
+describe("prefillFromSearch", () => {
+  const fields = withSystemFields([
+    { name: "agree", type: "boolean", editable: "user" },
+    { name: "topics", type: "multiselect", editable: "user", options: [{ label: "A", value: "a" }] },
+  ]);
+
+  it("fills answers by question name, repeating parameters for lists", () => {
+    const search = new URLSearchParams(
+      "name=Ada&email=ada@example.com&guests=a@x.com&guests=b@x.com&agree=true&topics=a&unknown=1"
+    );
+    expect(prefillFromSearch(fields, search)).toEqual({
+      name: "Ada",
+      email: "ada@example.com",
+      guests: ["a@x.com", "b@x.com"],
+      agree: true,
+      topics: ["a"],
+    });
+  });
+
+  it("leaves the location and empty parameters alone", () => {
+    expect(prefillFromSearch(fields, new URLSearchParams("location=x&name="))).toEqual({});
   });
 });

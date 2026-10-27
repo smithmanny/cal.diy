@@ -74,6 +74,8 @@ export type PublicHostDto = {
 export type PublicEventDto = {
   host: PublicHostDto;
   eventType: {
+    /** Null for group links, which book no event type. */
+    id: number | null;
     title: string;
     slug: string;
     description: string | null;

@@ -9,3 +9,4 @@ worker-configuration.d.ts
 public/locales
 test-results
 playwright-report
+public/embed

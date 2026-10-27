@@ -1,10 +1,13 @@
 import { recurringDates } from "@calcom/scheduling/recurring";
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useEmbed } from "~/components/embed/EmbedProvider";
 import { HydratedFieldset } from "~/components/HydratedFieldset";
 import { PoweredBy } from "~/components/PoweredBy";
 import { ThemeScope } from "~/components/ThemeScope";
 import { type BookerLayout, initialLayout, LAYOUT_LABEL_KEYS } from "~/lib/booker-layouts";
+import { prefillFromSearch } from "~/lib/booking-fields";
+import { bookingSuccessfulPayload } from "~/lib/embed";
 import { HourCycleProvider } from "~/lib/hour-cycle";
 import { type TFunction, useT } from "~/lib/i18n";
 import { LOCATION_LABEL_KEYS } from "~/lib/location-labels";
@@ -144,6 +147,15 @@ function LayoutSwitcher({
   );
 }
 
+function redirectTop(url: string) {
+  try {
+    window.top?.location.assign(url);
+  } catch {
+    // Browsers can refuse to navigate the embedding site (sandboxed iframes); stay in the iframe.
+    window.location.assign(url);
+  }
+}
+
 // Same key as Cal's booker, so a returning visitor's choice carries over.
 const HOUR_CYCLE_STORAGE_KEY = "timeOption.is24hClock";
 
@@ -166,6 +178,87 @@ function useStoredHour12(): [boolean | undefined, (hour12: boolean) => void] {
     }
   }
   return [hour12, update];
+}
+
+/** Books the chosen slot, then tells an embedding site and moves on to the confirmation. */
+function useBookingSubmit({
+  event,
+  username,
+  slug,
+  locale,
+  rescheduleUid,
+  hashedLink,
+  slot,
+  timeZone,
+  duration,
+  recurringCount,
+}: {
+  event: PublicEventDto;
+  username: string;
+  slug: string;
+  locale: string;
+  rescheduleUid?: string;
+  hashedLink?: string;
+  slot: string | null;
+  timeZone: string | null | undefined;
+  /** The booker's choice, for events with several lengths. */
+  duration: number | undefined;
+  recurringCount: number;
+}) {
+  const navigate = useNavigate();
+  const embed = useEmbed();
+  const recurring = event.eventType.recurringEvent && !rescheduleUid ? event.eventType.recurringEvent : null;
+  // Read once the form shows, which is always after hydration.
+  const prefill = useMemo(
+    () =>
+      slot
+        ? prefillFromSearch(event.eventType.bookingFields, new URLSearchParams(window.location.search))
+        : {},
+    [slot, event.eventType.bookingFields]
+  );
+  const occurrences =
+    slot && timeZone && recurring
+      ? recurringDates(new Date(slot), timeZone, { ...recurring, count: recurringCount }).map((date) =>
+          date.toISOString()
+        )
+      : undefined;
+
+  async function book(submission: BookingSubmission) {
+    if (!slot || !timeZone) return;
+    const rescheduling = submission.rescheduleUid ?? rescheduleUid;
+    const { uid, title, status, redirectUrl, seatReferenceUid } = await createBooking({
+      data: {
+        username,
+        slug,
+        start: slot,
+        timeZone,
+        locale,
+        responses: submission.responses,
+        duration,
+        verificationCode: submission.verificationCode,
+        recurringCount: recurring ? recurringCount : undefined,
+        rescheduleUid: rescheduling,
+        hashedLink,
+      },
+    });
+    embed.fire(
+      rescheduling ? "rescheduleBookingSuccessfulV2" : "bookingSuccessfulV2",
+      bookingSuccessfulPayload({
+        uid,
+        title,
+        status,
+        eventTypeId: event.eventType.id,
+        startTimes: occurrences ?? [slot],
+        durationMinutes: duration ?? event.eventType.length,
+      })
+    );
+    // The host's own thank-you page replaces ours, as in Cal; an embed sends the whole site there.
+    if (redirectUrl && embed.embedded) redirectTop(redirectUrl);
+    else if (redirectUrl) window.location.assign(redirectUrl);
+    else await navigate({ to: "/booking/$uid", params: { uid }, search: { seatReferenceUid } });
+  }
+
+  return { book, occurrences, prefill };
 }
 
 /**
@@ -194,7 +287,6 @@ export function BookerPage({
   const [layout, setLayout] = useState<BookerLayout>(() =>
     initialLayout(event.eventType.bookerLayouts, requestedLayout)
   );
-  const navigate = useNavigate();
   const [duration, setDuration] = useState(event.eventType.length);
   const [recurringCount, setRecurringCount] = useState(event.eventType.recurringEvent?.count ?? 1);
   const hasDurationChoice = event.eventType.durations.length > 1;
@@ -209,33 +301,25 @@ export function BookerPage({
   });
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [hour12, setHour12] = useStoredHour12();
+  const embedTheme = useEmbed().theme;
 
-  async function book(submission: BookingSubmission) {
-    if (!selectedSlot || !slots.timeZone) return;
-    const { uid, redirectUrl, seatReferenceUid } = await createBooking({
-      data: {
-        username,
-        slug,
-        start: selectedSlot,
-        timeZone: slots.timeZone,
-        locale,
-        responses: submission.responses,
-        duration: hasDurationChoice ? duration : undefined,
-        verificationCode: submission.verificationCode,
-        recurringCount: event.eventType.recurringEvent && !rescheduleUid ? recurringCount : undefined,
-        rescheduleUid: submission.rescheduleUid ?? rescheduleUid,
-        hashedLink,
-      },
-    });
-    // The host's own thank-you page replaces ours, as in Cal.
-    if (redirectUrl) window.location.assign(redirectUrl);
-    else await navigate({ to: "/booking/$uid", params: { uid }, search: { seatReferenceUid } });
-  }
+  const { book, occurrences, prefill } = useBookingSubmit({
+    event,
+    username,
+    slug,
+    locale,
+    rescheduleUid,
+    hashedLink,
+    slot: selectedSlot,
+    timeZone: slots.timeZone,
+    duration: hasDurationChoice ? duration : undefined,
+    recurringCount,
+  });
 
   return (
     <HourCycleProvider hour12={hour12}>
       <ThemeScope
-        theme={event.host.appearance.theme}
+        theme={embedTheme === undefined ? event.host.appearance.theme : embedTheme}
         brandColor={event.host.appearance.brandColor}
         darkBrandColor={event.host.appearance.darkBrandColor}>
         <main
@@ -272,14 +356,8 @@ export function BookerPage({
                   locale={locale}
                   locations={event.eventType.locations}
                   fields={event.eventType.bookingFields}
-                  occurrences={
-                    event.eventType.recurringEvent && !rescheduleUid
-                      ? recurringDates(new Date(selectedSlot), slots.timeZone, {
-                          ...event.eventType.recurringEvent,
-                          count: recurringCount,
-                        }).map((date) => date.toISOString())
-                      : undefined
-                  }
+                  occurrences={occurrences}
+                  prefill={prefill}
                   view={rescheduleUid ? "reschedule" : "booking"}
                   onSendCode={
                     event.eventType.requiresBookerEmailVerification && !rescheduleUid

@@ -97,6 +97,7 @@ type Host = NonNullable<Awaited<ReturnType<UserRepository["findByUsername"]>>>;
 
 type CreatedBooking = {
   uid: string;
+  title: string;
   status: string;
   redirectUrl: string | null;
   /** The booker's own seat, for seated events; it is how they cancel or move just their place. */
@@ -264,6 +265,8 @@ export class BookingService {
     return {
       host: coHosts.length ? groupHost(host, coHosts, username) : publicHost(host, host.username ?? username),
       eventType: {
+        // Group links book no event type; 0 stands for that internally.
+        id: eventType.id || null,
         title: eventType.title,
         slug: eventType.slug,
         description: eventType.description,
@@ -432,6 +435,7 @@ export class BookingService {
     );
     return {
       uid,
+      title,
       status,
       redirectUrl: eventType.successRedirectUrl
         ? successRedirectUrl(eventType, {
@@ -552,7 +556,13 @@ export class BookingService {
     } else if (snapshot) {
       this.emit({ type: "BOOKING_CREATED", booking: snapshot, seat: seatInfo });
     }
-    return { uid, status: "ACCEPTED", seatReferenceUid: seat.referenceUid, redirectUrl: null };
+    return {
+      uid,
+      title: snapshot?.title ?? eventType.title,
+      status: "ACCEPTED",
+      seatReferenceUid: seat.referenceUid,
+      redirectUrl: null,
+    };
   }
 
   /**

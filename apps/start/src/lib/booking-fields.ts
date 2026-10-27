@@ -600,6 +600,25 @@ function userFieldAnswers(fields: BookingField[], responses: Record<string, unkn
   });
 }
 
+const LIST_FIELD_TYPES: ReadonlySet<BookingFieldType> = new Set(["multiemail", "checkbox", "multiselect"]);
+
+/**
+ * Cal's URL prefill: `?name=Ada&email=ada@example.com&guests=a@x.com&guests=b@x.com` fills the
+ * booking form, by question name. Only the form's starting values; answers are validated as usual.
+ */
+function prefillFromSearch(fields: BookingField[], search: URLSearchParams): Record<string, unknown> {
+  const values: Record<string, unknown> = {};
+  for (const field of fields) {
+    if (field.type === "radioInput") continue;
+    const given = search.getAll(field.name).filter(Boolean);
+    if (!given.length) continue;
+    if (LIST_FIELD_TYPES.has(field.type)) values[field.name] = given;
+    else if (field.type === "boolean") values[field.name] = given[0] === "true";
+    else values[field.name] = given[0];
+  }
+  return values;
+}
+
 export type {
   BookingFieldType,
   BookingField,
@@ -635,4 +654,5 @@ export {
   formatResponse,
   calEventResponses,
   userFieldAnswers,
+  prefillFromSearch,
 };

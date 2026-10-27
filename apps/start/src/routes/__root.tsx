@@ -8,6 +8,7 @@ import {
   useRouter,
 } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { EmbedProvider } from "~/components/embed/EmbedProvider";
 import { DEFAULT_LOCALE, localeDirection } from "~/lib/locales";
 import { getRequestContext, type RequestContext } from "~/server/auth/session";
 import stylesUrl from "~/styles.css?url";
@@ -22,7 +23,7 @@ function RootDocument({ children }: { children: ReactNode }) {
         <HeadContent />
       </head>
       <body className="min-h-screen bg-background font-sans text-foreground antialiased">
-        {children}
+        <EmbedProvider>{children}</EmbedProvider>
         <Scripts />
       </body>
     </html>

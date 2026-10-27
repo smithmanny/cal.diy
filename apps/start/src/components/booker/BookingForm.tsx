@@ -72,8 +72,14 @@ function VerificationCodeStep({
   );
 }
 
-function initialValues(locations: PublicEventLocation[]): Record<string, unknown> {
-  return locations.length ? { location: { value: locations[0].type, optionValue: "" } } : {};
+function initialValues(
+  locations: PublicEventLocation[],
+  prefill: Record<string, unknown> = {}
+): Record<string, unknown> {
+  return {
+    ...prefill,
+    ...(locations.length ? { location: { value: locations[0].type, optionValue: "" } } : {}),
+  };
 }
 
 export function BookingForm({
@@ -87,6 +93,7 @@ export function BookingForm({
   onSubmit,
   onSendCode,
   occurrences,
+  prefill,
   t,
 }: {
   slot: string;
@@ -101,12 +108,14 @@ export function BookingForm({
   occurrences?: string[];
   /** Set when the event type requires booker email verification; emails a code. */
   onSendCode?: (email: string) => Promise<void>;
+  /** Starting answers, from Cal's URL prefill. */
+  prefill?: Record<string, unknown>;
   t: TFunction;
 }) {
   const [code, setCode] = useState("");
   const [codeSent, setCodeSent] = useState(false);
   const [sendingCode, setSendingCode] = useState(false);
-  const [values, setValues] = useState<Record<string, unknown>>(() => initialValues(locations));
+  const [values, setValues] = useState<Record<string, unknown>>(() => initialValues(locations, prefill));
   const hour12 = useHour12() ?? localeUsesHour12(locale);
   const [error, setError] = useState<SubmitError | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
