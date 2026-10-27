@@ -1,5 +1,6 @@
 import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
+import { withSystemFields } from "~/lib/booking-fields";
 import type { BookingSnapshot } from "../bookings/events";
 import {
   buildBookingPayload,
@@ -17,9 +18,12 @@ const snapshot: BookingSnapshot = {
   endTime: new Date("2030-01-07T10:30:00Z"),
   status: "ACCEPTED",
   location: "https://meet.example/x",
-  responses: { name: "Greta", email: "greta@example.com", notes: "Hi" },
+  responses: { name: "Greta", email: "greta@example.com", notes: "Hi", company: "Acme" },
   cancellationReason: null,
   fromReschedule: null,
+  bookingFields: withSystemFields([
+    { name: "company", type: "text", label: "Company", required: false, editable: "user" },
+  ]),
   eventType: { id: 1, title: "Intro", slug: "intro", length: 30 },
   organizer: {
     id: 7,
@@ -54,6 +58,24 @@ describe("webhook payload", () => {
       length: 30,
       status: "ACCEPTED",
     });
+  });
+
+  it("labels answers like Cal, listing the host's own questions separately", () => {
+    const payload = buildBookingPayload(snapshot);
+    expect(payload.responses).toMatchObject({
+      name: { label: "your_name", value: "Greta", isHidden: false },
+      notes: { label: "additional_notes", value: "Hi" },
+      company: { label: "Company", value: "Acme" },
+    });
+    expect(payload.userFieldsResponses).toEqual({
+      company: { label: "Company", value: "Acme", isHidden: false },
+    });
+  });
+
+  it("falls back to field names when the event type is gone", () => {
+    const payload = buildBookingPayload({ ...snapshot, bookingFields: null });
+    expect(payload.responses.company).toEqual({ label: "company", value: "Acme" });
+    expect(Object.keys(payload.userFieldsResponses)).toEqual(["company"]);
   });
 
   it("adds the previous times on reschedules", () => {

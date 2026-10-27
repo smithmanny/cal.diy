@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { withSystemFields } from "~/lib/booking-fields";
 import type { BookingSnapshot } from "../bookings/events";
 import { pickMessages } from "../catalog";
 import { EmailService } from "./EmailService";
@@ -22,6 +23,7 @@ const booking: BookingSnapshot = {
   responses: { notes: "<b>bring slides</b>" },
   cancellationReason: null,
   fromReschedule: null,
+  bookingFields: null,
   eventType: { id: 1, title: "Intro", slug: "intro", length: 30 },
   organizer: {
     id: 7,
@@ -84,6 +86,31 @@ describe("renderBookingEmail", () => {
     expect(email.html).toContain("&lt;b&gt;bring slides&lt;/b&gt;");
     expect(email.html).toContain("https://cal.test/booking/uid-1");
     expect(email.text).toContain("bring slides");
+  });
+
+  it("lists the host's questions with their answers, and the reason on reschedules", async () => {
+    const withAnswers: BookingSnapshot = {
+      ...booking,
+      responses: { notes: "Hi", company: "<Acme>", newsletter: true, rescheduleReason: "Clash" },
+      bookingFields: withSystemFields([
+        { name: "company", type: "text", label: "Company", editable: "user" },
+        { name: "newsletter", type: "boolean", label: "Newsletter", editable: "user" },
+      ]),
+    };
+    const messages = await pickMessages("en", EMAIL_MESSAGE_KEYS);
+    const scheduled = renderBookingEmail(
+      "organizer_scheduled",
+      withAnswers,
+      booking.organizer,
+      messages,
+      "x"
+    );
+    expect(scheduled.text).toContain("Company: <Acme>");
+    expect(scheduled.text).toContain("Newsletter: Yes");
+    expect(scheduled.html).toContain("&lt;Acme&gt;");
+    expect(scheduled.text).not.toContain("Clash");
+    const moved = renderBookingEmail("organizer_rescheduled", withAnswers, booking.organizer, messages, "x");
+    expect(moved.text).toContain("Reason for reschedule: Clash");
   });
 });
 

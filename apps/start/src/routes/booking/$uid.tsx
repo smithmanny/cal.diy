@@ -8,6 +8,7 @@ import { LOCATION_LABEL_KEYS } from "~/components/booker/locationLabels";
 import { HydratedFieldset } from "~/components/HydratedFieldset";
 import { PoweredBy } from "~/components/PoweredBy";
 import { ThemeScope } from "~/components/ThemeScope";
+import { formatResponse } from "~/lib/booking-fields";
 import { formatLongDate, formatTime } from "~/lib/date-utils";
 import { errorMessageKey } from "~/lib/errors";
 import { useT } from "~/lib/i18n";
@@ -29,6 +30,8 @@ const MESSAGE_KEYS = [
   "where",
   "host",
   "additional_notes",
+  "yes",
+  "no",
   "cancellation_reason",
   "cancellation_reason_placeholder",
   "need_to_reschedule_or_cancel",
@@ -99,13 +102,19 @@ function BookingPage() {
       t("who"),
       [
         booking.host ? `${booking.host.name ?? booking.host.email} (${t("host")})` : null,
-        ...booking.attendees.map((attendee) => `${attendee.name} <${attendee.email}>`),
+        ...booking.attendees.map((attendee) =>
+          attendee.name ? `${attendee.name} <${attendee.email}>` : attendee.email
+        ),
       ]
         .filter(Boolean)
         .join("\n"),
     ],
     [t("where"), locationText(booking.location, t)],
     [t("additional_notes"), booking.notes],
+    ...booking.answers.map((answer): [string, string] => [
+      answer.label || t(answer.defaultLabel ?? answer.name),
+      formatResponse(answer.value, t),
+    ]),
   ];
 
   return (

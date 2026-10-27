@@ -40,7 +40,8 @@ export function buildIcs(
     ...(booking.location ? [`LOCATION:${escape(booking.location)}`] : []),
     `ORGANIZER;CN=${escape(booking.organizer.name ?? booking.organizer.email)}:mailto:${booking.organizer.email}`,
     ...booking.attendees.map(
-      (attendee) => `ATTENDEE;CN=${escape(attendee.name)};RSVP=TRUE:mailto:${attendee.email}`
+      (attendee) =>
+        `ATTENDEE;CN=${escape(attendee.name || attendee.email)};RSVP=TRUE:mailto:${attendee.email}`
     ),
     `STATUS:${options.method === "CANCEL" ? "CANCELLED" : "CONFIRMED"}`,
     "END:VEVENT",

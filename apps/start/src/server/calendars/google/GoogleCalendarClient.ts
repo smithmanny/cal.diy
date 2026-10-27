@@ -10,7 +10,7 @@ export type GoogleEventInput = {
   end: Date;
   timeZone: string;
   location: string | null;
-  attendees: { email: string; displayName: string }[];
+  attendees: { email: string; displayName?: string }[];
   /** Asks Google to attach a Meet conference; `requestId` makes the request idempotent. */
   meetRequestId?: string;
 };

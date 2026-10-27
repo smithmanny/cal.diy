@@ -18,14 +18,14 @@ test("default event types, create, edit with locations and limits, unique URLs, 
 
   await page.getByLabel("Duration (Minutes)").fill("45");
   await page.getByLabel("Add a location").selectOption("inPerson");
-  await page.getByLabel("Address").fill("1 Main Street");
+  await page.getByLabel("Address", { exact: true }).fill("1 Main Street");
   await page.getByLabel("Before event").selectOption("10");
   await page.locator("label").filter({ hasText: "Limit future bookings" }).getByRole("switch").click();
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.getByRole("status")).toHaveText("Saved");
   await page.reload();
   await expect(page.getByLabel("Duration (Minutes)")).toHaveValue("45");
-  await expect(page.getByLabel("Address")).toHaveValue("1 Main Street");
+  await expect(page.getByLabel("Address", { exact: true })).toHaveValue("1 Main Street");
   await expect(page.getByLabel("Before event")).toHaveValue("10");
 
   await page.getByRole("textbox", { name: /^URL/ }).fill("30min");

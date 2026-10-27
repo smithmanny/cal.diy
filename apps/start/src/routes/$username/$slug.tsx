@@ -1,7 +1,8 @@
 import { createFileRoute, notFound, useNavigate } from "@tanstack/react-router";
-import { type ComponentProps, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { BookerSidebar } from "~/components/booker/BookerSidebar";
-import { BookingForm } from "~/components/booker/BookingForm";
+import { BOOKING_FIELD_MESSAGE_KEYS } from "~/components/booker/BookingFieldInput";
+import { BookingForm, type BookingSubmission } from "~/components/booker/BookingForm";
 import { LOCATION_LABEL_KEYS } from "~/components/booker/locationLabels";
 import { SlotPicker } from "~/components/booker/SlotPicker";
 import { useMonthSlots } from "~/components/booker/useMonthSlots";
@@ -15,6 +16,7 @@ import { NOINDEX_META } from "~/lib/seo";
 import { createBooking, getPublicEvent } from "~/server/bookings/functions";
 
 const MESSAGE_KEYS = [
+  ...BOOKING_FIELD_MESSAGE_KEYS,
   "powered_by",
   ...Object.values(LOCATION_LABEL_KEYS),
   "minutes",
@@ -22,11 +24,6 @@ const MESSAGE_KEYS = [
   "no_available_slots",
   "view_previous_month",
   "view_next_month",
-  "your_name",
-  "email_address",
-  "additional_notes",
-  "location",
-  "phone_number",
   "confirm",
   "back",
   "loading",
@@ -88,7 +85,7 @@ function BookerPage() {
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [hour12, setHour12] = useStoredHour12();
 
-  async function book(attendee: Parameters<ComponentProps<typeof BookingForm>["onSubmit"]>[0]) {
+  async function book(submission: BookingSubmission) {
     if (!selectedSlot || !slots.timeZone) return;
     const { uid } = await createBooking({
       data: {
@@ -97,8 +94,8 @@ function BookerPage() {
         start: selectedSlot,
         timeZone: slots.timeZone,
         locale,
-        ...attendee,
-        rescheduleUid: attendee.rescheduleUid ?? rescheduleUid,
+        responses: submission.responses,
+        rescheduleUid: submission.rescheduleUid ?? rescheduleUid,
       },
     });
     await navigate({ to: "/booking/$uid", params: { uid } });
@@ -126,6 +123,8 @@ function BookerPage() {
                   timeZone={slots.timeZone}
                   locale={locale}
                   locations={event.eventType.locations}
+                  fields={event.eventType.bookingFields}
+                  view={rescheduleUid ? "reschedule" : "booking"}
                   onBack={() => setSelectedSlot(null)}
                   onSubmit={book}
                   t={t}

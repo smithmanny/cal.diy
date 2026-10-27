@@ -10,6 +10,14 @@ import {
 import { limitCheckRange } from "@calcom/scheduling/limits";
 import { outOfOfficeByDate } from "@calcom/scheduling/out-of-office";
 import type { OutOfOfficeData } from "@calcom/scheduling/types";
+import {
+  type BookingField,
+  type LocationResponse,
+  parseBookingFields,
+  userFieldAnswers,
+  validateBookingResponses,
+  withSystemFields,
+} from "~/lib/booking-fields";
 import { weekStartIndex } from "~/lib/time-format";
 import { pickMessages } from "../catalog";
 import { AppError } from "../errors";
@@ -52,6 +60,12 @@ type Deps = {
 };
 
 const MAX_RANGE_MS = 62 * 24 * 60 * 60 * 1000;
+
+function bookingFieldsOf(eventType: { bookingFields: unknown; disableGuests: boolean }): BookingField[] {
+  return withSystemFields(parseBookingFields(eventType.bookingFields), {
+    disableGuests: eventType.disableGuests,
+  });
+}
 
 function parseLocations(value: unknown): EventLocation[] {
   if (!Array.isArray(value)) return [];
@@ -133,6 +147,7 @@ export class BookingService {
             ? { type: location.type, address: location.address }
             : { type: location.type }
         ),
+        bookingFields: bookingFieldsOf(eventType),
       },
     };
   }
@@ -192,20 +207,38 @@ export class BookingService {
     );
     if (!slots.some((slot) => slot.getTime() === start.getTime()))
       throw new AppError("booking_conflict_error", 409);
+    const locations = parseLocations(eventType.locations);
+    const { responses, errors } = validateBookingResponses(bookingFieldsOf(eventType), input.responses, {
+      view: original ? "reschedule" : "booking",
+      locationTypes: locations.map((option) => option.type),
+    });
+    if (errors.length) {
+      const [first] = errors;
+      throw new AppError(first.key, 400, { field: first.field, ...first.values });
+    }
+    // name and email are system fields that are always shown and required.
+    const name = String(responses.name);
+    const email = String(responses.email);
     // Like Cal, moving an existing booking never counts against the booker's limit.
-    if (!original) await this.assertBookerUnderLimit(eventType, input.email);
+    if (!original) await this.assertBookerUnderLimit(eventType, email);
 
-    const location = this.resolveLocation(parseLocations(eventType.locations), input);
+    const locationResponse = responses.location as LocationResponse | undefined;
+    const location = this.resolveLocation(locations, locationResponse);
+    const attendeePhone =
+      (locationResponse?.value === "phone" ? locationResponse.optionValue : undefined) ||
+      (typeof responses.attendeePhoneNumber === "string" ? responses.attendeePhoneNumber : null);
+    const notes = typeof responses.notes === "string" ? responses.notes : null;
     const messages = await pickMessages(host.locale ?? "en", ["event_between_users"]);
     const title = (messages.event_between_users ?? "{{eventName}} between {{host}} and {{attendeeName}}")
       .replace("{{eventName}}", eventType.title)
       .replace("{{host}}", host.name ?? host.username ?? host.email)
-      .replace("{{attendeeName}}", input.name);
+      .replace("{{attendeeName}}", name);
 
-    const responses: { [key: string]: JsonValue } = { name: input.name, email: input.email };
-    if (input.notes) responses.notes = input.notes;
-    if (input.attendeePhone) responses.attendeePhoneNumber = input.attendeePhone;
-    if (location) responses.location = { value: input.locationType ?? "", optionValue: location };
+    // Cal drops guests that repeat the booker.
+    const guests = (Array.isArray(responses.guests) ? responses.guests : []).filter(
+      (guest) => guest.toLowerCase() !== email.toLowerCase()
+    );
+    const attendeeBase = { timeZone: input.timeZone, locale: input.locale };
 
     const uid = cuid();
     const created = await this.deps.bookingRepo.insertIfSlotFree(
@@ -215,20 +248,17 @@ export class BookingService {
         userPrimaryEmail: host.email,
         eventTypeId: eventType.id,
         title,
-        description: input.notes ?? null,
+        description: notes,
         startTime: start,
         endTime: end,
         location,
         status: eventType.requiresConfirmation ? "PENDING" : "ACCEPTED",
-        responses,
+        responses: responses as { [key: string]: JsonValue },
         fromReschedule: original?.uid ?? null,
-        attendee: {
-          name: input.name,
-          email: input.email,
-          timeZone: input.timeZone,
-          locale: input.locale,
-          phoneNumber: input.attendeePhone ?? null,
-        },
+        attendees: [
+          { ...attendeeBase, name, email, phoneNumber: attendeePhone },
+          ...guests.map((guest) => ({ ...attendeeBase, name: "", email: guest, phoneNumber: null })),
+        ],
       },
       { replacesUid: original?.uid }
     );
@@ -263,6 +293,15 @@ export class BookingService {
       cancellationReason: found.cancellationReason,
       rescheduled: Boolean(found.rescheduled),
       notes: typeof responses.notes === "string" ? responses.notes : null,
+      answers: found.eventType
+        ? userFieldAnswers(bookingFieldsOf(found.eventType), responses).map(({ field, value }) => ({
+            name: field.name,
+            type: field.type,
+            label: field.label ?? null,
+            defaultLabel: field.defaultLabel ?? null,
+            value,
+          }))
+        : [],
       host: found.host
         ? {
             name: found.host.name,
@@ -335,7 +374,15 @@ export class BookingService {
       responses: (found.responses ?? {}) as Record<string, unknown>,
       cancellationReason: found.cancellationReason,
       fromReschedule: found.fromReschedule,
-      eventType: found.eventType,
+      eventType: found.eventType
+        ? {
+            id: found.eventType.id,
+            title: found.eventType.title,
+            slug: found.eventType.slug,
+            length: found.eventType.length,
+          }
+        : null,
+      bookingFields: found.eventType ? bookingFieldsOf(found.eventType) : null,
       organizer: { ...found.host, locale: found.host.locale ?? "en" },
       attendees: found.attendees,
     };
@@ -479,9 +526,12 @@ export class BookingService {
     return { slots, outOfOffice };
   }
 
-  private resolveLocation(locations: EventLocation[], input: CreateBookingInput): string | null {
+  private resolveLocation(
+    locations: EventLocation[],
+    chosenResponse: LocationResponse | undefined
+  ): string | null {
     if (!locations.length) return null;
-    const chosen = locations.find((location) => location.type === input.locationType) ?? locations[0];
+    const chosen = locations.find((location) => location.type === chosenResponse?.value) ?? locations[0];
     switch (chosen.type) {
       case "inPerson":
         return chosen.address;
@@ -490,8 +540,8 @@ export class BookingService {
       case "userPhone":
         return chosen.hostPhoneNumber;
       case "phone":
-        if (!input.attendeePhone) throw new AppError("enter_phone_number");
-        return input.attendeePhone;
+        if (!chosenResponse?.optionValue) throw new AppError("enter_phone_number");
+        return chosenResponse.optionValue;
       default:
         return chosen.type;
     }

@@ -56,6 +56,59 @@ describe("EventTypeService", () => {
     expect((await service.get(ownerId, second.id)).slug).toBe("deep-dive");
   });
 
+  it("saves booking questions in Cal's format, keeping Cal properties the editor doesn't know", async () => {
+    const { id } = await service.create(ownerId, {
+      title: "Intro",
+      slug: "intro",
+      description: null,
+      length: 30,
+    });
+    await db
+      .update(eventType)
+      .set({
+        bookingFields: [
+          { name: "notes", type: "textarea", sources: [{ id: "workflow", type: "workflow", label: "W" }] },
+        ],
+      })
+      .where(eq(eventType.id, id));
+    const input = await baseInput(id);
+    const fields = input.bookingFields.map((field) =>
+      field.name === "notes" ? { ...field, hidden: true } : field
+    );
+    fields.splice(4, 0, { name: "company", type: "text", label: "Company", required: true, hidden: false });
+    await service.update(ownerId, id, { ...input, bookingFields: fields });
+
+    const [stored] = await db
+      .select({ fields: eventType.bookingFields })
+      .from(eventType)
+      .where(eq(eventType.id, id));
+    const saved = stored.fields as { name: string; hidden?: boolean; editable?: string; sources?: unknown }[];
+    expect(saved.map((field) => field.name)).toEqual([
+      "name",
+      "email",
+      "attendeePhoneNumber",
+      "location",
+      "company",
+      // Stored fields keep their place; missing system fields are added after them.
+      "notes",
+      "title",
+      "guests",
+      "rescheduleReason",
+    ]);
+    expect(saved.find((field) => field.name === "company")).toMatchObject({ editable: "user" });
+    expect(saved.find((field) => field.name === "notes")).toMatchObject({
+      hidden: true,
+      sources: [{ id: "workflow" }],
+    });
+
+    await expect(
+      service.update(ownerId, id, {
+        ...input,
+        bookingFields: fields.filter((field) => field.name !== "email"),
+      })
+    ).rejects.toMatchObject({ code: "booking_question_system_field_removed" });
+  });
+
   it("rejects a URL the same user already uses, but allows it for other users", async () => {
     await service.create(ownerId, { title: "Intro", slug: "intro", description: null, length: 30 });
     await expect(

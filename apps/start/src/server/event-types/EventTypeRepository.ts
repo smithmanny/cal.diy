@@ -34,6 +34,8 @@ const detailColumns = {
   durationLimits: eventType.durationLimits,
   maxActiveBookingsPerBooker: eventType.maxActiveBookingsPerBooker,
   maxActiveBookingPerBookerOfferReschedule: eventType.maxActiveBookingPerBookerOfferReschedule,
+  bookingFields: eventType.bookingFields,
+  disableGuests: eventType.disableGuests,
 };
 
 type WritableColumns = Partial<Omit<typeof eventType.$inferInsert, "id" | "userId" | "teamId">>;

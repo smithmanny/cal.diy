@@ -101,6 +101,7 @@ describe("webhook listener", () => {
       responses: {},
       cancellationReason: null,
       fromReschedule: null,
+      bookingFields: null,
       eventType: null,
       organizer: {
         id: ownerId,

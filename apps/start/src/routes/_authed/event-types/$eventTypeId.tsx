@@ -8,6 +8,10 @@ import { ArrowLeftIcon, ExternalLinkIcon } from "lucide-react";
 import { useState } from "react";
 import { FormError } from "~/components/AuthCard";
 import { selectClass } from "~/components/availability/TimeSelect";
+import {
+  BOOKING_QUESTIONS_MESSAGE_KEYS,
+  BookingQuestionsEditor,
+} from "~/components/event-types/BookingQuestionsEditor";
 import { Field, Section } from "~/components/event-types/EditorLayout";
 import { LIMITS_MESSAGE_KEYS, LimitsEditor, limitsErrorKey } from "~/components/event-types/LimitsEditor";
 import { LOCATIONS_MESSAGE_KEYS, LocationsEditor } from "~/components/event-types/LocationsEditor";
@@ -20,6 +24,7 @@ import type { EventTypeInput } from "~/server/event-types/types";
 import { listSchedules } from "~/server/schedules/functions";
 
 const MESSAGE_KEYS = [
+  ...BOOKING_QUESTIONS_MESSAGE_KEYS,
   ...LOCATIONS_MESSAGE_KEYS,
   ...LIMITS_MESSAGE_KEYS,
   "setup",
@@ -172,6 +177,14 @@ function EventTypeEditorPage() {
             </option>
           ))}
         </select>
+      </Section>
+
+      <Section title={t("booking_questions_title")}>
+        <BookingQuestionsEditor
+          value={form.bookingFields}
+          onChange={(fields) => set("bookingFields", fields)}
+          t={t}
+        />
       </Section>
 
       <Section title={t("event_limit_tab_title")}>

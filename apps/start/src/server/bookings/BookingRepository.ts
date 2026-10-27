@@ -54,7 +54,16 @@ export type NewBooking = {
   status: BookingStatus;
   responses: { [key: string]: JsonValue };
   fromReschedule: string | null;
-  attendee: { name: string; email: string; timeZone: string; locale: string; phoneNumber: string | null };
+  /** The booker first, then any guests they added. */
+  attendees: [NewAttendee, ...NewAttendee[]];
+};
+
+export type NewAttendee = {
+  name: string;
+  email: string;
+  timeZone: string;
+  locale: string;
+  phoneNumber: string | null;
 };
 
 export type BusyBooking = { start: Date; end: Date; beforeBuffer: number; afterBuffer: number };
@@ -113,7 +122,7 @@ export class BookingRepository {
    * uid. Returns false when the slot was taken in the meantime.
    */
   async insertIfSlotFree(data: NewBooking, options: { replacesUid?: string } = {}): Promise<boolean> {
-    const { attendee: newAttendee, ...bookingValues } = data;
+    const { attendees: newAttendees, ...bookingValues } = data;
     const slotIsFree = notExists(
       this.db
         .select({ one: sql`1` })
@@ -134,11 +143,13 @@ export class BookingRepository {
       this.db.run(
         conditionalInsert(booking, { ...bookingValues, iCalUID: `${data.uid}@cal.diy` }, slotIsFree)
       ),
-      this.db.run(
-        conditionalInsert(
-          attendee,
-          { ...newAttendee, email: newAttendee.email.toLowerCase(), bookingId: sql`(${insertedBooking})` },
-          exists(insertedBooking)
+      ...newAttendees.map((newAttendee) =>
+        this.db.run(
+          conditionalInsert(
+            attendee,
+            { ...newAttendee, email: newAttendee.email.toLowerCase(), bookingId: sql`(${insertedBooking})` },
+            exists(insertedBooking)
+          )
         )
       ),
       // Cancelling the original in the same batch means a reschedule never leaves two live bookings.
@@ -236,6 +247,8 @@ export class BookingRepository {
               title: eventType.title,
               slug: eventType.slug,
               length: eventType.length,
+              bookingFields: eventType.bookingFields,
+              disableGuests: eventType.disableGuests,
             })
             .from(eventType)
             .where(eq(eventType.id, found.eventTypeId))

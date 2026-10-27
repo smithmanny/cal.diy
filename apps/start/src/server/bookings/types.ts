@@ -1,4 +1,7 @@
 import { z } from "zod";
+import type { BookingField, BookingResponseValue } from "~/lib/booking-fields";
+
+const MAX_RESPONSES_BYTES = 64 * 1024;
 
 export const slotsQuerySchema = z.object({
   username: z.string().min(1).max(100),
@@ -15,15 +18,10 @@ export const createBookingSchema = z.object({
   start: z.string().datetime(),
   timeZone: z.string().min(1).max(100),
   locale: z.string().max(20).default("en"),
-  name: z.string().trim().min(1).max(200),
-  email: z.string().trim().email().max(320),
-  notes: z.string().max(5000).optional(),
-  locationType: z.string().max(100).optional(),
-  attendeePhone: z
-    .string()
-    .trim()
-    .regex(/^\+?[\d\s().-]{6,20}$/)
-    .optional(),
+  /** Answers keyed by booking field name, in Cal's format; checked against the event's questions. */
+  responses: z.record(z.unknown()).refine((value) => JSON.stringify(value).length <= MAX_RESPONSES_BYTES, {
+    message: "something_went_wrong",
+  }),
   rescheduleUid: z.string().max(100).optional(),
 });
 
@@ -31,6 +29,15 @@ export type SlotsQuery = z.infer<typeof slotsQuerySchema>;
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;
 
 export type PublicEventLocation = { type: string; address?: string };
+
+/** An answer shown back on the booking page, labelled the way the booker saw the question. */
+export type BookingAnswerDto = {
+  name: string;
+  type: BookingField["type"];
+  label: string | null;
+  defaultLabel: string | null;
+  value: BookingResponseValue;
+};
 
 /** How the host's public pages look; see ThemeScope. */
 export type AppearanceDto = {
@@ -59,6 +66,7 @@ export type PublicEventDto = {
     length: number;
     requiresConfirmation: boolean;
     locations: PublicEventLocation[];
+    bookingFields: BookingField[];
   };
 };
 
@@ -72,6 +80,7 @@ export type BookingDetailsDto = {
   cancellationReason: string | null;
   rescheduled: boolean;
   notes: string | null;
+  answers: BookingAnswerDto[];
   host: { name: string | null; email: string; username: string | null; appearance: AppearanceDto } | null;
   eventType: { title: string; slug: string; length: number } | null;
   attendees: { name: string; email: string; timeZone: string }[];

@@ -158,7 +158,10 @@ export class CalendarService {
       end: booking.endTime,
       timeZone: booking.organizer.timeZone,
       location: wantsMeet ? null : booking.location,
-      attendees: booking.attendees.map((attendee) => ({ email: attendee.email, displayName: attendee.name })),
+      attendees: booking.attendees.map((attendee) => ({
+        email: attendee.email,
+        displayName: attendee.name || undefined,
+      })),
       meetRequestId: wantsMeet ? booking.uid : undefined,
     });
     await this.repo.addReference({

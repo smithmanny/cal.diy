@@ -1,5 +1,5 @@
 import type { Database } from "@calcom/db/database";
-import { booking, eventType, user } from "@calcom/db/schema";
+import { attendee, booking, eventType, user } from "@calcom/db/schema";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createTestDb } from "../../test/testDb";
@@ -85,17 +85,30 @@ const daySlots = (slug = "intro") =>
   });
 const slots = (slug = "intro") => daySlots(slug).then((result) => result.slots);
 
-const book = (start: string, overrides: Record<string, unknown> = {}) =>
+type BookOptions = {
+  slug?: string;
+  rescheduleUid?: string;
+  email?: string;
+  notes?: string;
+  location?: { value: string; optionValue?: string };
+  responses?: Record<string, unknown>;
+};
+
+const book = (start: string, options: BookOptions = {}) =>
   service.create({
     username: "host",
-    slug: "intro",
+    slug: options.slug ?? "intro",
     start,
     timeZone: "Europe/Paris",
     locale: "en",
-    name: "Guest",
-    email: "guest@example.com",
-    locationType: "link",
-    ...overrides,
+    rescheduleUid: options.rescheduleUid,
+    responses: {
+      name: "Guest",
+      email: options.email ?? "guest@example.com",
+      location: options.location ?? { value: "link" },
+      ...(options.notes ? { notes: options.notes } : {}),
+      ...options.responses,
+    },
   });
 
 describe("BookingService", () => {
@@ -210,11 +223,104 @@ describe("BookingService", () => {
   });
 
   it("requires the attendee's number for attendee-phone locations", async () => {
-    await expect(book(at("11:00"), { locationType: "phone" })).rejects.toMatchObject({
-      code: "enter_phone_number",
+    await expect(book(at("11:00"), { location: { value: "phone" } })).rejects.toMatchObject({
+      code: "error_required_field",
+      values: { field: "location" },
     });
-    const { uid } = await book(at("11:00"), { locationType: "phone", attendeePhone: "+1 555 0100" });
+    const { uid } = await book(at("11:00"), { location: { value: "phone", optionValue: "+1 555 0100" } });
     expect((await service.getBooking(uid)).location).toBe("+1 555 0100");
+  });
+
+  describe("booking questions", () => {
+    beforeEach(async () => {
+      await db
+        .update(eventType)
+        .set({
+          bookingFields: [
+            { name: "company", type: "text", label: "Company", required: true, editable: "user" },
+            {
+              name: "size",
+              type: "select",
+              label: "Team size",
+              required: false,
+              editable: "user",
+              options: [
+                { label: "1-10", value: "small" },
+                { label: "11+", value: "large" },
+              ],
+            },
+            { name: "email", type: "email", excludeEmails: "gmail.com" },
+          ],
+        })
+        .where(eq(eventType.slug, "intro"));
+    });
+
+    it("requires the host's questions and checks answers against their options", async () => {
+      await expect(book(at("10:00"))).rejects.toMatchObject({
+        code: "error_required_field",
+        values: { field: "company" },
+      });
+      await expect(book(at("10:00"), { responses: { company: "Acme", size: "huge" } })).rejects.toMatchObject(
+        {
+          values: { field: "size" },
+        }
+      );
+      await expect(
+        book(at("10:00"), { email: "me@gmail.com", responses: { company: "Acme" } })
+      ).rejects.toMatchObject({ code: "exclude_emails_match_found_error_message" });
+    });
+
+    it("stores answers to what was asked only, and shows the host's answers back", async () => {
+      const { uid } = await book(at("10:00"), {
+        responses: { company: " Acme ", size: "small", injected: "x", rescheduleReason: "not asked" },
+      });
+      const [stored] = await db
+        .select({ responses: booking.responses })
+        .from(booking)
+        .where(eq(booking.uid, uid));
+      expect(stored.responses).toEqual({
+        name: "Guest",
+        email: "guest@example.com",
+        location: { value: "link", optionValue: "" },
+        company: "Acme",
+        size: "small",
+      });
+      expect((await service.getBooking(uid)).answers).toEqual([
+        { name: "company", type: "text", label: "Company", defaultLabel: null, value: "Acme" },
+        { name: "size", type: "select", label: "Team size", defaultLabel: null, value: "small" },
+      ]);
+    });
+
+    it("asks the reschedule reason only when rescheduling", async () => {
+      const { uid } = await book(at("10:00"), { responses: { company: "Acme" } });
+      const moved = await book(at("11:00"), {
+        rescheduleUid: uid,
+        responses: { company: "Acme", rescheduleReason: "Clash" },
+      });
+      const [stored] = await db
+        .select({ responses: booking.responses })
+        .from(booking)
+        .where(eq(booking.uid, moved.uid));
+      expect(stored.responses).toMatchObject({ rescheduleReason: "Clash" });
+    });
+  });
+
+  it("adds guests as attendees, skipping the booker and rejecting duplicates", async () => {
+    await expect(
+      book(at("10:00"), { responses: { guests: ["a@example.com", "A@example.com"] } })
+    ).rejects.toMatchObject({ code: "duplicate_email", values: { field: "guests" } });
+    const { uid } = await book(at("10:00"), {
+      responses: { guests: ["a@example.com", "guest@example.com", ""] },
+    });
+    const [{ id }] = await db.select({ id: booking.id }).from(booking).where(eq(booking.uid, uid));
+    const rows = await db.select({ email: attendee.email }).from(attendee).where(eq(attendee.bookingId, id));
+    expect(rows.map((row) => row.email).sort()).toEqual(["a@example.com", "guest@example.com"]);
+  });
+
+  it("refuses guests when the host disabled them", async () => {
+    await db.update(eventType).set({ disableGuests: true }).where(eq(eventType.slug, "intro"));
+    const { uid } = await book(at("10:00"), { responses: { guests: ["a@example.com"] } });
+    expect((await service.getBooking(uid)).attendees).toHaveLength(1);
   });
 
   it("keeps bookings that need confirmation PENDING without blocking the slot, until accepted", async () => {

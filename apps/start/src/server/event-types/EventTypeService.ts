@@ -1,6 +1,14 @@
 import "@tanstack/react-start/server-only";
 
+import type { JsonValue } from "@calcom/db/ids";
 import slugify from "@calcom/lib/slugify";
+import {
+  applyBookingFieldInputs,
+  BookingFieldsError,
+  parseBookingFields,
+  toBookingFieldInput,
+  withSystemFields,
+} from "~/lib/booking-fields";
 import { AppError } from "../errors";
 import type { ScheduleRepository } from "../schedules/ScheduleRepository";
 import type { EventTypeRepository, EventTypeRow } from "./EventTypeRepository";
@@ -56,7 +64,23 @@ function toDto(row: EventTypeRow): EventTypeDto {
     maxActiveBookingsPerBooker: row.maxActiveBookingsPerBooker,
     maxActiveBookingPerBookerOfferReschedule: row.maxActiveBookingPerBookerOfferReschedule ?? false,
     requiresConfirmation: row.requiresConfirmation,
+    bookingFields: withSystemFields(parseBookingFields(row.bookingFields), {
+      disableGuests: row.disableGuests,
+    }).map(toBookingFieldInput),
   };
+}
+
+function applyBookingFields(row: EventTypeRow, input: EventTypeInput): JsonValue {
+  try {
+    const fields = applyBookingFieldInputs(parseBookingFields(row.bookingFields), input.bookingFields, {
+      disableGuests: row.disableGuests,
+    });
+    // Fields are plain JSON parsed from the column or the request; the round trip drops undefined.
+    return JSON.parse(JSON.stringify(fields)) as JsonValue;
+  } catch (error) {
+    if (error instanceof BookingFieldsError) throw new AppError(error.message);
+    throw error;
+  }
 }
 
 export class EventTypeService {
@@ -91,7 +115,7 @@ export class EventTypeService {
   }
 
   async update(userId: number, id: number, input: EventTypeInput): Promise<void> {
-    await this.findOwned(userId, id);
+    const row = await this.findOwned(userId, id);
     const slug = await this.assertSlugAvailable(userId, input.slug, id);
     if (
       input.scheduleId !== null &&
@@ -131,6 +155,7 @@ export class EventTypeService {
       maxActiveBookingsPerBooker: input.maxActiveBookingsPerBooker,
       maxActiveBookingPerBookerOfferReschedule: input.maxActiveBookingPerBookerOfferReschedule,
       requiresConfirmation: input.requiresConfirmation,
+      bookingFields: applyBookingFields(row, input),
     });
   }
 

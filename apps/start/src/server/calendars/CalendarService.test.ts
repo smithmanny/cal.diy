@@ -174,9 +174,11 @@ describe("Google Calendar in the booking flow", () => {
       start: "2030-01-07T12:00:00.000Z",
       timeZone: "UTC",
       locale: "en",
-      name: "Greta",
-      email: "greta@example.com",
-      locationType: "integrations:google:meet",
+      responses: {
+        name: "Greta",
+        email: "greta@example.com",
+        location: { value: "integrations:google:meet" },
+      },
     });
     await Promise.all(pending);
 

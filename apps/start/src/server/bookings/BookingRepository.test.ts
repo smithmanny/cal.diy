@@ -34,7 +34,9 @@ function newBooking(start: string, overrides: Partial<NewBooking> = {}): NewBook
     status: "ACCEPTED",
     responses: { name: "Guest", email: "guest@example.com" },
     fromReschedule: null,
-    attendee: { name: "Guest", email: "Guest@Example.com", timeZone: "UTC", locale: "en", phoneNumber: null },
+    attendees: [
+      { name: "Guest", email: "Guest@Example.com", timeZone: "UTC", locale: "en", phoneNumber: null },
+    ],
     ...overrides,
   };
 }
@@ -92,13 +94,17 @@ describe("BookingRepository.findBusyForUser", () => {
     await repo.insertIfSlotFree(
       newBooking("2030-01-07T14:00:00Z", {
         userId: otherHost,
-        attendee: {
-          name: "Host",
-          email: "host@example.com",
-          timeZone: "UTC",
-          locale: "en",
-          phoneNumber: null,
-        },
+        attendees: [
+          {
+            name: "Other",
+            email: "other-guest@example.com",
+            timeZone: "UTC",
+            locale: "en",
+            phoneNumber: null,
+          },
+          // The host is a guest on someone else's booking, so that time is busy for them too.
+          { name: "", email: "host@example.com", timeZone: "UTC", locale: "en", phoneNumber: null },
+        ],
       })
     );
 

@@ -1,3 +1,4 @@
+import { fieldLabel, formatResponse, userFieldAnswers } from "~/lib/booking-fields";
 import { formatLongDate, formatTime } from "~/lib/date-utils";
 import type { Messages } from "~/lib/i18n";
 import { createT } from "~/lib/i18n";
@@ -77,6 +78,9 @@ export const EMAIL_MESSAGE_KEYS = [
   "need_to_make_a_change",
   "manage_this_event",
   "confirm_or_reject_request",
+  "reason_for_reschedule",
+  "yes",
+  "no",
 ];
 
 export function renderBookingEmail(
@@ -109,11 +113,20 @@ export function renderBookingEmail(
       t("who"),
       [
         `${booking.organizer.name ?? booking.organizer.email} - ${t("organizer")}`,
-        ...booking.attendees.map((a) => `${a.name} <${a.email}>`),
+        ...booking.attendees.map((a) => (a.name ? `${a.name} <${a.email}>` : a.email)),
       ].join("\n"),
     ],
     [t("where"), booking.location],
     [t("additional_notes"), notes],
+    ...userFieldAnswers(booking.bookingFields ?? [], booking.responses).map(
+      ({ field, value }): [string, string] => [fieldLabel(field, t), formatResponse(value, t)]
+    ),
+    [
+      t("reason_for_reschedule"),
+      kind.endsWith("rescheduled") && typeof booking.responses.rescheduleReason === "string"
+        ? booking.responses.rescheduleReason
+        : null,
+    ],
     [t("cancellation_reason"), kind.endsWith("cancelled") ? booking.cancellationReason : null],
   ];
   const visible = rows.filter((row): row is [string, string] => Boolean(row[1]));

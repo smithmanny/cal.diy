@@ -1,4 +1,5 @@
 import type { BookingStatus } from "@calcom/db/enums";
+import type { BookingField } from "~/lib/booking-fields";
 
 /** What listeners (webhooks, emails, calendar sync) need to know about a booking. */
 export type BookingSnapshot = {
@@ -13,6 +14,8 @@ export type BookingSnapshot = {
   cancellationReason: string | null;
   fromReschedule: string | null;
   eventType: { id: number; title: string; slug: string; length: number } | null;
+  /** The event's questions, to label the answers; null once the event type is deleted. */
+  bookingFields: BookingField[] | null;
   organizer: {
     id: number;
     name: string | null;

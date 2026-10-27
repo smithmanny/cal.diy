@@ -1,4 +1,5 @@
 import dayjs from "@calcom/dayjs";
+import { calEventResponses } from "~/lib/booking-fields";
 import type { BookingEvent, BookingSnapshot } from "../bookings/events";
 
 function utcOffset(timeZone: string, at: Date): number {
@@ -32,6 +33,7 @@ export const WEBHOOK_VERSION = "2021-10-20";
 /** Cal's CalendarEvent-shaped webhook payload, so existing integrations keep working. */
 export function buildBookingPayload(booking: BookingSnapshot, extra: Record<string, unknown> = {}) {
   const notes = typeof booking.responses.notes === "string" ? booking.responses.notes : null;
+  const labelled = calEventResponses(booking.bookingFields, booking.responses);
   return {
     type: booking.eventType?.slug ?? null,
     title: booking.title,
@@ -49,8 +51,8 @@ export function buildBookingPayload(booking: BookingSnapshot, extra: Record<stri
       language: { locale: booking.organizer.locale },
       utcOffset: utcOffset(booking.organizer.timeZone, booking.startTime),
     },
-    responses: booking.responses,
-    userFieldsResponses: {},
+    responses: labelled.responses,
+    userFieldsResponses: labelled.userFieldsResponses,
     attendees: booking.attendees.map((attendee) => ({
       name: attendee.name,
       email: attendee.email,

@@ -1,5 +1,6 @@
 import { isIntervalLimitOrderValid } from "@calcom/scheduling/limits";
 import { z } from "zod";
+import { bookingFieldInputSchema } from "~/lib/booking-fields";
 
 const limitValue = z.number().int().min(1).max(100_000).optional();
 
@@ -51,6 +52,7 @@ export const eventTypeFields = z.object({
   maxActiveBookingsPerBooker: z.number().int().min(1).max(1000).nullable(),
   maxActiveBookingPerBookerOfferReschedule: z.boolean(),
   requiresConfirmation: z.boolean(),
+  bookingFields: z.array(bookingFieldInputSchema).max(50),
 });
 
 export const eventTypeInputSchema = eventTypeFields
