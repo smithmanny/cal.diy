@@ -40,6 +40,7 @@ import { Route as AuthedSettingsMyAccountCalendarsRouteImport } from './routes/_
 import { Route as AuthedSettingsMyAccountGeneralRouteImport } from './routes/_authed/settings/my-account/general'
 import { Route as AuthedSettingsMyAccountOutOfOfficeRouteImport } from './routes/_authed/settings/my-account/out-of-office'
 import { Route as AuthedSettingsMyAccountProfileRouteImport } from './routes/_authed/settings/my-account/profile'
+import { Route as AuthedSettingsMyAccountPushNotificationsRouteImport } from './routes/_authed/settings/my-account/push-notifications'
 import { Route as AuthedSettingsSecurityPasswordRouteImport } from './routes/_authed/settings/security/password'
 import { Route as AuthedSettingsSecurityTwoFactorAuthRouteImport } from './routes/_authed/settings/security/two-factor-auth'
 import { Route as ApiIntegrationsGooglecalendarAddRouteImport } from './routes/api/integrations/googlecalendar/add'
@@ -227,6 +228,12 @@ const AuthedSettingsMyAccountProfileRoute =
     path: '/my-account/profile',
     getParentRoute: () => AuthedSettingsRoute,
   } as any)
+const AuthedSettingsMyAccountPushNotificationsRoute =
+  AuthedSettingsMyAccountPushNotificationsRouteImport.update({
+    id: '/my-account/push-notifications',
+    path: '/my-account/push-notifications',
+    getParentRoute: () => AuthedSettingsRoute,
+  } as any)
 const AuthedSettingsSecurityPasswordRoute =
   AuthedSettingsSecurityPasswordRouteImport.update({
     id: '/security/password',
@@ -395,6 +402,7 @@ export interface FileRoutesByFullPath {
   '/settings/my-account/general': typeof AuthedSettingsMyAccountGeneralRoute
   '/settings/my-account/out-of-office': typeof AuthedSettingsMyAccountOutOfOfficeRoute
   '/settings/my-account/profile': typeof AuthedSettingsMyAccountProfileRoute
+  '/settings/my-account/push-notifications': typeof AuthedSettingsMyAccountPushNotificationsRoute
   '/settings/security/password': typeof AuthedSettingsSecurityPasswordRoute
   '/settings/security/two-factor-auth': typeof AuthedSettingsSecurityTwoFactorAuthRoute
   '/api/integrations/googlecalendar/add': typeof ApiIntegrationsGooglecalendarAddRoute
@@ -450,6 +458,7 @@ export interface FileRoutesByTo {
   '/settings/my-account/general': typeof AuthedSettingsMyAccountGeneralRoute
   '/settings/my-account/out-of-office': typeof AuthedSettingsMyAccountOutOfOfficeRoute
   '/settings/my-account/profile': typeof AuthedSettingsMyAccountProfileRoute
+  '/settings/my-account/push-notifications': typeof AuthedSettingsMyAccountPushNotificationsRoute
   '/settings/security/password': typeof AuthedSettingsSecurityPasswordRoute
   '/settings/security/two-factor-auth': typeof AuthedSettingsSecurityTwoFactorAuthRoute
   '/api/integrations/googlecalendar/add': typeof ApiIntegrationsGooglecalendarAddRoute
@@ -508,6 +517,7 @@ export interface FileRoutesById {
   '/_authed/settings/my-account/general': typeof AuthedSettingsMyAccountGeneralRoute
   '/_authed/settings/my-account/out-of-office': typeof AuthedSettingsMyAccountOutOfOfficeRoute
   '/_authed/settings/my-account/profile': typeof AuthedSettingsMyAccountProfileRoute
+  '/_authed/settings/my-account/push-notifications': typeof AuthedSettingsMyAccountPushNotificationsRoute
   '/_authed/settings/security/password': typeof AuthedSettingsSecurityPasswordRoute
   '/_authed/settings/security/two-factor-auth': typeof AuthedSettingsSecurityTwoFactorAuthRoute
   '/api/integrations/googlecalendar/add': typeof ApiIntegrationsGooglecalendarAddRoute
@@ -566,6 +576,7 @@ export interface FileRouteTypes {
     | '/settings/my-account/general'
     | '/settings/my-account/out-of-office'
     | '/settings/my-account/profile'
+    | '/settings/my-account/push-notifications'
     | '/settings/security/password'
     | '/settings/security/two-factor-auth'
     | '/api/integrations/googlecalendar/add'
@@ -621,6 +632,7 @@ export interface FileRouteTypes {
     | '/settings/my-account/general'
     | '/settings/my-account/out-of-office'
     | '/settings/my-account/profile'
+    | '/settings/my-account/push-notifications'
     | '/settings/security/password'
     | '/settings/security/two-factor-auth'
     | '/api/integrations/googlecalendar/add'
@@ -678,6 +690,7 @@ export interface FileRouteTypes {
     | '/_authed/settings/my-account/general'
     | '/_authed/settings/my-account/out-of-office'
     | '/_authed/settings/my-account/profile'
+    | '/_authed/settings/my-account/push-notifications'
     | '/_authed/settings/security/password'
     | '/_authed/settings/security/two-factor-auth'
     | '/api/integrations/googlecalendar/add'
@@ -964,6 +977,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedSettingsMyAccountProfileRouteImport
       parentRoute: typeof AuthedSettingsRoute
     }
+    '/_authed/settings/my-account/push-notifications': {
+      id: '/_authed/settings/my-account/push-notifications'
+      path: '/my-account/push-notifications'
+      fullPath: '/settings/my-account/push-notifications'
+      preLoaderRoute: typeof AuthedSettingsMyAccountPushNotificationsRouteImport
+      parentRoute: typeof AuthedSettingsRoute
+    }
     '/_authed/settings/security/password': {
       id: '/_authed/settings/security/password'
       path: '/security/password'
@@ -1143,6 +1163,7 @@ interface AuthedSettingsRouteChildren {
   AuthedSettingsMyAccountGeneralRoute: typeof AuthedSettingsMyAccountGeneralRoute
   AuthedSettingsMyAccountOutOfOfficeRoute: typeof AuthedSettingsMyAccountOutOfOfficeRoute
   AuthedSettingsMyAccountProfileRoute: typeof AuthedSettingsMyAccountProfileRoute
+  AuthedSettingsMyAccountPushNotificationsRoute: typeof AuthedSettingsMyAccountPushNotificationsRoute
   AuthedSettingsSecurityPasswordRoute: typeof AuthedSettingsSecurityPasswordRoute
   AuthedSettingsSecurityTwoFactorAuthRoute: typeof AuthedSettingsSecurityTwoFactorAuthRoute
   AuthedSettingsDeveloperWebhooksWebhookIdRoute: typeof AuthedSettingsDeveloperWebhooksWebhookIdRoute
@@ -1159,6 +1180,8 @@ const AuthedSettingsRouteChildren: AuthedSettingsRouteChildren = {
   AuthedSettingsMyAccountOutOfOfficeRoute:
     AuthedSettingsMyAccountOutOfOfficeRoute,
   AuthedSettingsMyAccountProfileRoute: AuthedSettingsMyAccountProfileRoute,
+  AuthedSettingsMyAccountPushNotificationsRoute:
+    AuthedSettingsMyAccountPushNotificationsRoute,
   AuthedSettingsSecurityPasswordRoute: AuthedSettingsSecurityPasswordRoute,
   AuthedSettingsSecurityTwoFactorAuthRoute:
     AuthedSettingsSecurityTwoFactorAuthRoute,

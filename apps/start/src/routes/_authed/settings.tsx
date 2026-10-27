@@ -9,6 +9,7 @@ const TABS = [
   { to: "/settings/my-account/appearance", labelKey: "appearance" },
   { to: "/settings/my-account/calendars", labelKey: "calendars" },
   { to: "/settings/my-account/out-of-office", labelKey: "out_of_office" },
+  { to: "/settings/my-account/push-notifications", labelKey: "push_notifications" },
   { to: "/settings/security/password", labelKey: "password" },
   { to: "/settings/security/two-factor-auth", labelKey: "two_factor_auth" },
   { to: "/settings/developer/webhooks", labelKey: "webhooks" },
