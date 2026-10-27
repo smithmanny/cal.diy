@@ -1,12 +1,14 @@
 import slugify from "@calcom/lib/slugify";
 import { Button } from "@coss/ui/components/button";
 import { Input } from "@coss/ui/components/input";
+import { Switch } from "@coss/ui/components/switch";
 import { Textarea } from "@coss/ui/components/textarea";
 import { createFileRoute, Link, notFound, useNavigate, useRouter } from "@tanstack/react-router";
 import { ArrowLeftIcon, ExternalLinkIcon } from "lucide-react";
 import { useState } from "react";
 import { FormError } from "~/components/AuthCard";
 import { selectClass } from "~/components/availability/TimeSelect";
+import { BOOKER_LAYOUT_MESSAGE_KEYS, BookerLayoutSettings } from "~/components/BookerLayoutSettings";
 import {
   ADVANCED_MESSAGE_KEYS,
   AdvancedEditor,
@@ -23,6 +25,7 @@ import { LOCATIONS_MESSAGE_KEYS, LocationsEditor } from "~/components/event-type
 import { PRIVATE_LINKS_MESSAGE_KEYS, PrivateLinksEditor } from "~/components/event-types/PrivateLinksEditor";
 import { RECURRING_EDITOR_MESSAGE_KEYS, RecurringEditor } from "~/components/event-types/RecurringEditor";
 import { HydratedFieldset } from "~/components/HydratedFieldset";
+import { DEFAULT_BOOKER_LAYOUTS } from "~/lib/booker-layouts";
 import { errorMessageKey } from "~/lib/errors";
 import { useT } from "~/lib/i18n";
 import { loadMessages } from "~/lib/messages";
@@ -31,6 +34,9 @@ import type { EventTypeInput } from "~/server/event-types/types";
 import { listSchedules } from "~/server/schedules/functions";
 
 const MESSAGE_KEYS = [
+  ...BOOKER_LAYOUT_MESSAGE_KEYS,
+  "layout",
+  "bookerlayout_override",
   ...ADVANCED_MESSAGE_KEYS,
   ...PRIVATE_LINKS_MESSAGE_KEYS,
   ...RECURRING_EDITOR_MESSAGE_KEYS,
@@ -82,6 +88,9 @@ function EventTypeEditorPage() {
     const invalid =
       limitsErrorKey(form) ??
       seatsErrorKey(form) ??
+      (form.bookerLayouts && !form.bookerLayouts.enabledLayouts.length
+        ? "bookerlayout_error_min_one_enabled"
+        : null) ??
       (form.multipleDuration && !form.multipleDuration.length
         ? "event_setup_multiple_duration_error"
         : null) ??
@@ -204,6 +213,23 @@ function EventTypeEditorPage() {
           onChange={(fields) => set("bookingFields", fields)}
           t={t}
         />
+      </Section>
+
+      <Section title={t("layout")}>
+        <label className="flex items-center gap-2 font-medium text-sm">
+          <Switch
+            checked={form.bookerLayouts !== null}
+            onCheckedChange={(checked) => set("bookerLayouts", checked ? DEFAULT_BOOKER_LAYOUTS : null)}
+          />
+          {t("bookerlayout_override")}
+        </label>
+        {form.bookerLayouts && (
+          <BookerLayoutSettings
+            value={form.bookerLayouts}
+            onChange={(layouts) => set("bookerLayouts", layouts)}
+            t={t}
+          />
+        )}
       </Section>
 
       <Section title={t("recurring")}>

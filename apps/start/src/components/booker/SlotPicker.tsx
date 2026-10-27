@@ -6,6 +6,7 @@ import type { TFunction } from "~/lib/i18n";
 import type { OutOfOfficeDayDto } from "~/server/bookings/types";
 import { FormError } from "../AuthCard";
 import { BookingCalendar } from "./BookingCalendar";
+import { HourCycleToggle } from "./HourCycleToggle";
 import { OutOfOfficeNotice } from "./OutOfOfficeNotice";
 import type { MonthCursor } from "./useMonthSlots";
 
@@ -84,21 +85,7 @@ export function SlotPicker({
               <p className="font-medium text-sm">
                 {formatLongDate(`${selectedDate}T12:00:00Z`, "UTC", locale)}
               </p>
-              <div
-                role="group"
-                aria-label={t("time_format")}
-                className="flex rounded-md border p-0.5 text-xs">
-                {[true, false].map((option) => (
-                  <button
-                    key={String(option)}
-                    type="button"
-                    aria-pressed={hour12 === option}
-                    onClick={() => onHour12Change(option)}
-                    className={`rounded px-1.5 py-0.5 ${hour12 === option ? "bg-accent font-medium" : "text-muted-foreground"}`}>
-                    {option ? t("12_hour_short") : t("24_hour_short")}
-                  </button>
-                ))}
-              </div>
+              <HourCycleToggle hour12={hour12} onChange={onHour12Change} t={t} />
             </div>
             <ul className="flex max-h-96 flex-col gap-2 overflow-y-auto">
               {(slotsByDate.get(selectedDate) ?? []).map((slot) => (

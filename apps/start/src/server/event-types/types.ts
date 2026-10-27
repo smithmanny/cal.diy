@@ -1,5 +1,6 @@
 import { isIntervalLimitOrderValid } from "@calcom/scheduling/limits";
 import { z } from "zod";
+import { bookerLayoutsSchema } from "~/lib/booker-layouts";
 import { bookingFieldInputSchema } from "~/lib/booking-fields";
 import { SUPPORTED_LOCALES } from "~/lib/locales";
 
@@ -97,6 +98,8 @@ export const eventTypeFields = z.object({
   lockedTimeZone: z.string().max(100).nullable(),
   /** Cal's eventTypeColor, shown next to the event and its bookings. */
   eventTypeColor: z.object({ lightEventTypeColor: hexColor, darkEventTypeColor: hexColor }).nullable(),
+  /** Cal's metadata.bookerLayouts; null follows the host's default from Appearance. */
+  bookerLayouts: bookerLayoutsSchema.nullable(),
   /** The booking page's language; null follows the visitor's browser. */
   interfaceLanguage: z
     .string()

@@ -1,9 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { bookerLayoutsSchema, parseBookerLayouts } from "~/lib/booker-layouts";
 import { DEFAULT_BRAND_COLOR, DEFAULT_DARK_BRAND_COLOR } from "~/lib/brand-color";
 import { toThemePreference } from "~/lib/theme";
 import { WEEK_DAY_NAMES } from "~/lib/time-format";
 import { AppError } from "../errors";
+import { mergeMetadata, parseMetadata } from "../metadata";
 import { authMiddleware } from "../middleware";
 import { isValidTimeZone } from "../schedules/scheduleMapper";
 // Only referenced inside handlers, so this server-only module stays out of the client bundle.
@@ -93,6 +95,8 @@ export const getAppearance = createServerFn({ method: "GET" })
       brandColor: appearance.brandColor ?? DEFAULT_BRAND_COLOR,
       darkBrandColor: appearance.darkBrandColor ?? DEFAULT_DARK_BRAND_COLOR,
       hideBranding: appearance.hideBranding,
+      // Cal keeps the user's default booking layouts in users.metadata.
+      bookerLayouts: parseBookerLayouts(parseMetadata(appearance.metadata).defaultBookerLayouts),
     };
   });
 
@@ -105,12 +109,16 @@ export const updateAppearance = createServerFn({ method: "POST" })
       brandColor: hexColor,
       darkBrandColor: hexColor,
       hideBranding: z.boolean(),
+      bookerLayouts: bookerLayoutsSchema.nullable(),
     })
   )
   .handler(async ({ context, data }) => {
     const { users } = await getSettingsRepositories();
+    const { bookerLayouts, ...appearance } = data;
+    const current = await users.findAppearance(context.userId);
     await users.updateAppearance(context.userId, {
-      ...data,
+      ...appearance,
+      metadata: mergeMetadata(current?.metadata, { defaultBookerLayouts: bookerLayouts }),
       brandColor: data.brandColor.toLowerCase(),
       darkBrandColor: data.darkBrandColor.toLowerCase(),
     });

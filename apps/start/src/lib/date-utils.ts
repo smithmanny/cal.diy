@@ -57,6 +57,20 @@ export function monthRangeInTimeZone(
 
 /** Weeks (Sunday first) covering the month; null pads days outside it. */
 /** Weeks of YYYY-MM-DD cells (null for padding), each starting on `weekStartDay` (0 = Sunday). */
+/** A YYYY-MM-DD key moved by whole calendar days. */
+export function addDaysToKey(key: string, days: number): string {
+  const [year, month, day] = key.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+}
+
+/** From midnight on `first` to midnight `count` days later, each resolved in the zone (DST-safe). */
+export function dayRangeInTimeZone(first: string, count: number, timeZone: string): { from: Date; to: Date } {
+  return {
+    from: dayjs.tz(`${first} 00:00`, timeZone).toDate(),
+    to: dayjs.tz(`${addDaysToKey(first, count)} 00:00`, timeZone).toDate(),
+  };
+}
+
 export function monthGrid(year: number, month: number, weekStartDay = 0): (string | null)[][] {
   const first = new Date(Date.UTC(year, month - 1, 1));
   const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();

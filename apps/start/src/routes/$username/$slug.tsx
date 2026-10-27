@@ -7,14 +7,23 @@ import { getPublicEvent } from "~/server/bookings/functions";
 function UserEventPage() {
   const { event, locale, rescheduleUid } = Route.useLoaderData();
   const { username, slug } = Route.useParams();
+  const { layout } = Route.useSearch();
   return (
-    <BookerPage event={event} locale={locale} username={username} slug={slug} rescheduleUid={rescheduleUid} />
+    <BookerPage
+      event={event}
+      locale={locale}
+      username={username}
+      slug={slug}
+      rescheduleUid={rescheduleUid}
+      requestedLayout={layout}
+    />
   );
 }
 
 export const Route = createFileRoute("/$username/$slug")({
-  validateSearch: (search: Record<string, unknown>): { rescheduleUid?: string } => ({
+  validateSearch: (search: Record<string, unknown>): { rescheduleUid?: string; layout?: string } => ({
     rescheduleUid: typeof search.rescheduleUid === "string" ? search.rescheduleUid : undefined,
+    layout: typeof search.layout === "string" ? search.layout : undefined,
   }),
   loaderDeps: ({ search }) => ({ rescheduleUid: search.rescheduleUid }),
   loader: async ({ context, params, deps }) => {

@@ -1,6 +1,7 @@
 import "@tanstack/react-start/server-only";
 
 import type { Database } from "@calcom/db/database";
+import type { JsonValue } from "@calcom/db/ids";
 import { account, user } from "@calcom/db/schema";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 
@@ -53,6 +54,7 @@ export class UserRepository {
         allowSEOIndexing: user.allowSEOIndexing,
         allowDynamicBooking: user.allowDynamicBooking,
         requiresBookerEmailVerification: user.requiresBookerEmailVerification,
+        metadata: user.metadata,
         ...appearanceColumns,
       })
       .from(user)
@@ -106,7 +108,7 @@ export class UserRepository {
 
   async findAppearance(userId: number) {
     const [found] = await this.db
-      .select({ ...appearanceColumns, appTheme: user.appTheme })
+      .select({ ...appearanceColumns, appTheme: user.appTheme, metadata: user.metadata })
       .from(user)
       .where(eq(user.id, userId))
       .limit(1);
@@ -121,6 +123,7 @@ export class UserRepository {
       brandColor: string;
       darkBrandColor: string;
       hideBranding: boolean;
+      metadata: { [key: string]: JsonValue };
     }
   ): Promise<void> {
     await this.db.update(user).set(data).where(eq(user.id, userId));

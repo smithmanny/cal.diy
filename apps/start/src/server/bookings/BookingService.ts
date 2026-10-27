@@ -12,6 +12,7 @@ import { limitCheckRange } from "@calcom/scheduling/limits";
 import { outOfOfficeByDate } from "@calcom/scheduling/out-of-office";
 import { recurringDates } from "@calcom/scheduling/recurring";
 import type { OutOfOfficeData } from "@calcom/scheduling/types";
+import { effectiveBookerLayouts } from "~/lib/booker-layouts";
 import {
   type BookingField,
   type LocationResponse,
@@ -38,6 +39,7 @@ import {
 import type { HashedLinkRepository } from "../event-types/HashedLinkRepository";
 import { type EventLocation, eventLocationSchema } from "../event-types/types";
 import type { HolidayService } from "../holidays/HolidayService";
+import { parseMetadata } from "../metadata";
 import type { OutOfOfficeRepository } from "../out-of-office/OutOfOfficeRepository";
 import type { ScheduleRepository } from "../schedules/ScheduleRepository";
 import { isValidTimeZone } from "../schedules/scheduleMapper";
@@ -257,6 +259,10 @@ export class BookingService {
           ? eventType.lockedTimeZone || host.timeZone
           : null,
         interfaceLanguage: eventType.interfaceLanguage || null,
+        bookerLayouts: effectiveBookerLayouts(
+          parseMetadata(eventType.metadata).bookerLayouts,
+          parseMetadata(host.metadata).defaultBookerLayouts
+        ),
       },
     };
   }

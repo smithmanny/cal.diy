@@ -4,7 +4,9 @@ import { Switch } from "@coss/ui/components/switch";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { type FormEvent, useState } from "react";
 import { FormError } from "~/components/AuthCard";
+import { BOOKER_LAYOUT_MESSAGE_KEYS, BookerLayoutSettings } from "~/components/BookerLayoutSettings";
 import { HydratedFieldset } from "~/components/HydratedFieldset";
+import { DEFAULT_BOOKER_LAYOUTS } from "~/lib/booker-layouts";
 import { isHexColor, passesContrast } from "~/lib/brand-color";
 import { errorMessageKey } from "~/lib/errors";
 import { useT } from "~/lib/i18n";
@@ -13,6 +15,7 @@ import type { ThemePreference } from "~/lib/theme";
 import { getAppearance, updateAppearance } from "~/server/settings/functions";
 
 const MESSAGE_KEYS = [
+  ...BOOKER_LAYOUT_MESSAGE_KEYS,
   "app_theme",
   "app_theme_applies_note",
   "theme",
@@ -122,6 +125,10 @@ function AppearancePage() {
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setStatus(null);
+    if (values.bookerLayouts && !values.bookerLayouts.enabledLayouts.length) {
+      setStatus({ kind: "error", key: "bookerlayout_error_min_one_enabled" });
+      return;
+    }
     try {
       await updateAppearance({ data: values });
       // The dashboard theme comes from the session.
@@ -158,6 +165,17 @@ function AppearancePage() {
           value={values.theme}
           onChange={(theme) => setValues({ ...values, theme })}
         />
+        <section className="flex flex-col gap-3">
+          <div>
+            <h2 className="font-medium text-sm">{t("bookerlayout_user_settings_title")}</h2>
+            <p className="text-muted-foreground text-xs">{t("bookerlayout_user_settings_description")}</p>
+          </div>
+          <BookerLayoutSettings
+            value={values.bookerLayouts ?? DEFAULT_BOOKER_LAYOUTS}
+            onChange={(bookerLayouts) => setValues({ ...values, bookerLayouts })}
+            t={t}
+          />
+        </section>
         <section className="flex flex-col gap-3">
           <div>
             <h2 className="font-medium text-sm">{t("custom_brand_colors")}</h2>

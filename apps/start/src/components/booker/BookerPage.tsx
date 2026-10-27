@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { HydratedFieldset } from "~/components/HydratedFieldset";
 import { PoweredBy } from "~/components/PoweredBy";
 import { ThemeScope } from "~/components/ThemeScope";
+import { type BookerLayout, initialLayout, LAYOUT_LABEL_KEYS } from "~/lib/booker-layouts";
 import { HourCycleProvider } from "~/lib/hour-cycle";
-import { useT } from "~/lib/i18n";
+import { type TFunction, useT } from "~/lib/i18n";
 import { LOCATION_LABEL_KEYS } from "~/lib/location-labels";
 import { RECURRING_MESSAGE_KEYS } from "~/lib/recurring";
 import { createBooking, sendBookerVerificationCode } from "~/server/bookings/functions";
@@ -13,10 +14,15 @@ import type { PublicEventDto } from "~/server/bookings/types";
 import { BookerSidebar } from "./BookerSidebar";
 import { BOOKING_FIELD_MESSAGE_KEYS } from "./BookingFieldInput";
 import { BookingForm, type BookingSubmission } from "./BookingForm";
+import { DayColumns } from "./DayColumns";
 import { SlotPicker } from "./SlotPicker";
 import { useMonthSlots } from "./useMonthSlots";
 
 const BOOKER_MESSAGE_KEYS = [
+  ...Object.values(LAYOUT_LABEL_KEYS),
+  "layout",
+  "view_previous_week",
+  "view_next_week",
   ...BOOKING_FIELD_MESSAGE_KEYS,
   ...RECURRING_MESSAGE_KEYS,
   "duration",
@@ -66,6 +72,78 @@ const BOOKER_MESSAGE_KEYS = [
   "ooo_reasons_public_holiday",
 ];
 
+/** The times to pick from, in the month view or as day columns (week and column views). */
+function TimesPanel({
+  layout,
+  slots,
+  locale,
+  weekStartDay,
+  onSelectSlot,
+  onHour12Change,
+  t,
+}: {
+  layout: BookerLayout;
+  slots: ReturnType<typeof useMonthSlots>;
+  locale: string;
+  weekStartDay: number;
+  onSelectSlot: (slot: string) => void;
+  onHour12Change: (hour12: boolean) => void;
+  t: TFunction;
+}) {
+  const shared = {
+    timeZone: slots.timeZone,
+    locale,
+    loading: slots.loading,
+    slotsByDate: slots.slotsByDate,
+    outOfOffice: slots.outOfOffice,
+    errorKey: slots.errorKey,
+    onSelectSlot,
+    onHour12Change,
+    seats: slots.seats,
+    t,
+  };
+  if (layout === "month_view")
+    return (
+      <SlotPicker
+        {...shared}
+        cursor={slots.cursor}
+        onMoveMonth={slots.moveMonth}
+        weekStartDay={weekStartDay}
+      />
+    );
+  return <DayColumns {...shared} days={slots.days} onMove={slots.moveDays} />;
+}
+
+/** Lets bookers switch between the views the host enabled. */
+function LayoutSwitcher({
+  enabled,
+  value,
+  onChange,
+  t,
+}: {
+  enabled: BookerLayout[];
+  value: BookerLayout;
+  onChange: (layout: BookerLayout) => void;
+  t: TFunction;
+}) {
+  if (enabled.length < 2) return null;
+  return (
+    <div role="radiogroup" aria-label={t("layout")} className="flex self-end rounded-md border p-0.5 text-xs">
+      {enabled.map((layout) => (
+        <button
+          key={layout}
+          type="button"
+          role="radio"
+          aria-checked={value === layout}
+          onClick={() => onChange(layout)}
+          className={`rounded px-2 py-1 ${value === layout ? "bg-accent font-medium" : "text-muted-foreground"}`}>
+          {t(LAYOUT_LABEL_KEYS[layout])}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 // Same key as Cal's booker, so a returning visitor's choice carries over.
 const HOUR_CYCLE_STORAGE_KEY = "timeOption.is24hClock";
 
@@ -101,6 +179,7 @@ export function BookerPage({
   slug,
   rescheduleUid,
   hashedLink,
+  requestedLayout,
 }: {
   event: PublicEventDto;
   locale: string;
@@ -108,8 +187,13 @@ export function BookerPage({
   slug: string;
   rescheduleUid?: string;
   hashedLink?: string;
+  /** Cal's ?layout= query parameter. */
+  requestedLayout?: string;
 }) {
   const t = useT();
+  const [layout, setLayout] = useState<BookerLayout>(() =>
+    initialLayout(event.eventType.bookerLayouts, requestedLayout)
+  );
   const navigate = useNavigate();
   const [duration, setDuration] = useState(event.eventType.length);
   const [recurringCount, setRecurringCount] = useState(event.eventType.recurringEvent?.count ?? 1);
@@ -120,6 +204,8 @@ export function BookerPage({
     rescheduleUid,
     lockedTimeZone: event.eventType.lockedTimeZone,
     duration: hasDurationChoice ? duration : undefined,
+    layout,
+    weekStartDay: event.host.weekStartDay,
   });
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [hour12, setHour12] = useStoredHour12();
@@ -155,7 +241,7 @@ export function BookerPage({
         <main
           lang={locale}
           className="flex min-h-screen flex-col items-center justify-center bg-muted/40 px-4 py-8">
-          <HydratedFieldset className="grid w-full max-w-5xl overflow-hidden rounded-xl border bg-background md:grid-cols-[18rem_1fr]">
+          <HydratedFieldset className="grid w-full max-w-6xl overflow-hidden rounded-xl border bg-background md:grid-cols-[18rem_1fr]">
             <BookerSidebar
               event={event}
               rescheduling={Boolean(rescheduleUid)}
@@ -170,7 +256,15 @@ export function BookerPage({
               }}
               t={t}
             />
-            <section className="p-6">
+            <section className="flex flex-col gap-4 p-6">
+              {!selectedSlot && (
+                <LayoutSwitcher
+                  enabled={event.eventType.bookerLayouts.enabledLayouts}
+                  value={layout}
+                  onChange={setLayout}
+                  t={t}
+                />
+              )}
               {selectedSlot && slots.timeZone ? (
                 <BookingForm
                   slot={selectedSlot}
@@ -197,19 +291,13 @@ export function BookerPage({
                   t={t}
                 />
               ) : (
-                <SlotPicker
-                  cursor={slots.cursor}
-                  timeZone={slots.timeZone}
+                <TimesPanel
+                  layout={layout}
+                  slots={slots}
                   locale={locale}
-                  loading={slots.loading}
-                  slotsByDate={slots.slotsByDate}
-                  outOfOffice={slots.outOfOffice}
-                  errorKey={slots.errorKey}
-                  onMoveMonth={slots.moveMonth}
-                  onSelectSlot={setSelectedSlot}
                   weekStartDay={event.host.weekStartDay}
+                  onSelectSlot={setSelectedSlot}
                   onHour12Change={setHour12}
-                  seats={slots.seats}
                   t={t}
                 />
               )}

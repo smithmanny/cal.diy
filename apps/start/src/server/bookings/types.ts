@@ -1,5 +1,6 @@
 import type { RecurringRule } from "@calcom/scheduling/recurring";
 import { z } from "zod";
+import type { BookerLayouts } from "~/lib/booker-layouts";
 import type { BookingField, BookingResponseValue } from "~/lib/booking-fields";
 
 const MAX_RESPONSES_BYTES = 64 * 1024;
@@ -88,6 +89,8 @@ export type PublicEventDto = {
     requiresBookerEmailVerification: boolean;
     /** Bookers see times in this zone and can't change it. */
     lockedTimeZone: string | null;
+    /** Views the booker can switch between, and the one shown first. */
+    bookerLayouts: BookerLayouts;
     /** The page's language, if the host chose one over the visitor's. */
     interfaceLanguage: string | null;
   };

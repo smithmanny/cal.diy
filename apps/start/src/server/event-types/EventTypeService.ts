@@ -3,6 +3,7 @@ import "@tanstack/react-start/server-only";
 import dayjs from "@calcom/dayjs";
 import type { JsonValue } from "@calcom/db/ids";
 import slugify from "@calcom/lib/slugify";
+import { parseBookerLayouts } from "~/lib/booker-layouts";
 import {
   applyBookingFieldInputs,
   BookingFieldsError,
@@ -11,15 +12,14 @@ import {
   withSystemFields,
 } from "~/lib/booking-fields";
 import { AppError } from "../errors";
+import { mergeMetadata, parseMetadata } from "../metadata";
 import type { ScheduleRepository } from "../schedules/ScheduleRepository";
 import type { EventTypeRepository, EventTypeRow } from "./EventTypeRepository";
 import {
-  mergeMetadata,
   parseConfirmationThreshold,
   parseDisabledConfirmationEmails,
   parseEventTypeColor,
   parseIntervalLimit,
-  parseMetadata,
   parseMultipleDuration,
   parseRecurringEvent,
   toPeriodType,
@@ -102,6 +102,7 @@ function toDto(row: EventTypeRow): EventTypeDto {
     lockedTimeZone: row.lockedTimeZone,
     eventTypeColor: parseEventTypeColor(row.eventTypeColor),
     interfaceLanguage: row.interfaceLanguage || null,
+    bookerLayouts: parseBookerLayouts(parseMetadata(row.metadata).bookerLayouts),
     disableConfirmationEmails: parseDisabledConfirmationEmails(row.metadata),
     bookingFields: withSystemFields(parseBookingFields(row.bookingFields), {
       disableGuests: row.disableGuests,
@@ -246,6 +247,7 @@ export class EventTypeService {
           ? input.requiresConfirmationThreshold
           : null,
         disableStandardEmails: disableStandardEmails(row.metadata, input.disableConfirmationEmails),
+        bookerLayouts: input.bookerLayouts,
         multipleDuration:
           input.multipleDuration && input.multipleDuration.length > 1
             ? [...new Set(input.multipleDuration)].sort((a, b) => a - b)
