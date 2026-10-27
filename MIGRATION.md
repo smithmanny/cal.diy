@@ -64,7 +64,12 @@ trusted client-IP header) sits behind the `#runtime` alias in `apps/start/src/se
       layouts, each route loads only the keys it uses
 - [x] CSRF protection on server functions (`createCsrfMiddleware`); errors that aren't `AppError`s
       reach the client as `something_went_wrong`
-- [ ] Email verification, password reset, 2FA (Better Auth `twoFactor`), SAML/OIDC SSO
+- [x] Email verification, password reset, 2FA (Better Auth `twoFactor`)
+- [ ] SAML/OIDC SSO
+- [x] Instance admin with Better Auth's `admin` plugin: users list, edit, lock/unlock,
+      impersonate, password reset, delete (`/settings/admin/users`)
+- [x] OAuth 2.0 provider for third-party apps: admin-managed clients (`/settings/admin/oauth`),
+      consent at `/auth/oauth2/authorize`, tokens at `/api/auth/oauth/token` (see Auth below)
 - [x] Data import from an existing Cal Postgres install (`import:postgres`, see
       [Migrating from an existing Cal install](#migrating-from-an-existing-cal-install)). Sign-in
       accepts the imported bcrypt hashes and upgrades them to scrypt
@@ -123,8 +128,33 @@ existing tables:
   from the socket. Behind a reverse proxy, set `TRUST_PROXY` (see `.env.example`) or every client
   shares the proxy's limit.
 
+### Admin
+
+Better Auth's `admin` plugin runs on Cal's columns: roles are `users.role` (`USER`/`ADMIN`), a
+ban is `users.locked` (locked users can't sign in), and impersonation is recorded in
+`Session.impersonatedBy`. As with Cal's self-host setup, the first account created on an empty
+install becomes its admin; to promote someone later, use the admin pages or
+`UPDATE users SET role = 'ADMIN' WHERE email = '…'`. As in Cal, production builds treat an admin
+without two-factor authentication as inactive: the admin pages and the plugin's endpoints refuse
+them until they turn it on. While impersonating, every page shows a banner to stop.
+
+### OAuth provider
+
+Cal's own OAuth provider, ported onto its `OAuthClient` and `AccessCode` tables (this Better Auth
+version ships no OAuth/OIDC provider plugin, so it isn't built on one). Admins create clients;
+confidential clients get a secret shown once and stored as Cal's SHA-256 digest. Users approve on
+`/auth/oauth2/authorize` (`client_id`, `redirect_uri`, `state`, `scope`, PKCE `code_challenge`
+with `S256`, required for public clients). `POST /api/auth/oauth/token` exchanges codes
+(`grant_type=authorization_code`) and refresh tokens (`grant_type=refresh_token`; Cal's
+`/api/auth/oauth/refreshToken` also works), with the client secret in the body or HTTP Basic.
+Access tokens (30 minutes) and refresh tokens (30 days) are HS256 JWTs signed with
+`CALENDSO_ENCRYPTION_KEY` in Cal's claim format, so tokens an existing Cal install issued stay
+valid. API v2 accepts access tokens as `Bearer` for reading only: `READ_BOOKING` for
+`/v2/bookings`, `READ_PROFILE` for everything else; `/api/auth/oauth/me` answers as in Cal.
+
 Settings: `BETTER_AUTH_SECRET` (required in production), `BETTER_AUTH_URL`, and optionally
-`GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`. See `apps/start/.env.example` (Node/Docker) and
+`GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`; `CALENDSO_ENCRYPTION_KEY` (required in production
+for calendar credentials and OAuth tokens). See `apps/start/.env.example` (Node/Docker) and
 `apps/start/.dev.vars.example` (Workers).
 
 Cloudflare note: Better Auth hashes passwords with scrypt, which takes more CPU than the Workers

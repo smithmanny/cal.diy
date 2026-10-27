@@ -32,7 +32,9 @@ import { Route as AuthedEventTypesEventTypeIdRouteImport } from './routes/_authe
 import { Route as AuthedSettingsIndexRouteImport } from './routes/_authed/settings/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiV2MeRouteImport } from './routes/api/v2/me'
+import { Route as AuthOauth2AuthorizeRouteImport } from './routes/auth/oauth2/authorize'
 import { Route as DLinkSlugRouteImport } from './routes/d/$link/$slug'
+import { Route as AuthedSettingsAdminOauthRouteImport } from './routes/_authed/settings/admin/oauth'
 import { Route as AuthedSettingsDeveloperApiKeysRouteImport } from './routes/_authed/settings/developer/api-keys'
 import { Route as AuthedSettingsMyAccountAppearanceRouteImport } from './routes/_authed/settings/my-account/appearance'
 import { Route as AuthedSettingsMyAccountCalendarsRouteImport } from './routes/_authed/settings/my-account/calendars'
@@ -42,6 +44,9 @@ import { Route as AuthedSettingsMyAccountOutOfOfficeRouteImport } from './routes
 import { Route as AuthedSettingsMyAccountProfileRouteImport } from './routes/_authed/settings/my-account/profile'
 import { Route as AuthedSettingsSecurityPasswordRouteImport } from './routes/_authed/settings/security/password'
 import { Route as AuthedSettingsSecurityTwoFactorAuthRouteImport } from './routes/_authed/settings/security/two-factor-auth'
+import { Route as ApiAuthOauthMeRouteImport } from './routes/api/auth/oauth/me'
+import { Route as ApiAuthOauthRefreshTokenRouteImport } from './routes/api/auth/oauth/refreshToken'
+import { Route as ApiAuthOauthTokenRouteImport } from './routes/api/auth/oauth/token'
 import { Route as ApiIntegrationsAppAddRouteImport } from './routes/api/integrations/$app/add'
 import { Route as ApiIntegrationsAppCallbackRouteImport } from './routes/api/integrations/$app/callback'
 import { Route as ApiV2BookingsIndexRouteImport } from './routes/api/v2/bookings/index'
@@ -54,6 +59,8 @@ import { Route as ApiV2SlotsIndexRouteImport } from './routes/api/v2/slots/index
 import { Route as ApiV2WebhooksIndexRouteImport } from './routes/api/v2/webhooks/index'
 import { Route as ApiV2WebhooksWebhookIdRouteImport } from './routes/api/v2/webhooks/$webhookId'
 import { Route as DLinkSlugEmbedRouteImport } from './routes/d/$link/$slug_.embed'
+import { Route as AuthedSettingsAdminUsersIndexRouteImport } from './routes/_authed/settings/admin/users/index'
+import { Route as AuthedSettingsAdminUsersUserIdRouteImport } from './routes/_authed/settings/admin/users/$userId'
 import { Route as AuthedSettingsDeveloperWebhooksIndexRouteImport } from './routes/_authed/settings/developer/webhooks/index'
 import { Route as AuthedSettingsDeveloperWebhooksWebhookIdRouteImport } from './routes/_authed/settings/developer/webhooks/$webhookId'
 import { Route as ApiV2BookingsBookingUidIndexRouteImport } from './routes/api/v2/bookings/$bookingUid/index'
@@ -181,11 +188,22 @@ const ApiV2MeRoute = ApiV2MeRouteImport.update({
   path: '/api/v2/me',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthOauth2AuthorizeRoute = AuthOauth2AuthorizeRouteImport.update({
+  id: '/auth/oauth2/authorize',
+  path: '/auth/oauth2/authorize',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DLinkSlugRoute = DLinkSlugRouteImport.update({
   id: '/d/$link/$slug',
   path: '/d/$link/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthedSettingsAdminOauthRoute =
+  AuthedSettingsAdminOauthRouteImport.update({
+    id: '/admin/oauth',
+    path: '/admin/oauth',
+    getParentRoute: () => AuthedSettingsRoute,
+  } as any)
 const AuthedSettingsDeveloperApiKeysRoute =
   AuthedSettingsDeveloperApiKeysRouteImport.update({
     id: '/developer/api-keys',
@@ -240,6 +258,22 @@ const AuthedSettingsSecurityTwoFactorAuthRoute =
     path: '/security/two-factor-auth',
     getParentRoute: () => AuthedSettingsRoute,
   } as any)
+const ApiAuthOauthMeRoute = ApiAuthOauthMeRouteImport.update({
+  id: '/api/auth/oauth/me',
+  path: '/api/auth/oauth/me',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthOauthRefreshTokenRoute =
+  ApiAuthOauthRefreshTokenRouteImport.update({
+    id: '/api/auth/oauth/refreshToken',
+    path: '/api/auth/oauth/refreshToken',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiAuthOauthTokenRoute = ApiAuthOauthTokenRouteImport.update({
+  id: '/api/auth/oauth/token',
+  path: '/api/auth/oauth/token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiIntegrationsAppAddRoute = ApiIntegrationsAppAddRouteImport.update({
   id: '/api/integrations/$app/add',
   path: '/api/integrations/$app/add',
@@ -303,6 +337,18 @@ const DLinkSlugEmbedRoute = DLinkSlugEmbedRouteImport.update({
   path: '/d/$link/$slug/embed',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthedSettingsAdminUsersIndexRoute =
+  AuthedSettingsAdminUsersIndexRouteImport.update({
+    id: '/admin/users/',
+    path: '/admin/users/',
+    getParentRoute: () => AuthedSettingsRoute,
+  } as any)
+const AuthedSettingsAdminUsersUserIdRoute =
+  AuthedSettingsAdminUsersUserIdRouteImport.update({
+    id: '/admin/users/$userId',
+    path: '/admin/users/$userId',
+    getParentRoute: () => AuthedSettingsRoute,
+  } as any)
 const AuthedSettingsDeveloperWebhooksIndexRoute =
   AuthedSettingsDeveloperWebhooksIndexRouteImport.update({
     id: '/developer/webhooks/',
@@ -383,11 +429,13 @@ export interface FileRoutesByFullPath {
   '/event-types/$eventTypeId': typeof AuthedEventTypesEventTypeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/v2/me': typeof ApiV2MeRoute
+  '/auth/oauth2/authorize': typeof AuthOauth2AuthorizeRoute
   '/d/$link/$slug': typeof DLinkSlugRoute
   '/apps/': typeof AuthedAppsIndexRoute
   '/availability/': typeof AuthedAvailabilityIndexRoute
   '/event-types/': typeof AuthedEventTypesIndexRoute
   '/settings/': typeof AuthedSettingsIndexRoute
+  '/settings/admin/oauth': typeof AuthedSettingsAdminOauthRoute
   '/settings/developer/api-keys': typeof AuthedSettingsDeveloperApiKeysRoute
   '/settings/my-account/appearance': typeof AuthedSettingsMyAccountAppearanceRoute
   '/settings/my-account/calendars': typeof AuthedSettingsMyAccountCalendarsRoute
@@ -397,6 +445,9 @@ export interface FileRoutesByFullPath {
   '/settings/my-account/profile': typeof AuthedSettingsMyAccountProfileRoute
   '/settings/security/password': typeof AuthedSettingsSecurityPasswordRoute
   '/settings/security/two-factor-auth': typeof AuthedSettingsSecurityTwoFactorAuthRoute
+  '/api/auth/oauth/me': typeof ApiAuthOauthMeRoute
+  '/api/auth/oauth/refreshToken': typeof ApiAuthOauthRefreshTokenRoute
+  '/api/auth/oauth/token': typeof ApiAuthOauthTokenRoute
   '/api/integrations/$app/add': typeof ApiIntegrationsAppAddRoute
   '/api/integrations/$app/callback': typeof ApiIntegrationsAppCallbackRoute
   '/api/v2/event-types/$eventTypeId': typeof ApiV2EventTypesEventTypeIdRoute
@@ -409,6 +460,7 @@ export interface FileRoutesByFullPath {
   '/api/v2/schedules/': typeof ApiV2SchedulesIndexRoute
   '/api/v2/slots/': typeof ApiV2SlotsIndexRoute
   '/api/v2/webhooks/': typeof ApiV2WebhooksIndexRoute
+  '/settings/admin/users/$userId': typeof AuthedSettingsAdminUsersUserIdRoute
   '/settings/developer/webhooks/$webhookId': typeof AuthedSettingsDeveloperWebhooksWebhookIdRoute
   '/api/v2/bookings/$bookingUid/cancel': typeof ApiV2BookingsBookingUidCancelRoute
   '/api/v2/bookings/$bookingUid/confirm': typeof ApiV2BookingsBookingUidConfirmRoute
@@ -417,6 +469,7 @@ export interface FileRoutesByFullPath {
   '/api/v2/bookings/$bookingUid/location': typeof ApiV2BookingsBookingUidLocationRoute
   '/api/v2/bookings/$bookingUid/mark-absent': typeof ApiV2BookingsBookingUidMarkAbsentRoute
   '/api/v2/bookings/$bookingUid/reschedule': typeof ApiV2BookingsBookingUidRescheduleRoute
+  '/settings/admin/users/': typeof AuthedSettingsAdminUsersIndexRoute
   '/settings/developer/webhooks/': typeof AuthedSettingsDeveloperWebhooksIndexRoute
   '/api/v2/bookings/$bookingUid/': typeof ApiV2BookingsBookingUidIndexRoute
 }
@@ -438,11 +491,13 @@ export interface FileRoutesByTo {
   '/event-types/$eventTypeId': typeof AuthedEventTypesEventTypeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/v2/me': typeof ApiV2MeRoute
+  '/auth/oauth2/authorize': typeof AuthOauth2AuthorizeRoute
   '/d/$link/$slug': typeof DLinkSlugRoute
   '/apps': typeof AuthedAppsIndexRoute
   '/availability': typeof AuthedAvailabilityIndexRoute
   '/event-types': typeof AuthedEventTypesIndexRoute
   '/settings': typeof AuthedSettingsIndexRoute
+  '/settings/admin/oauth': typeof AuthedSettingsAdminOauthRoute
   '/settings/developer/api-keys': typeof AuthedSettingsDeveloperApiKeysRoute
   '/settings/my-account/appearance': typeof AuthedSettingsMyAccountAppearanceRoute
   '/settings/my-account/calendars': typeof AuthedSettingsMyAccountCalendarsRoute
@@ -452,6 +507,9 @@ export interface FileRoutesByTo {
   '/settings/my-account/profile': typeof AuthedSettingsMyAccountProfileRoute
   '/settings/security/password': typeof AuthedSettingsSecurityPasswordRoute
   '/settings/security/two-factor-auth': typeof AuthedSettingsSecurityTwoFactorAuthRoute
+  '/api/auth/oauth/me': typeof ApiAuthOauthMeRoute
+  '/api/auth/oauth/refreshToken': typeof ApiAuthOauthRefreshTokenRoute
+  '/api/auth/oauth/token': typeof ApiAuthOauthTokenRoute
   '/api/integrations/$app/add': typeof ApiIntegrationsAppAddRoute
   '/api/integrations/$app/callback': typeof ApiIntegrationsAppCallbackRoute
   '/api/v2/event-types/$eventTypeId': typeof ApiV2EventTypesEventTypeIdRoute
@@ -464,6 +522,7 @@ export interface FileRoutesByTo {
   '/api/v2/schedules': typeof ApiV2SchedulesIndexRoute
   '/api/v2/slots': typeof ApiV2SlotsIndexRoute
   '/api/v2/webhooks': typeof ApiV2WebhooksIndexRoute
+  '/settings/admin/users/$userId': typeof AuthedSettingsAdminUsersUserIdRoute
   '/settings/developer/webhooks/$webhookId': typeof AuthedSettingsDeveloperWebhooksWebhookIdRoute
   '/api/v2/bookings/$bookingUid/cancel': typeof ApiV2BookingsBookingUidCancelRoute
   '/api/v2/bookings/$bookingUid/confirm': typeof ApiV2BookingsBookingUidConfirmRoute
@@ -472,6 +531,7 @@ export interface FileRoutesByTo {
   '/api/v2/bookings/$bookingUid/location': typeof ApiV2BookingsBookingUidLocationRoute
   '/api/v2/bookings/$bookingUid/mark-absent': typeof ApiV2BookingsBookingUidMarkAbsentRoute
   '/api/v2/bookings/$bookingUid/reschedule': typeof ApiV2BookingsBookingUidRescheduleRoute
+  '/settings/admin/users': typeof AuthedSettingsAdminUsersIndexRoute
   '/settings/developer/webhooks': typeof AuthedSettingsDeveloperWebhooksIndexRoute
   '/api/v2/bookings/$bookingUid': typeof ApiV2BookingsBookingUidIndexRoute
 }
@@ -496,11 +556,13 @@ export interface FileRoutesById {
   '/_authed/event-types/$eventTypeId': typeof AuthedEventTypesEventTypeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/v2/me': typeof ApiV2MeRoute
+  '/auth/oauth2/authorize': typeof AuthOauth2AuthorizeRoute
   '/d/$link/$slug': typeof DLinkSlugRoute
   '/_authed/apps/': typeof AuthedAppsIndexRoute
   '/_authed/availability/': typeof AuthedAvailabilityIndexRoute
   '/_authed/event-types/': typeof AuthedEventTypesIndexRoute
   '/_authed/settings/': typeof AuthedSettingsIndexRoute
+  '/_authed/settings/admin/oauth': typeof AuthedSettingsAdminOauthRoute
   '/_authed/settings/developer/api-keys': typeof AuthedSettingsDeveloperApiKeysRoute
   '/_authed/settings/my-account/appearance': typeof AuthedSettingsMyAccountAppearanceRoute
   '/_authed/settings/my-account/calendars': typeof AuthedSettingsMyAccountCalendarsRoute
@@ -510,6 +572,9 @@ export interface FileRoutesById {
   '/_authed/settings/my-account/profile': typeof AuthedSettingsMyAccountProfileRoute
   '/_authed/settings/security/password': typeof AuthedSettingsSecurityPasswordRoute
   '/_authed/settings/security/two-factor-auth': typeof AuthedSettingsSecurityTwoFactorAuthRoute
+  '/api/auth/oauth/me': typeof ApiAuthOauthMeRoute
+  '/api/auth/oauth/refreshToken': typeof ApiAuthOauthRefreshTokenRoute
+  '/api/auth/oauth/token': typeof ApiAuthOauthTokenRoute
   '/api/integrations/$app/add': typeof ApiIntegrationsAppAddRoute
   '/api/integrations/$app/callback': typeof ApiIntegrationsAppCallbackRoute
   '/api/v2/event-types/$eventTypeId': typeof ApiV2EventTypesEventTypeIdRoute
@@ -522,6 +587,7 @@ export interface FileRoutesById {
   '/api/v2/schedules/': typeof ApiV2SchedulesIndexRoute
   '/api/v2/slots/': typeof ApiV2SlotsIndexRoute
   '/api/v2/webhooks/': typeof ApiV2WebhooksIndexRoute
+  '/_authed/settings/admin/users/$userId': typeof AuthedSettingsAdminUsersUserIdRoute
   '/_authed/settings/developer/webhooks/$webhookId': typeof AuthedSettingsDeveloperWebhooksWebhookIdRoute
   '/api/v2/bookings/$bookingUid/cancel': typeof ApiV2BookingsBookingUidCancelRoute
   '/api/v2/bookings/$bookingUid/confirm': typeof ApiV2BookingsBookingUidConfirmRoute
@@ -530,6 +596,7 @@ export interface FileRoutesById {
   '/api/v2/bookings/$bookingUid/location': typeof ApiV2BookingsBookingUidLocationRoute
   '/api/v2/bookings/$bookingUid/mark-absent': typeof ApiV2BookingsBookingUidMarkAbsentRoute
   '/api/v2/bookings/$bookingUid/reschedule': typeof ApiV2BookingsBookingUidRescheduleRoute
+  '/_authed/settings/admin/users/': typeof AuthedSettingsAdminUsersIndexRoute
   '/_authed/settings/developer/webhooks/': typeof AuthedSettingsDeveloperWebhooksIndexRoute
   '/api/v2/bookings/$bookingUid/': typeof ApiV2BookingsBookingUidIndexRoute
 }
@@ -554,11 +621,13 @@ export interface FileRouteTypes {
     | '/event-types/$eventTypeId'
     | '/api/auth/$'
     | '/api/v2/me'
+    | '/auth/oauth2/authorize'
     | '/d/$link/$slug'
     | '/apps/'
     | '/availability/'
     | '/event-types/'
     | '/settings/'
+    | '/settings/admin/oauth'
     | '/settings/developer/api-keys'
     | '/settings/my-account/appearance'
     | '/settings/my-account/calendars'
@@ -568,6 +637,9 @@ export interface FileRouteTypes {
     | '/settings/my-account/profile'
     | '/settings/security/password'
     | '/settings/security/two-factor-auth'
+    | '/api/auth/oauth/me'
+    | '/api/auth/oauth/refreshToken'
+    | '/api/auth/oauth/token'
     | '/api/integrations/$app/add'
     | '/api/integrations/$app/callback'
     | '/api/v2/event-types/$eventTypeId'
@@ -580,6 +652,7 @@ export interface FileRouteTypes {
     | '/api/v2/schedules/'
     | '/api/v2/slots/'
     | '/api/v2/webhooks/'
+    | '/settings/admin/users/$userId'
     | '/settings/developer/webhooks/$webhookId'
     | '/api/v2/bookings/$bookingUid/cancel'
     | '/api/v2/bookings/$bookingUid/confirm'
@@ -588,6 +661,7 @@ export interface FileRouteTypes {
     | '/api/v2/bookings/$bookingUid/location'
     | '/api/v2/bookings/$bookingUid/mark-absent'
     | '/api/v2/bookings/$bookingUid/reschedule'
+    | '/settings/admin/users/'
     | '/settings/developer/webhooks/'
     | '/api/v2/bookings/$bookingUid/'
   fileRoutesByTo: FileRoutesByTo
@@ -609,11 +683,13 @@ export interface FileRouteTypes {
     | '/event-types/$eventTypeId'
     | '/api/auth/$'
     | '/api/v2/me'
+    | '/auth/oauth2/authorize'
     | '/d/$link/$slug'
     | '/apps'
     | '/availability'
     | '/event-types'
     | '/settings'
+    | '/settings/admin/oauth'
     | '/settings/developer/api-keys'
     | '/settings/my-account/appearance'
     | '/settings/my-account/calendars'
@@ -623,6 +699,9 @@ export interface FileRouteTypes {
     | '/settings/my-account/profile'
     | '/settings/security/password'
     | '/settings/security/two-factor-auth'
+    | '/api/auth/oauth/me'
+    | '/api/auth/oauth/refreshToken'
+    | '/api/auth/oauth/token'
     | '/api/integrations/$app/add'
     | '/api/integrations/$app/callback'
     | '/api/v2/event-types/$eventTypeId'
@@ -635,6 +714,7 @@ export interface FileRouteTypes {
     | '/api/v2/schedules'
     | '/api/v2/slots'
     | '/api/v2/webhooks'
+    | '/settings/admin/users/$userId'
     | '/settings/developer/webhooks/$webhookId'
     | '/api/v2/bookings/$bookingUid/cancel'
     | '/api/v2/bookings/$bookingUid/confirm'
@@ -643,6 +723,7 @@ export interface FileRouteTypes {
     | '/api/v2/bookings/$bookingUid/location'
     | '/api/v2/bookings/$bookingUid/mark-absent'
     | '/api/v2/bookings/$bookingUid/reschedule'
+    | '/settings/admin/users'
     | '/settings/developer/webhooks'
     | '/api/v2/bookings/$bookingUid'
   id:
@@ -666,11 +747,13 @@ export interface FileRouteTypes {
     | '/_authed/event-types/$eventTypeId'
     | '/api/auth/$'
     | '/api/v2/me'
+    | '/auth/oauth2/authorize'
     | '/d/$link/$slug'
     | '/_authed/apps/'
     | '/_authed/availability/'
     | '/_authed/event-types/'
     | '/_authed/settings/'
+    | '/_authed/settings/admin/oauth'
     | '/_authed/settings/developer/api-keys'
     | '/_authed/settings/my-account/appearance'
     | '/_authed/settings/my-account/calendars'
@@ -680,6 +763,9 @@ export interface FileRouteTypes {
     | '/_authed/settings/my-account/profile'
     | '/_authed/settings/security/password'
     | '/_authed/settings/security/two-factor-auth'
+    | '/api/auth/oauth/me'
+    | '/api/auth/oauth/refreshToken'
+    | '/api/auth/oauth/token'
     | '/api/integrations/$app/add'
     | '/api/integrations/$app/callback'
     | '/api/v2/event-types/$eventTypeId'
@@ -692,6 +778,7 @@ export interface FileRouteTypes {
     | '/api/v2/schedules/'
     | '/api/v2/slots/'
     | '/api/v2/webhooks/'
+    | '/_authed/settings/admin/users/$userId'
     | '/_authed/settings/developer/webhooks/$webhookId'
     | '/api/v2/bookings/$bookingUid/cancel'
     | '/api/v2/bookings/$bookingUid/confirm'
@@ -700,6 +787,7 @@ export interface FileRouteTypes {
     | '/api/v2/bookings/$bookingUid/location'
     | '/api/v2/bookings/$bookingUid/mark-absent'
     | '/api/v2/bookings/$bookingUid/reschedule'
+    | '/_authed/settings/admin/users/'
     | '/_authed/settings/developer/webhooks/'
     | '/api/v2/bookings/$bookingUid/'
   fileRoutesById: FileRoutesById
@@ -720,7 +808,11 @@ export interface RootRouteChildren {
   UsernameSlugEmbedRoute: typeof UsernameSlugEmbedRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiV2MeRoute: typeof ApiV2MeRoute
+  AuthOauth2AuthorizeRoute: typeof AuthOauth2AuthorizeRoute
   DLinkSlugRoute: typeof DLinkSlugRoute
+  ApiAuthOauthMeRoute: typeof ApiAuthOauthMeRoute
+  ApiAuthOauthRefreshTokenRoute: typeof ApiAuthOauthRefreshTokenRoute
+  ApiAuthOauthTokenRoute: typeof ApiAuthOauthTokenRoute
   ApiIntegrationsAppAddRoute: typeof ApiIntegrationsAppAddRoute
   ApiIntegrationsAppCallbackRoute: typeof ApiIntegrationsAppCallbackRoute
   ApiV2EventTypesEventTypeIdRoute: typeof ApiV2EventTypesEventTypeIdRoute
@@ -906,12 +998,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV2MeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/oauth2/authorize': {
+      id: '/auth/oauth2/authorize'
+      path: '/auth/oauth2/authorize'
+      fullPath: '/auth/oauth2/authorize'
+      preLoaderRoute: typeof AuthOauth2AuthorizeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/d/$link/$slug': {
       id: '/d/$link/$slug'
       path: '/d/$link/$slug'
       fullPath: '/d/$link/$slug'
       preLoaderRoute: typeof DLinkSlugRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authed/settings/admin/oauth': {
+      id: '/_authed/settings/admin/oauth'
+      path: '/admin/oauth'
+      fullPath: '/settings/admin/oauth'
+      preLoaderRoute: typeof AuthedSettingsAdminOauthRouteImport
+      parentRoute: typeof AuthedSettingsRoute
     }
     '/_authed/settings/developer/api-keys': {
       id: '/_authed/settings/developer/api-keys'
@@ -975,6 +1081,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/settings/security/two-factor-auth'
       preLoaderRoute: typeof AuthedSettingsSecurityTwoFactorAuthRouteImport
       parentRoute: typeof AuthedSettingsRoute
+    }
+    '/api/auth/oauth/me': {
+      id: '/api/auth/oauth/me'
+      path: '/api/auth/oauth/me'
+      fullPath: '/api/auth/oauth/me'
+      preLoaderRoute: typeof ApiAuthOauthMeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/oauth/refreshToken': {
+      id: '/api/auth/oauth/refreshToken'
+      path: '/api/auth/oauth/refreshToken'
+      fullPath: '/api/auth/oauth/refreshToken'
+      preLoaderRoute: typeof ApiAuthOauthRefreshTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/oauth/token': {
+      id: '/api/auth/oauth/token'
+      path: '/api/auth/oauth/token'
+      fullPath: '/api/auth/oauth/token'
+      preLoaderRoute: typeof ApiAuthOauthTokenRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/integrations/$app/add': {
       id: '/api/integrations/$app/add'
@@ -1060,6 +1187,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DLinkSlugEmbedRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authed/settings/admin/users/': {
+      id: '/_authed/settings/admin/users/'
+      path: '/admin/users'
+      fullPath: '/settings/admin/users/'
+      preLoaderRoute: typeof AuthedSettingsAdminUsersIndexRouteImport
+      parentRoute: typeof AuthedSettingsRoute
+    }
+    '/_authed/settings/admin/users/$userId': {
+      id: '/_authed/settings/admin/users/$userId'
+      path: '/admin/users/$userId'
+      fullPath: '/settings/admin/users/$userId'
+      preLoaderRoute: typeof AuthedSettingsAdminUsersUserIdRouteImport
+      parentRoute: typeof AuthedSettingsRoute
+    }
     '/_authed/settings/developer/webhooks/': {
       id: '/_authed/settings/developer/webhooks/'
       path: '/developer/webhooks'
@@ -1135,6 +1276,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthedSettingsRouteChildren {
   AuthedSettingsIndexRoute: typeof AuthedSettingsIndexRoute
+  AuthedSettingsAdminOauthRoute: typeof AuthedSettingsAdminOauthRoute
   AuthedSettingsDeveloperApiKeysRoute: typeof AuthedSettingsDeveloperApiKeysRoute
   AuthedSettingsMyAccountAppearanceRoute: typeof AuthedSettingsMyAccountAppearanceRoute
   AuthedSettingsMyAccountCalendarsRoute: typeof AuthedSettingsMyAccountCalendarsRoute
@@ -1144,12 +1286,15 @@ interface AuthedSettingsRouteChildren {
   AuthedSettingsMyAccountProfileRoute: typeof AuthedSettingsMyAccountProfileRoute
   AuthedSettingsSecurityPasswordRoute: typeof AuthedSettingsSecurityPasswordRoute
   AuthedSettingsSecurityTwoFactorAuthRoute: typeof AuthedSettingsSecurityTwoFactorAuthRoute
+  AuthedSettingsAdminUsersUserIdRoute: typeof AuthedSettingsAdminUsersUserIdRoute
   AuthedSettingsDeveloperWebhooksWebhookIdRoute: typeof AuthedSettingsDeveloperWebhooksWebhookIdRoute
+  AuthedSettingsAdminUsersIndexRoute: typeof AuthedSettingsAdminUsersIndexRoute
   AuthedSettingsDeveloperWebhooksIndexRoute: typeof AuthedSettingsDeveloperWebhooksIndexRoute
 }
 
 const AuthedSettingsRouteChildren: AuthedSettingsRouteChildren = {
   AuthedSettingsIndexRoute: AuthedSettingsIndexRoute,
+  AuthedSettingsAdminOauthRoute: AuthedSettingsAdminOauthRoute,
   AuthedSettingsDeveloperApiKeysRoute: AuthedSettingsDeveloperApiKeysRoute,
   AuthedSettingsMyAccountAppearanceRoute:
     AuthedSettingsMyAccountAppearanceRoute,
@@ -1163,8 +1308,10 @@ const AuthedSettingsRouteChildren: AuthedSettingsRouteChildren = {
   AuthedSettingsSecurityPasswordRoute: AuthedSettingsSecurityPasswordRoute,
   AuthedSettingsSecurityTwoFactorAuthRoute:
     AuthedSettingsSecurityTwoFactorAuthRoute,
+  AuthedSettingsAdminUsersUserIdRoute: AuthedSettingsAdminUsersUserIdRoute,
   AuthedSettingsDeveloperWebhooksWebhookIdRoute:
     AuthedSettingsDeveloperWebhooksWebhookIdRoute,
+  AuthedSettingsAdminUsersIndexRoute: AuthedSettingsAdminUsersIndexRoute,
   AuthedSettingsDeveloperWebhooksIndexRoute:
     AuthedSettingsDeveloperWebhooksIndexRoute,
 }
@@ -1212,7 +1359,11 @@ const rootRouteChildren: RootRouteChildren = {
   UsernameSlugEmbedRoute: UsernameSlugEmbedRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiV2MeRoute: ApiV2MeRoute,
+  AuthOauth2AuthorizeRoute: AuthOauth2AuthorizeRoute,
   DLinkSlugRoute: DLinkSlugRoute,
+  ApiAuthOauthMeRoute: ApiAuthOauthMeRoute,
+  ApiAuthOauthRefreshTokenRoute: ApiAuthOauthRefreshTokenRoute,
+  ApiAuthOauthTokenRoute: ApiAuthOauthTokenRoute,
   ApiIntegrationsAppAddRoute: ApiIntegrationsAppAddRoute,
   ApiIntegrationsAppCallbackRoute: ApiIntegrationsAppCallbackRoute,
   ApiV2EventTypesEventTypeIdRoute: ApiV2EventTypesEventTypeIdRoute,

@@ -14,6 +14,8 @@ import { isPasswordValid } from "@calcom/lib/auth/isPasswordValid";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, createAuthMiddleware } from "better-auth/api";
+import { admin } from "better-auth/plugins/admin";
+import { adminAc, userAc } from "better-auth/plugins/admin/access";
 import { twoFactor } from "better-auth/plugins/two-factor";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { MIN_PASSWORD_LENGTH } from "~/lib/auth-errors";
@@ -63,6 +65,47 @@ function authEmailRecipient(target: { email: string; name?: string | null; local
   };
 }
 
+/**
+ * Applies Cal's password rule everywhere a password is set, and (in production) keeps admins
+ * without two-factor authentication out of admin endpoints, as Cal does.
+ */
+function beforeHook(requireAdminTwoFactor: boolean) {
+  return createAuthMiddleware(async (ctx) => {
+    if (requireAdminTwoFactor && ctx.path.startsWith("/admin/") && ctx.path !== "/admin/stop-impersonating") {
+      const token = await ctx.getSignedCookie(ctx.context.authCookies.sessionToken.name, ctx.context.secret);
+      const current = token ? await ctx.context.internalAdapter.findSession(token) : null;
+      if (current && !current.user.twoFactorEnabled)
+        throw new APIError("FORBIDDEN", {
+          message: AUTH_ERROR_CODES.adminNeedsTwoFactor,
+          code: AUTH_ERROR_CODES.adminNeedsTwoFactor,
+        });
+    }
+    const field = PASSWORD_FIELD_BY_PATH[ctx.path];
+    if (!field) return;
+    const password: unknown = ctx.body?.[field];
+    // Same rule as the old signup flow; Better Auth only checks length.
+    if (typeof password !== "string" || !isPasswordValid(password)) {
+      throw new APIError("BAD_REQUEST", {
+        message: AUTH_ERROR_CODES.invalidPassword,
+        code: AUTH_ERROR_CODES.invalidPassword,
+      });
+    }
+  });
+}
+
+/** Better Auth's admin plugin on Cal's columns. */
+function adminPlugin() {
+  return admin({
+    // Cal's UserPermissionRole values.
+    defaultRole: "USER",
+    adminRoles: ["ADMIN"],
+    roles: { ADMIN: adminAc, USER: userAc },
+    // Cal's `locked` users can't sign in, which is what the plugin's ban does.
+    schema: { user: { fields: { banned: "locked" } } },
+    bannedUserMessage: AUTH_ERROR_CODES.userLocked,
+  });
+}
+
 export type AuthConfig = {
   db: Database;
   baseURL: string;
@@ -73,6 +116,8 @@ export type AuthConfig = {
   rateLimit: boolean;
   /** Sends reset and verification links; null when no email provider is configured. */
   sendAuthEmail: AuthEmailSender | null;
+  /** Cal only lets admins with two-factor authentication act as admins in production. */
+  requireAdminTwoFactor?: boolean;
 };
 
 export type AuthEmailSender = (
@@ -85,6 +130,8 @@ export type AuthEmailSender = (
 export const AUTH_ERROR_CODES = {
   invalidPassword: "invalid_password_hint",
   usernameTaken: "username_already_taken",
+  userLocked: "your_account_is_locked",
+  adminNeedsTwoFactor: "admin_needs_two_factor",
 } as const;
 
 export function createAuth({
@@ -95,6 +142,7 @@ export function createAuth({
   clientIpHeaders,
   rateLimit,
   sendAuthEmail,
+  requireAdminTwoFactor = false,
 }: AuthConfig) {
   const users = new UserRepository(db);
   const scheduleRepo = new ScheduleRepository(db);
@@ -160,24 +208,15 @@ export function createAuth({
       accountLinking: { enabled: true, trustedProviders: ["google"] },
     },
     hooks: {
-      before: createAuthMiddleware(async (ctx) => {
-        const field = PASSWORD_FIELD_BY_PATH[ctx.path];
-        if (!field) return;
-        const password: unknown = ctx.body?.[field];
-        // Same rule as the old signup flow; Better Auth only checks length.
-        if (typeof password !== "string" || !isPasswordValid(password)) {
-          throw new APIError("BAD_REQUEST", {
-            message: AUTH_ERROR_CODES.invalidPassword,
-            code: AUTH_ERROR_CODES.invalidPassword,
-          });
-        }
-      }),
+      before: beforeHook(requireAdminTwoFactor),
     },
     databaseHooks: {
       user: {
         create: {
           before: async (newUser) => {
             const timeZone = validTimeZone(newUser.timeZone) ?? DEFAULT_TIME_ZONE;
+            // Cal's self-host setup makes whoever creates the first account the instance admin.
+            const role = (await users.hasAny()) ? "USER" : "ADMIN";
             const requested = typeof newUser.username === "string" ? normalizeUsername(newUser.username) : "";
             if (requested) {
               const username = requested;
@@ -188,12 +227,13 @@ export function createAuth({
                   code: AUTH_ERROR_CODES.usernameTaken,
                 });
               }
-              return { data: { ...newUser, username, timeZone } };
+              return { data: { ...newUser, username, timeZone, role } };
             }
             // OAuth sign-ups have no username field, and every user needs one for their booking links.
             return {
               data: {
                 ...newUser,
+                role,
                 username: await findAvailableUsername(users, usernameFromEmail(newUser.email)),
               },
             };
@@ -221,6 +261,7 @@ export function createAuth({
     },
     plugins: [
       twoFactor({ issuer: "Cal.diy", backupCodeOptions: { amount: 10, length: 10 } }),
+      adminPlugin(),
       apiKey({
         // Cal's key format: "cal_" + 32 hex characters. The prefix is stored for display only and
         // left out of the hash, which keeps keys issued by Cal valid after the data import.

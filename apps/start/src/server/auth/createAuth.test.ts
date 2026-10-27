@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { base32 } from "@better-auth/utils/base32";
 import { createOTP } from "@better-auth/utils/otp";
 import type { Database } from "@calcom/db/database";
-import { account, apiKey, eventType, schedule, user } from "@calcom/db/schema";
+import { account, apiKey, eventType, schedule, session, user } from "@calcom/db/schema";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createTestDb } from "../../test/testDb";
@@ -320,5 +320,84 @@ describe("createAuth API keys", () => {
     await auth.api.createApiKey({ headers, body: { name: "Temp", prefix: "cal_" } });
     await db.delete(user).where(eq(user.email, "gone@example.com"));
     expect(await db.select({ id: apiKey.id }).from(apiKey)).toEqual([]);
+  });
+});
+
+describe("createAuth admin", () => {
+  async function headersFor(email: string) {
+    const response = await auth.api.signInEmail({
+      body: { email, password: VALID_PASSWORD },
+      asResponse: true,
+    });
+    return new Headers({ cookie: response.headers.get("set-cookie") ?? "" });
+  }
+
+  it("makes the first account of an empty install its admin, and later ones users", async () => {
+    await signUp({ email: "first@example.com", username: "first" });
+    await signUp({ email: "second@example.com", username: "second" });
+    const rows = await db.select({ email: user.email, role: user.role }).from(user).orderBy(user.id);
+    expect(rows).toEqual([
+      { email: "first@example.com", role: "ADMIN" },
+      { email: "second@example.com", role: "USER" },
+    ]);
+  });
+
+  it("locks users out through Cal's locked column, and lets them back in", async () => {
+    await signUp({ email: "admin@example.com", username: "admin" });
+    const { user: member } = await signUp({ email: "member@example.com", username: "member" });
+    const headers = await headersFor("admin@example.com");
+    await auth.api.banUser({ headers, body: { userId: member.id } });
+    const [row] = await db
+      .select({ locked: user.locked })
+      .from(user)
+      .where(eq(user.id, Number(member.id)));
+    expect(row.locked).toBe(true);
+    await expect(
+      auth.api.signInEmail({ body: { email: "member@example.com", password: VALID_PASSWORD } })
+    ).rejects.toMatchObject({ body: { code: "BANNED_USER", message: AUTH_ERROR_CODES.userLocked } });
+    await auth.api.unbanUser({ headers, body: { userId: member.id } });
+    await expect(
+      auth.api.signInEmail({ body: { email: "member@example.com", password: VALID_PASSWORD } })
+    ).resolves.toMatchObject({ user: { email: "member@example.com" } });
+  });
+
+  it("records who is impersonating on the session", async () => {
+    const { user: admin } = await signUp({ email: "admin@example.com", username: "admin" });
+    const { user: member } = await signUp({ email: "member@example.com", username: "member" });
+    await auth.api.impersonateUser({
+      headers: await headersFor("admin@example.com"),
+      body: { userId: member.id },
+    });
+    const sessions = await db
+      .select({ userId: session.userId, impersonatedBy: session.impersonatedBy })
+      .from(session)
+      .where(eq(session.userId, Number(member.id)));
+    // Sign-up's own session, and the admin's impersonation one.
+    expect(sessions.map((row) => row.impersonatedBy)).toEqual([null, Number(admin.id)]);
+  });
+
+  it("keeps admins without two-factor out of admin endpoints when required", async () => {
+    auth = createAuth({
+      db,
+      baseURL: "http://localhost:3000",
+      secret: "test-secret-that-is-long-enough-123",
+      clientIpHeaders: ["x-cal-client-ip"],
+      rateLimit: false,
+      sendAuthEmail: null,
+      requireAdminTwoFactor: true,
+    });
+    await signUp({ email: "admin@example.com", username: "admin" });
+    const { user: member } = await signUp({ email: "member@example.com", username: "member" });
+    await expect(
+      auth.api.banUser({ headers: await headersFor("admin@example.com"), body: { userId: member.id } })
+    ).rejects.toMatchObject({ body: { code: AUTH_ERROR_CODES.adminNeedsTwoFactor } });
+  });
+
+  it("doesn't let users act as admins", async () => {
+    await signUp({ email: "admin@example.com", username: "admin" });
+    const { user: member } = await signUp({ email: "member@example.com", username: "member" });
+    await expect(
+      auth.api.banUser({ headers: await headersFor("member@example.com"), body: { userId: member.id } })
+    ).rejects.toMatchObject({ statusCode: 403 });
   });
 });

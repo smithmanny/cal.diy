@@ -24,6 +24,7 @@ async function init(): Promise<Auth> {
     clientIpHeaders: CLIENT_IP_HEADERS,
     rateLimit: IS_PRODUCTION_BUILD,
     sendAuthEmail: authEmailSender(),
+    requireAdminTwoFactor: IS_PRODUCTION_BUILD,
     google:
       GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET
         ? { clientId: GOOGLE_CLIENT_ID, clientSecret: GOOGLE_CLIENT_SECRET }

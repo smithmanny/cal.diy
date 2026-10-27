@@ -25,6 +25,11 @@ export class UserRepository {
     return new Set(rows.flatMap((row) => (row.username ? [row.username] : [])));
   }
 
+  async hasAny(): Promise<boolean> {
+    const [row] = await this.db.select({ id: user.id }).from(user).limit(1);
+    return Boolean(row);
+  }
+
   /** Swaps one stored password hash for another; matching on the old hash makes a concurrent change win. */
   async replacePasswordHash(oldHash: string, newHash: string): Promise<void> {
     await this.db

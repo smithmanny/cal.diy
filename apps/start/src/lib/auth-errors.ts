@@ -12,6 +12,7 @@ const BETTER_AUTH_CODE_TO_KEY: Record<string, string> = {
   INVALID_TWO_FACTOR_COOKIE: "session_timeout",
   ACCOUNT_TEMPORARILY_LOCKED: "too_many_attempts",
   TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE: "too_many_attempts",
+  BANNED_USER: "your_account_is_locked",
 };
 
 export const MIN_PASSWORD_LENGTH = 7;
