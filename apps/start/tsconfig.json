@@ -1,11 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": [
-      "DOM",
-      "DOM.Iterable",
-      "ES2022"
-    ],
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "jsx": "react-jsx",
@@ -14,30 +10,14 @@
     "noEmit": true,
     "isolatedModules": true,
     "allowImportingTsExtensions": true,
-    "types": [
-      "@cloudflare/workers-types",
-      "node",
-      "vite/client"
-    ],
+    "types": ["@cloudflare/workers-types", "node", "vite/client"],
     "paths": {
-      "#runtime": [
-        "./src/server/runtime/node.ts"
-      ],
-      "~/*": [
-        "./src/*"
-      ],
-      "@better-auth/core": [
-        "../../node_modules/@better-auth/core"
-      ],
-      "@better-auth/core/*": [
-        "../../node_modules/@better-auth/core/*"
-      ],
-      "better-call": [
-        "../../node_modules/better-call"
-      ],
-      "better-call/*": [
-        "../../node_modules/better-call/*"
-      ]
+      "#runtime": ["./src/server/runtime/node.ts"],
+      "~/*": ["./src/*"],
+      "@better-auth/core": ["../../node_modules/@better-auth/core"],
+      "@better-auth/core/*": ["../../node_modules/@better-auth/core/*"],
+      "better-call": ["../../node_modules/better-call"],
+      "better-call/*": ["../../node_modules/better-call/*"]
     }
   },
   "include": [

@@ -189,4 +189,69 @@ describe("computeAvailableSlots", () => {
     const days = new Set(slots.map((s) => s.toISOString().slice(0, 10)));
     expect([...days]).toEqual(["2026-11-02", "2026-11-04"]);
   });
+  describe("booking periods and limits", () => {
+    // Monday 2026-11-02 06:00 UTC (NOW) through Sunday 2026-11-15.
+    const base = {
+      availability: [weekdays9to5],
+      scheduleTimeZone: "UTC",
+      busy: [],
+      from: new Date("2026-11-02T00:00:00Z"),
+      to: new Date("2026-11-15T23:59:00Z"),
+      inviteeTimeZone: "UTC",
+      now: NOW,
+    };
+    const days = (slots: Date[]) => [...new Set(iso(slots).map((slot) => slot.slice(0, 10)))];
+
+    it("keeps a date RANGE inclusive of both days", () => {
+      const slots = computeAvailableSlots({
+        ...base,
+        event: {
+          ...event,
+          periodType: "RANGE",
+          periodStartDate: new Date("2026-11-04T00:00:00Z"),
+          periodEndDate: new Date("2026-11-05T00:00:00Z"),
+        },
+      });
+      expect(days(slots)).toEqual(["2026-11-04", "2026-11-05"]);
+    });
+
+    it("counts a ROLLING_WINDOW in days that have availability, skipping empty ones", () => {
+      const slots = computeAvailableSlots({
+        ...base,
+        // Thursday is fully booked, so the 3 available days are Mon, Tue, Wed... then Fri.
+        busy: [{ start: new Date("2026-11-05T00:00:00Z"), end: new Date("2026-11-06T00:00:00Z") }],
+        event: { ...event, periodType: "ROLLING_WINDOW", periodDays: 4 },
+      });
+      expect(days(slots)).toEqual(["2026-11-02", "2026-11-03", "2026-11-04", "2026-11-06"]);
+    });
+
+    it("measures a rolling window from today even when a later range is asked for", () => {
+      const slots = computeAvailableSlots({
+        ...base,
+        from: new Date("2026-11-05T00:00:00Z"),
+        event: { ...event, periodType: "ROLLING_WINDOW", periodDays: 3 },
+      });
+      // Mon-Wed are the three days; nothing from Thursday on.
+      expect(slots).toEqual([]);
+    });
+
+    it("offsets start times and can offer only the first slot of each day", () => {
+      const slots = computeAvailableSlots({
+        ...base,
+        to: new Date("2026-11-03T23:59:00Z"),
+        event: { ...event, offsetStart: 15, onlyShowFirstAvailableSlot: true },
+      });
+      expect(iso(slots)).toEqual(["2026-11-02T09:15:00.000Z", "2026-11-03T09:15:00.000Z"]);
+    });
+
+    it("drops days that already hit the event's booking limit", () => {
+      const slots = computeAvailableSlots({
+        ...base,
+        to: new Date("2026-11-03T23:59:00Z"),
+        event: { ...event, bookingLimits: { PER_DAY: 1 } },
+        limitBookings: [{ start: new Date("2026-11-02T10:00:00Z"), end: new Date("2026-11-02T11:00:00Z") }],
+      });
+      expect(days(slots)).toEqual(["2026-11-03"]);
+    });
+  });
 });

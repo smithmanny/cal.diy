@@ -9,7 +9,8 @@
     "./slots": "./src/slots.ts",
     "./types": "./src/types.ts",
     "./available-slots": "./src/available-slots.ts",
-    "./out-of-office": "./src/out-of-office.ts"
+    "./out-of-office": "./src/out-of-office.ts",
+    "./limits": "./src/limits.ts"
   },
   "scripts": {
     "test": "TZ=UTC vitest run",

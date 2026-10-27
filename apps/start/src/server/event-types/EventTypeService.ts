@@ -4,6 +4,7 @@ import slugify from "@calcom/lib/slugify";
 import { AppError } from "../errors";
 import type { ScheduleRepository } from "../schedules/ScheduleRepository";
 import type { EventTypeRepository, EventTypeRow } from "./EventTypeRepository";
+import { parseIntervalLimit, toPeriodType } from "./fields";
 import {
   type EventLocation,
   type EventTypeDto,
@@ -27,6 +28,8 @@ function parseLocations(value: unknown): EventLocation[] {
   });
 }
 
+const dayKeyUtc = (date: Date) => date.toISOString().slice(0, 10);
+
 function toDto(row: EventTypeRow): EventTypeDto {
   return {
     id: row.id,
@@ -41,9 +44,17 @@ function toDto(row: EventTypeRow): EventTypeDto {
     beforeEventBuffer: row.beforeEventBuffer,
     afterEventBuffer: row.afterEventBuffer,
     slotInterval: row.slotInterval,
-    periodType: row.periodType === "ROLLING" ? "ROLLING" : "UNLIMITED",
+    periodType: toPeriodType(row.periodType),
     periodDays: row.periodDays,
     periodCountCalendarDays: row.periodCountCalendarDays ?? true,
+    periodStartDate: row.periodStartDate ? dayKeyUtc(row.periodStartDate) : null,
+    periodEndDate: row.periodEndDate ? dayKeyUtc(row.periodEndDate) : null,
+    offsetStart: row.offsetStart,
+    onlyShowFirstAvailableSlot: row.onlyShowFirstAvailableSlot ?? false,
+    bookingLimits: parseIntervalLimit(row.bookingLimits),
+    durationLimits: parseIntervalLimit(row.durationLimits),
+    maxActiveBookingsPerBooker: row.maxActiveBookingsPerBooker,
+    maxActiveBookingPerBookerOfferReschedule: row.maxActiveBookingPerBookerOfferReschedule ?? false,
     requiresConfirmation: row.requiresConfirmation,
   };
 }
@@ -101,8 +112,24 @@ export class EventTypeService {
       afterEventBuffer: input.afterEventBuffer,
       slotInterval: input.slotInterval,
       periodType: input.periodType,
-      periodDays: input.periodType === "ROLLING" ? input.periodDays : null,
+      periodDays:
+        input.periodType === "ROLLING" || input.periodType === "ROLLING_WINDOW" ? input.periodDays : null,
       periodCountCalendarDays: input.periodCountCalendarDays,
+      // Calendar dates at UTC midnight, as Cal stores them.
+      periodStartDate:
+        input.periodType === "RANGE" && input.periodStartDate
+          ? new Date(`${input.periodStartDate}T00:00:00Z`)
+          : null,
+      periodEndDate:
+        input.periodType === "RANGE" && input.periodEndDate
+          ? new Date(`${input.periodEndDate}T00:00:00Z`)
+          : null,
+      offsetStart: input.offsetStart,
+      onlyShowFirstAvailableSlot: input.onlyShowFirstAvailableSlot,
+      bookingLimits: input.bookingLimits,
+      durationLimits: input.durationLimits,
+      maxActiveBookingsPerBooker: input.maxActiveBookingsPerBooker,
+      maxActiveBookingPerBookerOfferReschedule: input.maxActiveBookingPerBookerOfferReschedule,
       requiresConfirmation: input.requiresConfirmation,
     });
   }

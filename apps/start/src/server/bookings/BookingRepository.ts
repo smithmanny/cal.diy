@@ -4,7 +4,23 @@ import type { Database } from "@calcom/db/database";
 import type { BookingStatus } from "@calcom/db/enums";
 import type { JsonValue } from "@calcom/db/ids";
 import { attendee, booking, eventType, user } from "@calcom/db/schema";
-import { and, asc, desc, eq, exists, gt, inArray, lt, ne, notExists, or, type SQL, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  exists,
+  gt,
+  gte,
+  inArray,
+  lt,
+  lte,
+  ne,
+  notExists,
+  or,
+  type SQL,
+  sql,
+} from "drizzle-orm";
 import { appearanceColumns } from "../users/UserRepository";
 
 const detailColumns = {
@@ -133,6 +149,65 @@ export class BookingRepository {
     ]);
     const [created] = await insertedBooking.limit(1);
     return Boolean(created);
+  }
+
+  /** The event type's accepted bookings starting in [from, to], for booking and duration limits. */
+  findAcceptedTimesForEventType({
+    eventTypeId,
+    from,
+    to,
+    excludeUid,
+  }: {
+    eventTypeId: number;
+    from: Date;
+    to: Date;
+    excludeUid?: string;
+  }) {
+    return this.db
+      .select({ start: booking.startTime, end: booking.endTime })
+      .from(booking)
+      .where(
+        and(
+          eq(booking.eventTypeId, eventTypeId),
+          eq(booking.status, "ACCEPTED"),
+          gte(booking.startTime, from),
+          lte(booking.startTime, to),
+          excludeUid ? ne(booking.uid, excludeUid) : undefined
+        )
+      );
+  }
+
+  /** Upcoming accepted bookings of an event type that `email` attends, latest first. */
+  findUpcomingForAttendee({
+    eventTypeId,
+    email,
+    now,
+    limit,
+  }: {
+    eventTypeId: number;
+    email: string;
+    now: Date;
+    limit: number;
+  }) {
+    return this.db
+      .select({ uid: booking.uid, startTime: booking.startTime })
+      .from(booking)
+      .where(
+        and(
+          eq(booking.eventTypeId, eventTypeId),
+          eq(booking.status, "ACCEPTED"),
+          gte(booking.startTime, now),
+          inArray(
+            booking.id,
+            this.db
+              .select({ id: attendee.bookingId })
+              .from(attendee)
+              .where(eq(attendee.email, email.toLowerCase()))
+          )
+        )
+      )
+      .orderBy(desc(booking.startTime))
+      .limit(limit);
   }
 
   async findByUid(uid: string) {

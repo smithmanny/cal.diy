@@ -3564,6 +3564,7 @@
   "per_day": "Per day",
   "per_week": "Per week",
   "per_month": "Per month",
+  "per_year": "Per year",
   "routing_form_insights_assignment_reason": "Assignment reason",
   "access_denied": "Access denied",
   "salesforce_route_to_owner": "Contact owner will be the Round Robin host if available",

@@ -4,14 +4,19 @@ import { Textarea } from "@coss/ui/components/textarea";
 import { ArrowLeftIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { formatLongDate, formatTime, localeUsesHour12 } from "~/lib/date-utils";
-import { errorMessageKey } from "~/lib/errors";
+import { errorMessageKey, errorMessageValues } from "~/lib/errors";
 import { useHour12 } from "~/lib/hour-cycle";
 import type { TFunction } from "~/lib/i18n";
 import type { CreateBookingInput, PublicEventLocation } from "~/server/bookings/types";
 import { FormError } from "../AuthCard";
 import { LOCATION_LABEL_KEYS } from "./locationLabels";
 
-type Attendee = Pick<CreateBookingInput, "name" | "email" | "notes" | "locationType" | "attendeePhone">;
+type Attendee = Pick<
+  CreateBookingInput,
+  "name" | "email" | "notes" | "locationType" | "attendeePhone" | "rescheduleUid"
+>;
+
+type SubmitError = { key: string; values?: Record<string, string | number> };
 
 export function BookingForm({
   slot,
@@ -32,28 +37,40 @@ export function BookingForm({
 }) {
   const [locationType, setLocationType] = useState(locations[0]?.type ?? "");
   const hour12 = useHour12() ?? localeUsesHour12(locale);
-  const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [error, setError] = useState<SubmitError | null>(null);
+  const [lastAttendee, setLastAttendee] = useState<Attendee | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const optional = (name: string) => String(form.get(name) || "") || undefined;
+  async function submit(attendee: Attendee) {
     setSubmitting(true);
-    setErrorKey(null);
+    setError(null);
+    setLastAttendee(attendee);
     try {
-      await onSubmit({
-        name: String(form.get("name")),
-        email: String(form.get("email")),
-        notes: optional("notes"),
-        locationType: locationType || undefined,
-        attendeePhone: optional("phone"),
-      });
-    } catch (error) {
-      setErrorKey(errorMessageKey(error));
+      await onSubmit(attendee);
+    } catch (thrown) {
+      setError({ key: errorMessageKey(thrown), values: errorMessageValues(thrown) });
       setSubmitting(false);
     }
   }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const optional = (name: string) => String(form.get(name) || "") || undefined;
+    void submit({
+      name: String(form.get("name")),
+      email: String(form.get("email")),
+      notes: optional("notes"),
+      locationType: locationType || undefined,
+      attendeePhone: optional("phone"),
+    });
+  }
+
+  // The host allows one upcoming booking per person, and offered to move the existing one here.
+  const rescheduleOffer =
+    error?.key === "booker_limit_exceeded_error_reschedule" && typeof error.values?.rescheduleUid === "string"
+      ? { uid: error.values.rescheduleUid, date: String(error.values.date ?? "") }
+      : null;
 
   return (
     <form method="post" onSubmit={handleSubmit} className="flex max-w-md flex-col gap-4">
@@ -99,7 +116,24 @@ export function BookingForm({
         {t("additional_notes")}
         <Textarea name="notes" rows={3} maxLength={5000} />
       </label>
-      <FormError message={errorKey && t(errorKey)} />
+      {rescheduleOffer && lastAttendee ? (
+        <div role="alert" className="flex flex-col gap-2 rounded-md border p-3 text-sm">
+          <p>
+            {t("booker_limit_exceeded_error_reschedule", {
+              date: `${formatLongDate(rescheduleOffer.date, timeZone, locale)}, ${formatTime(rescheduleOffer.date, timeZone, locale, hour12)}`,
+            })}
+          </p>
+          <Button
+            type="button"
+            className="self-start"
+            disabled={submitting}
+            onClick={() => submit({ ...lastAttendee, rescheduleUid: rescheduleOffer.uid })}>
+            {t("reschedule")}
+          </Button>
+        </div>
+      ) : (
+        <FormError message={error && t(error.key, error.values)} />
+      )}
       <Button type="submit" disabled={submitting}>
         {submitting ? t("loading") : t("confirm")}
       </Button>

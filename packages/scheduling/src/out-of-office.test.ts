@@ -34,9 +34,9 @@ describe("outOfOfficeByDate", () => {
   it("only shares notes the host made public", () => {
     const now = new Date("2030-01-01T00:00:00Z");
     expect(outOfOfficeByDate([entry()], [weekdays], now)["2030-01-04"].notes).toBeNull();
-    expect(
-      outOfOfficeByDate([entry({ showNotePublicly: true })], [weekdays], now)["2030-01-04"].notes
-    ).toBe("Back on Tuesday");
+    expect(outOfOfficeByDate([entry({ showNotePublicly: true })], [weekdays], now)["2030-01-04"].notes).toBe(
+      "Back on Tuesday"
+    );
   });
 
   it("starts from today for entries that already began, and carries the redirect", () => {

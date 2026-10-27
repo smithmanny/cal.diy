@@ -149,6 +149,41 @@ describe("BookingService", () => {
     await expect(book(at("10:00"))).rejects.toMatchObject({ code: "booking_conflict_error" });
   });
 
+  it("closes the day once the event's daily booking limit is reached", async () => {
+    await db
+      .update(eventType)
+      .set({ bookingLimits: { PER_DAY: 1 } })
+      .where(eq(eventType.slug, "intro"));
+    await book(at("10:00"));
+    expect(await slots()).toEqual([]);
+  });
+
+  it("caps upcoming bookings per booker, or offers to move their latest one", async () => {
+    await db.update(eventType).set({ maxActiveBookingsPerBooker: 1 }).where(eq(eventType.slug, "intro"));
+    const first = await book(at("10:00"));
+    await expect(book(at("12:00"))).rejects.toMatchObject({
+      code: "booker_upcoming_limit_reached",
+      values: { count: 1 },
+    });
+    // Someone else can still book.
+    await expect(book(at("13:00"), { email: "other@example.com" })).resolves.toMatchObject({
+      status: "ACCEPTED",
+    });
+
+    await db
+      .update(eventType)
+      .set({ maxActiveBookingPerBookerOfferReschedule: true })
+      .where(eq(eventType.slug, "intro"));
+    await expect(book(at("12:00"))).rejects.toMatchObject({
+      code: "booker_limit_exceeded_error_reschedule",
+      values: { rescheduleUid: first.uid },
+    });
+    // Accepting the offer moves the booking, which the limit allows.
+    await expect(book(at("12:00"), { rescheduleUid: first.uid })).resolves.toMatchObject({
+      status: "ACCEPTED",
+    });
+  });
+
   it("books a free slot, emits BOOKING_CREATED, and the slot disappears", async () => {
     expect(await slots()).toContain(at("10:00"));
     const { uid, status } = await book(at("10:00"), { notes: "Agenda" });

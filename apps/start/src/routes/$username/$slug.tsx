@@ -44,6 +44,9 @@ const MESSAGE_KEYS = [
   "ooo_user_is_ooo",
   "ooo_slots_book_with",
   "holiday_no_availability",
+  "booker_upcoming_limit_reached",
+  "booker_limit_exceeded_error_reschedule",
+  "reschedule",
   "ooo_reasons_unspecified",
   "ooo_reasons_vacation",
   "ooo_reasons_travel",
@@ -94,8 +97,8 @@ function BookerPage() {
         start: selectedSlot,
         timeZone: slots.timeZone,
         locale,
-        rescheduleUid,
         ...attendee,
+        rescheduleUid: attendee.rescheduleUid ?? rescheduleUid,
       },
     });
     await navigate({ to: "/booking/$uid", params: { uid } });

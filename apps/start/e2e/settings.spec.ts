@@ -131,7 +131,10 @@ test("out of office days show the host's reason and note instead of times", asyn
   await expect(guest.locator("ul li button").first()).toBeVisible();
 });
 
-test("holidays the host takes off can't be booked, and can be switched back on", async ({ page, browser }) => {
+test("holidays the host takes off can't be booked, and can be switched back on", async ({
+  page,
+  browser,
+}) => {
   test.skip(!hasFakes, "needs the fake Google holiday calendar");
   const { username } = await signUp(page);
   await page.goto("/settings/my-account/out-of-office");

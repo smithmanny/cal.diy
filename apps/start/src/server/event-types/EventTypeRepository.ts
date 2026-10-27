@@ -26,6 +26,14 @@ const detailColumns = {
   periodDays: eventType.periodDays,
   periodCountCalendarDays: eventType.periodCountCalendarDays,
   requiresConfirmation: eventType.requiresConfirmation,
+  periodStartDate: eventType.periodStartDate,
+  periodEndDate: eventType.periodEndDate,
+  offsetStart: eventType.offsetStart,
+  onlyShowFirstAvailableSlot: eventType.onlyShowFirstAvailableSlot,
+  bookingLimits: eventType.bookingLimits,
+  durationLimits: eventType.durationLimits,
+  maxActiveBookingsPerBooker: eventType.maxActiveBookingsPerBooker,
+  maxActiveBookingPerBookerOfferReschedule: eventType.maxActiveBookingPerBookerOfferReschedule,
 };
 
 type WritableColumns = Partial<Omit<typeof eventType.$inferInsert, "id" | "userId" | "teamId">>;

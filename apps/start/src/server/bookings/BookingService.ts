@@ -1,13 +1,20 @@
 import "@tanstack/react-start/server-only";
 import type { JsonValue } from "@calcom/db/ids";
 import { cuid } from "@calcom/db/ids";
-import { type BusyInterval, computeAvailableSlots } from "@calcom/scheduling/available-slots";
+import {
+  availabilityRange,
+  type BusyInterval,
+  computeAvailableSlots,
+  type SlotEventConfig,
+} from "@calcom/scheduling/available-slots";
+import { limitCheckRange } from "@calcom/scheduling/limits";
 import { outOfOfficeByDate } from "@calcom/scheduling/out-of-office";
 import type { OutOfOfficeData } from "@calcom/scheduling/types";
 import { weekStartIndex } from "~/lib/time-format";
 import { pickMessages } from "../catalog";
 import { AppError } from "../errors";
 import type { EventTypeRepository } from "../event-types/EventTypeRepository";
+import { parseIntervalLimit, toPeriodType } from "../event-types/fields";
 import { type EventLocation, eventLocationSchema } from "../event-types/types";
 import type { HolidayService } from "../holidays/HolidayService";
 import type { OutOfOfficeRepository } from "../out-of-office/OutOfOfficeRepository";
@@ -185,6 +192,8 @@ export class BookingService {
     );
     if (!slots.some((slot) => slot.getTime() === start.getTime()))
       throw new AppError("booking_conflict_error", 409);
+    // Like Cal, moving an existing booking never counts against the booker's limit.
+    if (!original) await this.assertBookerUnderLimit(eventType, input.email);
 
     const location = this.resolveLocation(parseLocations(eventType.locations), input);
     const messages = await pickMessages(host.locale ?? "en", ["event_between_users"]);
@@ -357,6 +366,31 @@ export class BookingService {
     return { host, eventType };
   }
 
+  /** Cal's "Limit number of upcoming bookings per booker". */
+  private async assertBookerUnderLimit(
+    eventType: NonNullable<Awaited<ReturnType<EventTypeRepository["findByUserIdAndSlug"]>>>,
+    email: string
+  ): Promise<void> {
+    const max = eventType.maxActiveBookingsPerBooker;
+    if (!max) return;
+    const upcoming = await this.deps.bookingRepo.findUpcomingForAttendee({
+      eventTypeId: eventType.id,
+      email,
+      now: this.deps.now?.() ?? new Date(),
+      limit: max,
+    });
+    if (upcoming.length < max) return;
+    if (eventType.maxActiveBookingPerBookerOfferReschedule) {
+      // The booker can move their latest booking to the new time instead.
+      const latest = upcoming[upcoming.length - 1];
+      throw new AppError("booker_limit_exceeded_error_reschedule", 409, {
+        rescheduleUid: latest.uid,
+        date: latest.startTime.toISOString(),
+      });
+    }
+    throw new AppError("booker_upcoming_limit_reached", 409, { count: max });
+  }
+
   private async findReschedulable(uid: string, hostId: number) {
     const original = await this.deps.bookingRepo.findByUid(uid);
     if (!original || original.userId !== hostId) throw new AppError("booking_not_found", 404);
@@ -379,14 +413,45 @@ export class BookingService {
       : (await this.deps.scheduleRepo.findManyByUserIdIncludeAvailability(host.id))[0];
     if (!schedule || schedule.userId !== host.id) return { slots: [], outOfOffice: {} };
 
+    const event: SlotEventConfig = {
+      length: eventType.length,
+      slotInterval: eventType.slotInterval,
+      minimumBookingNotice: eventType.minimumBookingNotice,
+      beforeEventBuffer: eventType.beforeEventBuffer,
+      afterEventBuffer: eventType.afterEventBuffer,
+      periodType: toPeriodType(eventType.periodType),
+      periodDays: eventType.periodDays,
+      periodCountCalendarDays: eventType.periodCountCalendarDays ?? true,
+      periodStartDate: eventType.periodStartDate,
+      periodEndDate: eventType.periodEndDate,
+      offsetStart: eventType.offsetStart,
+      onlyShowFirstAvailableSlot: eventType.onlyShowFirstAvailableSlot ?? false,
+      bookingLimits: parseIntervalLimit(eventType.bookingLimits),
+      durationLimits: parseIntervalLimit(eventType.durationLimits),
+    };
+    const scheduleTimeZone = schedule.timeZone ?? host.timeZone;
+    // A rolling window counts available days from today, so it may need data before `from`.
+    const range = availabilityRange(event, from, to, this.deps.now?.());
+    const limitRange =
+      event.bookingLimits || event.durationLimits
+        ? limitCheckRange([event.bookingLimits, event.durationLimits], range.from, range.to, scheduleTimeZone)
+        : null;
+
     // Like Cal, trips only move the default schedule; a dedicated schedule keeps its own time zone.
     const isDefaultSchedule = !scheduleId || scheduleId === host.defaultScheduleId;
-    const [travel, oooEntries, holidays, bookings, ...external] = await Promise.all([
+    const [travel, oooEntries, holidays, limitBookings, bookings, ...external] = await Promise.all([
       isDefaultSchedule ? this.deps.travelScheduleRepo.findByUserId(host.id) : Promise.resolve([]),
-      this.deps.oooRepo.findOverlappingIncludeReasonAndUsers(host.id, from, to),
-      this.deps.holidayService.blockedDays(host.id, from, to, schedule.availability),
-      this.deps.bookingRepo.findBusyForUser({ userId: host.id, email: host.email, from, to, excludeUid }),
-      ...(this.deps.busyTimesProviders ?? []).map((provider) => provider({ userId: host.id, from, to })),
+      this.deps.oooRepo.findOverlappingIncludeReasonAndUsers(host.id, range.from, range.to),
+      this.deps.holidayService.blockedDays(host.id, range.from, range.to, schedule.availability),
+      limitRange
+        ? this.deps.bookingRepo.findAcceptedTimesForEventType({
+            eventTypeId: eventType.id,
+            ...limitRange,
+            excludeUid,
+          })
+        : Promise.resolve([]),
+      this.deps.bookingRepo.findBusyForUser({ userId: host.id, email: host.email, ...range, excludeUid }),
+      ...(this.deps.busyTimesProviders ?? []).map((provider) => provider({ userId: host.id, ...range })),
     ]);
 
     // An explicit out-of-office entry wins over a holiday on the same day, as in Cal.
@@ -396,17 +461,8 @@ export class BookingService {
     };
     const slots = computeAvailableSlots({
       availability: schedule.availability,
-      scheduleTimeZone: schedule.timeZone ?? host.timeZone,
-      event: {
-        length: eventType.length,
-        slotInterval: eventType.slotInterval,
-        minimumBookingNotice: eventType.minimumBookingNotice,
-        beforeEventBuffer: eventType.beforeEventBuffer,
-        afterEventBuffer: eventType.afterEventBuffer,
-        periodType: eventType.periodType === "ROLLING" ? "ROLLING" : "UNLIMITED",
-        periodDays: eventType.periodDays,
-        periodCountCalendarDays: eventType.periodCountCalendarDays ?? true,
-      },
+      scheduleTimeZone,
+      event,
       busy: [...bookings, ...external.flat()],
       from,
       to,
@@ -418,6 +474,7 @@ export class BookingService {
         end: trip.endDate,
       })),
       outOfOffice,
+      limitBookings,
     });
     return { slots, outOfOffice };
   }

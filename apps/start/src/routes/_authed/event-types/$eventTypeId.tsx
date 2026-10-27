@@ -5,9 +5,11 @@ import { Switch } from "@coss/ui/components/switch";
 import { Textarea } from "@coss/ui/components/textarea";
 import { createFileRoute, Link, notFound, useNavigate, useRouter } from "@tanstack/react-router";
 import { ArrowLeftIcon, ExternalLinkIcon } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { useState } from "react";
 import { FormError } from "~/components/AuthCard";
 import { selectClass } from "~/components/availability/TimeSelect";
+import { Field, Section } from "~/components/event-types/EditorLayout";
+import { LIMITS_MESSAGE_KEYS, LimitsEditor, limitsErrorKey } from "~/components/event-types/LimitsEditor";
 import { LOCATIONS_MESSAGE_KEYS, LocationsEditor } from "~/components/event-types/LocationsEditor";
 import { HydratedFieldset } from "~/components/HydratedFieldset";
 import { errorMessageKey } from "~/lib/errors";
@@ -19,6 +21,7 @@ import { listSchedules } from "~/server/schedules/functions";
 
 const MESSAGE_KEYS = [
   ...LOCATIONS_MESSAGE_KEYS,
+  ...LIMITS_MESSAGE_KEYS,
   "setup",
   "availability",
   "event_limit_tab_title",
@@ -29,16 +32,6 @@ const MESSAGE_KEYS = [
   "duration",
   "minutes",
   "default",
-  "minimum_booking_notice",
-  "before_event",
-  "after_event",
-  "event_buffer_default",
-  "slot_interval",
-  "slot_interval_default",
-  "limit_future_bookings",
-  "into_the_future",
-  "business_days",
-  "calendar_days",
   "requires_confirmation",
   "hide_from_profile",
   "save",
@@ -52,27 +45,6 @@ const MESSAGE_KEYS = [
   "not_found",
   "something_went_wrong",
 ];
-
-const BUFFER_OPTIONS = [0, 5, 10, 15, 20, 30, 45, 60, 90, 120];
-const INTERVAL_OPTIONS = [5, 10, 15, 20, 30, 45, 60, 75, 90, 105, 120];
-
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="flex flex-col gap-4 rounded-xl border p-4">
-      <h2 className="font-medium">{title}</h2>
-      {children}
-    </section>
-  );
-}
-
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <label className="flex flex-col gap-1.5 font-medium text-sm">
-      {label}
-      {children}
-    </label>
-  );
-}
 
 function EventTypeEditorPage() {
   const { eventType, schedules } = Route.useLoaderData();
@@ -89,6 +61,11 @@ function EventTypeEditorPage() {
   const bookingUrl = `${origin}/${user.username}/${eventType.slug}`;
 
   async function save() {
+    const invalid = limitsErrorKey(form);
+    if (invalid) {
+      setStatus({ kind: "error", key: invalid });
+      return;
+    }
     setPending(true);
     setStatus(null);
     try {
@@ -198,88 +175,7 @@ function EventTypeEditorPage() {
       </Section>
 
       <Section title={t("event_limit_tab_title")}>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label={t("before_event")}>
-            <select
-              className={selectClass}
-              value={form.beforeEventBuffer}
-              onChange={(e) => set("beforeEventBuffer", Number(e.target.value))}>
-              {BUFFER_OPTIONS.map((minutes) => (
-                <option key={minutes} value={minutes}>
-                  {minutes === 0 ? t("event_buffer_default") : `${minutes} ${t("minutes")}`}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label={t("after_event")}>
-            <select
-              className={selectClass}
-              value={form.afterEventBuffer}
-              onChange={(e) => set("afterEventBuffer", Number(e.target.value))}>
-              {BUFFER_OPTIONS.map((minutes) => (
-                <option key={minutes} value={minutes}>
-                  {minutes === 0 ? t("event_buffer_default") : `${minutes} ${t("minutes")}`}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label={`${t("minimum_booking_notice")} (${t("minutes")})`}>
-            <Input
-              type="number"
-              min={0}
-              value={form.minimumBookingNotice}
-              onChange={(e) => set("minimumBookingNotice", Number(e.target.value))}
-            />
-          </Field>
-          <Field label={t("slot_interval")}>
-            <select
-              className={selectClass}
-              value={form.slotInterval ?? ""}
-              onChange={(e) => set("slotInterval", e.target.value ? Number(e.target.value) : null)}>
-              <option value="">{t("slot_interval_default")}</option>
-              {INTERVAL_OPTIONS.map((minutes) => (
-                <option key={minutes} value={minutes}>
-                  {minutes} {t("minutes")}
-                </option>
-              ))}
-            </select>
-          </Field>
-        </div>
-        <div className="flex flex-col gap-3">
-          <label className="flex items-center gap-2 font-medium text-sm">
-            <Switch
-              checked={form.periodType === "ROLLING"}
-              onCheckedChange={(rolling) =>
-                setForm((f) => ({
-                  ...f,
-                  periodType: rolling ? "ROLLING" : "UNLIMITED",
-                  periodDays: rolling ? (f.periodDays ?? 30) : null,
-                }))
-              }
-            />
-            {t("limit_future_bookings")}
-          </label>
-          {form.periodType === "ROLLING" && (
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              <Input
-                type="number"
-                min={1}
-                max={3650}
-                className="w-24"
-                value={form.periodDays ?? 30}
-                onChange={(e) => set("periodDays", Number(e.target.value))}
-              />
-              <select
-                className={selectClass}
-                value={form.periodCountCalendarDays ? "calendar" : "business"}
-                onChange={(e) => set("periodCountCalendarDays", e.target.value === "calendar")}>
-                <option value="business">{t("business_days")}</option>
-                <option value="calendar">{t("calendar_days")}</option>
-              </select>
-              <span>{t("into_the_future")}</span>
-            </div>
-          )}
-        </div>
+        <LimitsEditor form={form} set={set} t={t} />
       </Section>
 
       <Section title={t("advanced")}>
