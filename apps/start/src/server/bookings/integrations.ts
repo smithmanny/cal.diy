@@ -3,6 +3,7 @@ import "@tanstack/react-start/server-only";
 import type { Database } from "@calcom/db/database";
 import { createCalendarService } from "../calendars/container";
 import { createEmailService } from "../emails/container";
+import { createPushService } from "../push/container";
 import { createVideoService } from "../video/container";
 import { WebhookRepository } from "../webhooks/WebhookRepository";
 import { createWebhookListener } from "../webhooks/webhookListener";
@@ -25,6 +26,8 @@ export function getBookingListeners(db: Database): BookingListener[] {
   listeners.push(createWebhookListener(new WebhookRepository(db)));
   listeners.push(createAuditListener(new BookingAuditRepository(db)));
   if (emails) listeners.push((event) => emails.onBookingEvent(event));
+  const push = createPushService(db);
+  if (push) listeners.push((event) => push.onBookingEvent(event));
   return listeners;
 }
 

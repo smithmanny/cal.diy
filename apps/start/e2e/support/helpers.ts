@@ -25,9 +25,22 @@ export async function signUp(
   await page.getByLabel("Email address").fill(email);
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page).toHaveURL(/\/event-types$/);
+  await completeOnboarding(page);
   await expect(page.getByRole("heading", { name: "Event types" })).toBeVisible();
   return { username, email };
+}
+
+/** Walks a new account through /getting-started with what it already has, landing on event types. */
+export async function completeOnboarding(page: Page): Promise<void> {
+  await expect(page).toHaveURL(/\/getting-started\/user-settings$/);
+  await page.getByRole("button", { name: "Next step" }).click();
+  await expect(page).toHaveURL(/\/getting-started\/connected-calendar$/);
+  await page.getByRole("button", { name: "Set up later" }).click();
+  await expect(page).toHaveURL(/\/getting-started\/setup-availability$/);
+  await page.getByRole("button", { name: "Next step" }).click();
+  await expect(page).toHaveURL(/\/getting-started\/user-profile$/);
+  await page.getByRole("button", { name: "Finish" }).click();
+  await expect(page).toHaveURL(/\/event-types$/);
 }
 
 /** Books the first free slot next month (always beyond minimum notice) and returns the booking uid. */

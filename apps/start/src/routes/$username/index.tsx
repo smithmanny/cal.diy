@@ -18,8 +18,12 @@ function ProfilePage() {
       brandColor={profile.host.appearance.brandColor}
       darkBrandColor={profile.host.appearance.darkBrandColor}>
       <main className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-4 py-12">
-        <header className="text-center">
+        <header className="flex flex-col items-center gap-2 text-center">
+          {profile.host.avatarUrl && (
+            <img src={profile.host.avatarUrl} alt="" className="size-20 rounded-full object-cover" />
+          )}
           <h1 className="font-heading text-2xl">{profile.host.name ?? profile.host.username}</h1>
+          {profile.bio && <p className="whitespace-pre-line text-muted-foreground text-sm">{profile.bio}</p>}
         </header>
         {profile.eventTypes.length === 0 ? (
           <p className="text-center text-muted-foreground text-sm">{t("no_event_types_have_been_setup")}</p>

@@ -63,6 +63,7 @@ export class UserRepository {
         locale: user.locale,
         defaultScheduleId: user.defaultScheduleId,
         avatarUrl: user.avatarUrl,
+        bio: user.bio,
         weekStart: user.weekStart,
         allowSEOIndexing: user.allowSEOIndexing,
         allowDynamicBooking: user.allowDynamicBooking,

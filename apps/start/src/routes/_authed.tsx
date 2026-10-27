@@ -14,6 +14,9 @@ function AuthedLayout() {
 export const Route = createFileRoute("/_authed")({
   beforeLoad: ({ context, location }) => {
     if (!context.user) throw redirect({ to: "/auth/login", search: { callbackUrl: location.href } });
+    // Cal sends new accounts through onboarding until they finish it.
+    if (!context.user.completedOnboarding)
+      throw redirect({ to: "/getting-started/$step", params: { step: "user-settings" } });
     return { user: context.user };
   },
   loader: async ({ context }) => ({ messages: await loadMessages(context, APP_SHELL_MESSAGE_KEYS) }),

@@ -246,6 +246,7 @@ export class BookingService {
       const { host, eventType, coHosts } = await this.loadDynamicGroup(username);
       return {
         host: groupHost(host, coHosts, username),
+        bio: null,
         eventTypes: [
           { title: eventType.title, slug: eventType.slug, length: eventType.length, description: null },
         ],
@@ -256,6 +257,7 @@ export class BookingService {
     const eventTypes = await this.deps.eventTypeRepo.findManyVisibleByUserId(host.id);
     return {
       host: publicHost(host, host.username),
+      bio: host.bio,
       eventTypes: eventTypes.map(({ title, slug, length, description }) => ({
         title,
         slug,

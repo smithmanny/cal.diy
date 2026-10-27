@@ -12,7 +12,7 @@ type Viewer = { timeZone: string; locale: string; hour12?: boolean };
 // Cal's history titles mark the new date with <0>…</0> for bold; plain text here.
 const stripTags = (text: string) => text.replace(/<\/?\d+>/g, "");
 
-function HistoryList({ entries, viewer }: { entries: HistoryEntryDto[]; viewer: Viewer }) {
+export function HistoryList({ entries, viewer }: { entries: HistoryEntryDto[]; viewer: Viewer }) {
   const t = useT();
   if (!entries.length) return <p className="text-muted-foreground text-sm">{t("no_results")}</p>;
   return (

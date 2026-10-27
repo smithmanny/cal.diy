@@ -4827,5 +4827,8 @@
   "public": "Public",
   "unauthorized_client": "This app isn't authorized to use this instance",
   "invalid_request": "The app sent an invalid request",
+  "image_upload_error": "The image couldn't be uploaded. Try a smaller PNG, JPEG or WebP image.",
+  "push_notifications_new_bookings_description": "Get a browser notification when someone books time with you.",
+  "push_notifications_not_configured": "Push notifications aren't set up on this server. An administrator can turn them on with VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY.",
   "ADD_NEW_STRINGS_ABOVE_THIS_LINE_TO_PREVENT_MERGE_CONFLICTS": "↑↑↑↑↑↑↑↑↑↑↑↑↑ Add your new strings above here ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑"
 }

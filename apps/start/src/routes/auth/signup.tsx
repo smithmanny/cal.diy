@@ -51,7 +51,7 @@ function SignupPage() {
       setErrorKey(authErrorKey(error));
       return;
     }
-    await navigate({ to: "/event-types" });
+    await navigate({ to: "/getting-started/$step", params: { step: "user-settings" } });
   }
 
   return (
