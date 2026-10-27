@@ -1,7 +1,7 @@
 import process from "node:process";
 import { type APIRequestContext, expect, type Page } from "@playwright/test";
 import type { CapturedEmail } from "./fake-servers";
-import { FAKE_RESEND_PORT } from "./global-setup";
+import { FAKE_RESEND_PORT } from "./ports";
 
 export const PASSWORD = "Secret123";
 

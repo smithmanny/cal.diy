@@ -1,8 +1,5 @@
 import { startFakeGoogle, startFakeResend, startWebhookReceiver } from "./fake-servers";
-
-export const WEBHOOK_RECEIVER_PORT = 3299;
-export const FAKE_GOOGLE_PORT = 3298;
-export const FAKE_RESEND_PORT = 3297;
+import { FAKE_GOOGLE_PORT, FAKE_RESEND_PORT, WEBHOOK_RECEIVER_PORT } from "./ports";
 
 export default async function globalSetup() {
   const servers = [

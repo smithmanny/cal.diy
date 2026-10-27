@@ -1,6 +1,6 @@
 import { WEBHOOK_SECRET } from "./support/fake-servers";
-import { WEBHOOK_RECEIVER_PORT } from "./support/global-setup";
 import { bookFirstSlot, hasFakes, signUp } from "./support/helpers";
+import { WEBHOOK_RECEIVER_PORT } from "./support/ports";
 import { expect, newClientContext, test } from "./support/test";
 
 test.skip(!hasFakes, "needs the local webhook receiver");
