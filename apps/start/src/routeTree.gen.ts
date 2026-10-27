@@ -57,6 +57,9 @@ import { Route as ApiV2BookingsBookingUidIndexRouteImport } from './routes/api/v
 import { Route as ApiV2BookingsBookingUidCancelRouteImport } from './routes/api/v2/bookings/$bookingUid/cancel'
 import { Route as ApiV2BookingsBookingUidConfirmRouteImport } from './routes/api/v2/bookings/$bookingUid/confirm'
 import { Route as ApiV2BookingsBookingUidDeclineRouteImport } from './routes/api/v2/bookings/$bookingUid/decline'
+import { Route as ApiV2BookingsBookingUidGuestsRouteImport } from './routes/api/v2/bookings/$bookingUid/guests'
+import { Route as ApiV2BookingsBookingUidLocationRouteImport } from './routes/api/v2/bookings/$bookingUid/location'
+import { Route as ApiV2BookingsBookingUidMarkAbsentRouteImport } from './routes/api/v2/bookings/$bookingUid/mark-absent'
 import { Route as ApiV2BookingsBookingUidRescheduleRouteImport } from './routes/api/v2/bookings/$bookingUid/reschedule'
 
 const IndexRoute = IndexRouteImport.update({
@@ -318,6 +321,24 @@ const ApiV2BookingsBookingUidDeclineRoute =
     path: '/api/v2/bookings/$bookingUid/decline',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiV2BookingsBookingUidGuestsRoute =
+  ApiV2BookingsBookingUidGuestsRouteImport.update({
+    id: '/api/v2/bookings/$bookingUid/guests',
+    path: '/api/v2/bookings/$bookingUid/guests',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiV2BookingsBookingUidLocationRoute =
+  ApiV2BookingsBookingUidLocationRouteImport.update({
+    id: '/api/v2/bookings/$bookingUid/location',
+    path: '/api/v2/bookings/$bookingUid/location',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiV2BookingsBookingUidMarkAbsentRoute =
+  ApiV2BookingsBookingUidMarkAbsentRouteImport.update({
+    id: '/api/v2/bookings/$bookingUid/mark-absent',
+    path: '/api/v2/bookings/$bookingUid/mark-absent',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiV2BookingsBookingUidRescheduleRoute =
   ApiV2BookingsBookingUidRescheduleRouteImport.update({
     id: '/api/v2/bookings/$bookingUid/reschedule',
@@ -371,6 +392,9 @@ export interface FileRoutesByFullPath {
   '/api/v2/bookings/$bookingUid/cancel': typeof ApiV2BookingsBookingUidCancelRoute
   '/api/v2/bookings/$bookingUid/confirm': typeof ApiV2BookingsBookingUidConfirmRoute
   '/api/v2/bookings/$bookingUid/decline': typeof ApiV2BookingsBookingUidDeclineRoute
+  '/api/v2/bookings/$bookingUid/guests': typeof ApiV2BookingsBookingUidGuestsRoute
+  '/api/v2/bookings/$bookingUid/location': typeof ApiV2BookingsBookingUidLocationRoute
+  '/api/v2/bookings/$bookingUid/mark-absent': typeof ApiV2BookingsBookingUidMarkAbsentRoute
   '/api/v2/bookings/$bookingUid/reschedule': typeof ApiV2BookingsBookingUidRescheduleRoute
   '/settings/developer/webhooks/': typeof AuthedSettingsDeveloperWebhooksIndexRoute
   '/api/v2/bookings/$bookingUid/': typeof ApiV2BookingsBookingUidIndexRoute
@@ -420,6 +444,9 @@ export interface FileRoutesByTo {
   '/api/v2/bookings/$bookingUid/cancel': typeof ApiV2BookingsBookingUidCancelRoute
   '/api/v2/bookings/$bookingUid/confirm': typeof ApiV2BookingsBookingUidConfirmRoute
   '/api/v2/bookings/$bookingUid/decline': typeof ApiV2BookingsBookingUidDeclineRoute
+  '/api/v2/bookings/$bookingUid/guests': typeof ApiV2BookingsBookingUidGuestsRoute
+  '/api/v2/bookings/$bookingUid/location': typeof ApiV2BookingsBookingUidLocationRoute
+  '/api/v2/bookings/$bookingUid/mark-absent': typeof ApiV2BookingsBookingUidMarkAbsentRoute
   '/api/v2/bookings/$bookingUid/reschedule': typeof ApiV2BookingsBookingUidRescheduleRoute
   '/settings/developer/webhooks': typeof AuthedSettingsDeveloperWebhooksIndexRoute
   '/api/v2/bookings/$bookingUid': typeof ApiV2BookingsBookingUidIndexRoute
@@ -472,6 +499,9 @@ export interface FileRoutesById {
   '/api/v2/bookings/$bookingUid/cancel': typeof ApiV2BookingsBookingUidCancelRoute
   '/api/v2/bookings/$bookingUid/confirm': typeof ApiV2BookingsBookingUidConfirmRoute
   '/api/v2/bookings/$bookingUid/decline': typeof ApiV2BookingsBookingUidDeclineRoute
+  '/api/v2/bookings/$bookingUid/guests': typeof ApiV2BookingsBookingUidGuestsRoute
+  '/api/v2/bookings/$bookingUid/location': typeof ApiV2BookingsBookingUidLocationRoute
+  '/api/v2/bookings/$bookingUid/mark-absent': typeof ApiV2BookingsBookingUidMarkAbsentRoute
   '/api/v2/bookings/$bookingUid/reschedule': typeof ApiV2BookingsBookingUidRescheduleRoute
   '/_authed/settings/developer/webhooks/': typeof AuthedSettingsDeveloperWebhooksIndexRoute
   '/api/v2/bookings/$bookingUid/': typeof ApiV2BookingsBookingUidIndexRoute
@@ -524,6 +554,9 @@ export interface FileRouteTypes {
     | '/api/v2/bookings/$bookingUid/cancel'
     | '/api/v2/bookings/$bookingUid/confirm'
     | '/api/v2/bookings/$bookingUid/decline'
+    | '/api/v2/bookings/$bookingUid/guests'
+    | '/api/v2/bookings/$bookingUid/location'
+    | '/api/v2/bookings/$bookingUid/mark-absent'
     | '/api/v2/bookings/$bookingUid/reschedule'
     | '/settings/developer/webhooks/'
     | '/api/v2/bookings/$bookingUid/'
@@ -573,6 +606,9 @@ export interface FileRouteTypes {
     | '/api/v2/bookings/$bookingUid/cancel'
     | '/api/v2/bookings/$bookingUid/confirm'
     | '/api/v2/bookings/$bookingUid/decline'
+    | '/api/v2/bookings/$bookingUid/guests'
+    | '/api/v2/bookings/$bookingUid/location'
+    | '/api/v2/bookings/$bookingUid/mark-absent'
     | '/api/v2/bookings/$bookingUid/reschedule'
     | '/settings/developer/webhooks'
     | '/api/v2/bookings/$bookingUid'
@@ -624,6 +660,9 @@ export interface FileRouteTypes {
     | '/api/v2/bookings/$bookingUid/cancel'
     | '/api/v2/bookings/$bookingUid/confirm'
     | '/api/v2/bookings/$bookingUid/decline'
+    | '/api/v2/bookings/$bookingUid/guests'
+    | '/api/v2/bookings/$bookingUid/location'
+    | '/api/v2/bookings/$bookingUid/mark-absent'
     | '/api/v2/bookings/$bookingUid/reschedule'
     | '/_authed/settings/developer/webhooks/'
     | '/api/v2/bookings/$bookingUid/'
@@ -660,6 +699,9 @@ export interface RootRouteChildren {
   ApiV2BookingsBookingUidCancelRoute: typeof ApiV2BookingsBookingUidCancelRoute
   ApiV2BookingsBookingUidConfirmRoute: typeof ApiV2BookingsBookingUidConfirmRoute
   ApiV2BookingsBookingUidDeclineRoute: typeof ApiV2BookingsBookingUidDeclineRoute
+  ApiV2BookingsBookingUidGuestsRoute: typeof ApiV2BookingsBookingUidGuestsRoute
+  ApiV2BookingsBookingUidLocationRoute: typeof ApiV2BookingsBookingUidLocationRoute
+  ApiV2BookingsBookingUidMarkAbsentRoute: typeof ApiV2BookingsBookingUidMarkAbsentRoute
   ApiV2BookingsBookingUidRescheduleRoute: typeof ApiV2BookingsBookingUidRescheduleRoute
   ApiV2BookingsBookingUidIndexRoute: typeof ApiV2BookingsBookingUidIndexRoute
 }
@@ -1002,6 +1044,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiV2BookingsBookingUidDeclineRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v2/bookings/$bookingUid/guests': {
+      id: '/api/v2/bookings/$bookingUid/guests'
+      path: '/api/v2/bookings/$bookingUid/guests'
+      fullPath: '/api/v2/bookings/$bookingUid/guests'
+      preLoaderRoute: typeof ApiV2BookingsBookingUidGuestsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v2/bookings/$bookingUid/location': {
+      id: '/api/v2/bookings/$bookingUid/location'
+      path: '/api/v2/bookings/$bookingUid/location'
+      fullPath: '/api/v2/bookings/$bookingUid/location'
+      preLoaderRoute: typeof ApiV2BookingsBookingUidLocationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v2/bookings/$bookingUid/mark-absent': {
+      id: '/api/v2/bookings/$bookingUid/mark-absent'
+      path: '/api/v2/bookings/$bookingUid/mark-absent'
+      fullPath: '/api/v2/bookings/$bookingUid/mark-absent'
+      preLoaderRoute: typeof ApiV2BookingsBookingUidMarkAbsentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/v2/bookings/$bookingUid/reschedule': {
       id: '/api/v2/bookings/$bookingUid/reschedule'
       path: '/api/v2/bookings/$bookingUid/reschedule'
@@ -1102,6 +1165,10 @@ const rootRouteChildren: RootRouteChildren = {
   ApiV2BookingsBookingUidCancelRoute: ApiV2BookingsBookingUidCancelRoute,
   ApiV2BookingsBookingUidConfirmRoute: ApiV2BookingsBookingUidConfirmRoute,
   ApiV2BookingsBookingUidDeclineRoute: ApiV2BookingsBookingUidDeclineRoute,
+  ApiV2BookingsBookingUidGuestsRoute: ApiV2BookingsBookingUidGuestsRoute,
+  ApiV2BookingsBookingUidLocationRoute: ApiV2BookingsBookingUidLocationRoute,
+  ApiV2BookingsBookingUidMarkAbsentRoute:
+    ApiV2BookingsBookingUidMarkAbsentRoute,
   ApiV2BookingsBookingUidRescheduleRoute:
     ApiV2BookingsBookingUidRescheduleRoute,
   ApiV2BookingsBookingUidIndexRoute: ApiV2BookingsBookingUidIndexRoute,

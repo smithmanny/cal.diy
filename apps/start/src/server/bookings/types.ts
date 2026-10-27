@@ -148,7 +148,12 @@ export type OutOfOfficeDayDto = {
 export type SlotsDto = {
   slots: string[];
   /** For seated events that show availability: seats per time and how many each slot has taken. */
-  seats: { total: number; taken: Record<string, number> } | null;
+  seats: {
+    total: number;
+    taken: Record<string, number>;
+    /** The booking a slot's seats belong to, for slots that already have one. */
+    bookingUids: Record<string, string>;
+  } | null;
   /** Keyed by YYYY-MM-DD (UTC), like Cal. */
   outOfOffice: Record<string, OutOfOfficeDayDto>;
 };

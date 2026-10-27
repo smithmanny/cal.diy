@@ -1,7 +1,6 @@
 import "@tanstack/react-start/server-only";
 
 import { AppError } from "../errors";
-import type { EventTypeRepository } from "../event-types/EventTypeRepository";
 import type { EventTypeService } from "../event-types/EventTypeService";
 import { type EventTypeDto, type EventTypeInput, eventTypeInputSchema } from "../event-types/types";
 import type { UserRepository } from "../users/UserRepository";
@@ -12,7 +11,6 @@ import { parseInput } from "./http";
 
 type Deps = {
   eventTypes: EventTypeService;
-  eventTypeRepo: EventTypeRepository;
   users: ApiUserRepository;
   userRepo: UserRepository;
 };
@@ -36,22 +34,19 @@ class ApiEventTypeService {
     query: { username?: string; eventSlug?: string },
     origin: string
   ): Promise<EventTypeOutput[]> {
-    if (query.username) {
-      const host = await this.deps.userRepo.findByUsername(query.username);
-      if (!host) return [];
-      const visible = await this.deps.eventTypeRepo.findManyVisibleByUserId(host.id);
-      const ids = visible
-        .filter((row) => !query.eventSlug || row.slug === query.eventSlug)
-        .map((row) => row.id);
-      return this.outputs(host.id, ids, origin);
-    }
-    if (!actor) throw new AppError("unauthorized", 401);
-    const owned = await this.deps.eventTypes.list(actor.id);
-    return this.outputs(
-      actor.id,
-      owned.map((row) => row.id),
-      origin
-    );
+    if (!query.username && !actor) throw new AppError("unauthorized", 401);
+    const ownerId = query.username
+      ? (await this.deps.userRepo.findByUsername(query.username))?.id
+      : actor?.id;
+    if (ownerId === undefined) return [];
+    const [owner, eventTypes] = await Promise.all([
+      this.owner(ownerId),
+      // Other people only see the event types listed on the booking page.
+      this.deps.eventTypes.listWithDetails(ownerId, { visibleOnly: Boolean(query.username) }),
+    ]);
+    return eventTypes
+      .filter((eventType) => !query.eventSlug || eventType.slug === query.eventSlug)
+      .map((eventType) => toEventTypeOutput(eventType, owner, origin));
   }
 
   async get(actor: ApiUser, id: number, origin: string): Promise<EventTypeOutput> {
@@ -92,12 +87,6 @@ class ApiEventTypeService {
     const current = await this.deps.eventTypes.get(actor.id, id);
     await this.deps.eventTypes.delete(actor.id, id);
     return { id, lengthInMinutes: current.length, title: current.title, slug: current.slug };
-  }
-
-  private async outputs(ownerId: number, ids: number[], origin: string): Promise<EventTypeOutput[]> {
-    const owner = await this.owner(ownerId);
-    const dtos = await Promise.all(ids.map((id) => this.deps.eventTypes.get(ownerId, id, owner.timeZone)));
-    return dtos.map((dto) => toEventTypeOutput(dto, owner, origin));
   }
 
   private async owner(userId: number): Promise<OwnerRow> {

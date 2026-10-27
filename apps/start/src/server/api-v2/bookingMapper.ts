@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { LocationResponse } from "~/lib/booking-fields";
+import type { EditableLocation } from "../event-types/types";
 import type { ApiBookingRow } from "./ApiBookingRepository";
 
 const BOOKINGS_API_VERSION = "2024-08-13";
@@ -90,6 +91,56 @@ const rescheduleBookingInputSchema = z.object({
 });
 
 const declineBookingInputSchema = z.object({ reason: z.string().max(1000).optional() });
+
+/** Cal's MarkAbsentBookingInput_2024_08_13. */
+const markAbsentInputSchema = z.object({
+  host: z.boolean().optional(),
+  attendees: z
+    .array(z.object({ email: z.string().trim().email().max(320), absent: z.boolean() }))
+    .max(100)
+    .optional(),
+});
+
+/** Cal's AddGuestsInput_2024_08_13; guests start with the organizer's name, time zone and language. */
+const addGuestsInputSchema = z.object({
+  guests: z
+    .array(
+      z.object({
+        email: z.string().trim().email().max(320),
+        name: z.string().max(200).optional(),
+        timeZone: z.string().max(100).optional(),
+        phoneNumber: z.string().max(30).optional(),
+        language: z.string().max(20).optional(),
+      })
+    )
+    .min(1)
+    .max(30),
+});
+
+/** Cal's UpdateBookingLocationInput_2024_08_13, for the locations a host can set here. */
+const updateLocationInputSchema = z.object({
+  location: z.discriminatedUnion("type", [
+    z.object({ type: z.literal("address"), address: z.string().trim().min(1).max(500) }),
+    z.object({ type: z.literal("link"), link: z.string().trim().url().max(2000) }),
+    z.object({ type: z.literal("phone"), phone: z.string().trim().min(6).max(20) }),
+    z.object({ type: z.literal("integration"), integration: z.literal("google-meet") }),
+  ]),
+});
+
+function toEditableLocation(
+  location: z.infer<typeof updateLocationInputSchema>["location"]
+): EditableLocation {
+  switch (location.type) {
+    case "address":
+      return { type: "inPerson", address: location.address };
+    case "link":
+      return { type: "link", link: location.link };
+    case "phone":
+      return { type: "userPhone", hostPhoneNumber: location.phone };
+    case "integration":
+      return { type: "integrations:google:meet" };
+  }
+}
 
 /** Cal's location answer format, which the booking service checks against the event's options. */
 function toLocationResponse(location: CreateBookingApiInput["location"]): LocationResponse | undefined {
@@ -217,6 +268,10 @@ type BookingOutput = ReturnType<typeof toBookingOutput>;
 
 export type { CreateBookingApiInput, ListBookingsApiQuery, BookingOutput };
 export {
+  addGuestsInputSchema,
+  markAbsentInputSchema,
+  toEditableLocation,
+  updateLocationInputSchema,
   BOOKINGS_API_VERSION,
   createBookingInputSchema,
   listBookingsQuerySchema,

@@ -1,6 +1,6 @@
 import "@tanstack/react-start/server-only";
 
-import { getBookingService } from "../bookings/container";
+import { getBookingActionsService, getBookingService } from "../bookings/container";
 import { getDb } from "../db";
 import { getEventTypeService } from "../event-types/container";
 import { EventTypeRepository } from "../event-types/EventTypeRepository";
@@ -20,6 +20,7 @@ async function getApiBookingService(): Promise<ApiBookingService> {
   const db = await getDb();
   return new ApiBookingService({
     bookings: await getBookingService(),
+    actions: await getBookingActionsService(),
     apiBookings: new ApiBookingRepository(db),
     eventTypeRepo: new EventTypeRepository(db),
     users: new ApiUserRepository(db),
@@ -30,7 +31,6 @@ async function getApiEventTypeService(): Promise<ApiEventTypeService> {
   const db = await getDb();
   return new ApiEventTypeService({
     eventTypes: await getEventTypeService(),
-    eventTypeRepo: new EventTypeRepository(db),
     users: new ApiUserRepository(db),
     userRepo: new UserRepository(db),
   });

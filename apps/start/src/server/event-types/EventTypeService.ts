@@ -140,6 +140,18 @@ export class EventTypeService {
     return rows.map((row) => ({ ...row, eventTypeColor: parseEventTypeColor(row.eventTypeColor) }));
   }
 
+  /** Every event type with all its settings, in one read; private links are left out. */
+  async listWithDetails(
+    userId: number,
+    options: { visibleOnly?: boolean } = {}
+  ): Promise<Omit<EventTypeDto, "privateLinks">[]> {
+    const rows = await this.deps.eventTypeRepo.findManyByUserIdWithDetails(userId, options);
+    return rows.map((row) => {
+      const { privateLinks: _privateLinks, ...dto } = toDto(row);
+      return dto;
+    });
+  }
+
   /** `timeZone` is the host's, in which private link expiry dates are whole days. */
   async get(userId: number, id: number, timeZone = "UTC"): Promise<EventTypeDto> {
     const dto = toDto(await this.findOwned(userId, id));

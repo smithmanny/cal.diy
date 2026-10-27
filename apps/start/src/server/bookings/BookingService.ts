@@ -307,7 +307,7 @@ export class BookingService {
       throw new AppError("something_went_wrong");
     if (!isValidTimeZone(query.timeZone)) throw new AppError("invalid_timezone");
     const { host, eventType, coHosts } = await this.loadEvent(query.username, query.slug);
-    const { slots, outOfOffice, seatsTaken } = await this.computeSlots(
+    const { slots, outOfOffice, seatsTaken, seatBookingUids } = await this.computeSlots(
       host,
       eventType,
       from,
@@ -327,6 +327,12 @@ export class BookingService {
               total: seats,
               taken: Object.fromEntries(
                 slots.map((slot) => [slot.toISOString(), seatsTaken.get(slot.getTime()) ?? 0])
+              ),
+              bookingUids: Object.fromEntries(
+                slots.flatMap((slot) => {
+                  const uid = seatBookingUids.get(slot.getTime());
+                  return uid ? [[slot.toISOString(), uid]] : [];
+                })
               ),
             }
           : null,
@@ -1129,7 +1135,12 @@ export class BookingService {
     excludeUid: string | undefined,
     length: number,
     coHosts: Host[] = []
-  ): Promise<{ slots: Date[]; outOfOffice: OutOfOfficeData; seatsTaken: Map<number, number> }> {
+  ): Promise<{
+    slots: Date[];
+    outOfOffice: OutOfOfficeData;
+    seatsTaken: Map<number, number>;
+    seatBookingUids: Map<number, string>;
+  }> {
     const own = await this.computeHostSlots(host, eventType, from, to, inviteeTimeZone, excludeUid, length);
     if (!coHosts.length) return own;
     const others = await Promise.all(
@@ -1152,13 +1163,18 @@ export class BookingService {
     inviteeTimeZone: string,
     excludeUid: string | undefined,
     length: number
-  ): Promise<{ slots: Date[]; outOfOffice: OutOfOfficeData; seatsTaken: Map<number, number> }> {
+  ): Promise<{
+    slots: Date[];
+    outOfOffice: OutOfOfficeData;
+    seatsTaken: Map<number, number>;
+    seatBookingUids: Map<number, string>;
+  }> {
     const scheduleId = eventType.scheduleId ?? host.defaultScheduleId;
     const schedule = scheduleId
       ? await this.deps.scheduleRepo.findByIdIncludeAvailability(scheduleId)
       : (await this.deps.scheduleRepo.findManyByUserIdIncludeAvailability(host.id))[0];
     if (!schedule || schedule.userId !== host.id)
-      return { slots: [], outOfOffice: {}, seatsTaken: new Map() };
+      return { slots: [], outOfOffice: {}, seatsTaken: new Map(), seatBookingUids: new Map() };
 
     const event: SlotEventConfig = {
       length,
@@ -1253,7 +1269,10 @@ export class BookingService {
           );
         })
       : computed;
-    return { slots, outOfOffice, seatsTaken };
+    const seatBookingUids = new Map(
+      seated.map((seatedBooking) => [seatedBooking.start.getTime(), seatedBooking.uid])
+    );
+    return { slots, outOfOffice, seatsTaken, seatBookingUids };
   }
 
   private resolveLocation(

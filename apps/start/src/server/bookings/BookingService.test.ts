@@ -331,6 +331,7 @@ describe("BookingService", () => {
       const { slots: open, seats } = await daySlots();
       expect(open).toContain(at("10:00"));
       expect(seats?.taken[at("10:00")]).toBe(2);
+      expect(seats?.bookingUids[at("10:00")]).toBe(first.uid);
       await expect(seatFor("a@example.com")).rejects.toMatchObject({
         code: "already_signed_up_for_this_booking_error",
       });

@@ -28,6 +28,8 @@ function client(request: APIRequestContext, key: string | null) {
   };
 }
 
+type ApiClient = ReturnType<typeof client>;
+
 const dateKey = (daysFromNow: number) =>
   new Date(Date.now() + daysFromNow * 86_400_000).toISOString().slice(0, 10);
 
@@ -105,11 +107,7 @@ test("API v2: an API key manages event types and schedules, and bookings go thro
   await bookThroughApi(api, anonymous, eventType.id);
 });
 
-async function bookThroughApi(
-  api: ReturnType<typeof client>,
-  anonymous: ReturnType<typeof client>,
-  eventTypeId: number
-) {
+async function bookThroughApi(api: ApiClient, anonymous: ApiClient, eventTypeId: number) {
   const slots = await (
     await anonymous.get(
       `/slots?eventTypeId=${eventTypeId}&start=${dateKey(2)}&end=${dateKey(6)}&timeZone=Europe/Rome`,
@@ -171,6 +169,8 @@ async function bookThroughApi(
   const original = (await (await anonymous.get(`/bookings/${booking.uid}`, "2024-08-13")).json()).data;
   expect(original).toMatchObject({ status: "cancelled", rescheduledToUid: moved.uid });
 
+  await changeThroughApi(api, anonymous, moved.uid);
+
   const cancelled = await api.post(
     `/bookings/${moved.uid}/cancel`,
     { cancellationReason: "No longer needed" },
@@ -183,6 +183,49 @@ async function bookThroughApi(
   const again = await api.post(`/bookings/${moved.uid}/cancel`, {}, "2024-08-13");
   expect(again.status()).toBe(409);
   expect(await again.json()).toMatchObject({ status: "error", error: { code: "ConflictException" } });
+}
+
+/** The host's own changes to a booking: guests, location and absences. */
+async function changeThroughApi(api: ApiClient, anonymous: ApiClient, uid: string) {
+  const withGuest = await api.post(
+    `/bookings/${uid}/guests`,
+    { guests: [{ email: "late.guest@example.com", name: "Late Guest" }] },
+    "2024-08-13"
+  );
+  expect(withGuest.status()).toBe(200);
+  expect((await withGuest.json()).data.attendees).toContainEqual(
+    expect.objectContaining({ email: "late.guest@example.com" })
+  );
+  expect(
+    (
+      await anonymous.post(`/bookings/${uid}/guests`, { guests: [{ email: "x@example.com" }] }, "2024-08-13")
+    ).status()
+  ).toBe(401);
+
+  const moved = await api.patch(
+    `/bookings/${uid}/location`,
+    { location: { type: "address", address: "1 Infinite Loop" } },
+    "2024-08-13"
+  );
+  expect((await moved.json()).data).toMatchObject({ location: "1 Infinite Loop" });
+  expect(
+    (
+      await api.patch(
+        `/bookings/${uid}/location`,
+        { location: { type: "attendeeDefined", location: "x" } },
+        "2024-08-13"
+      )
+    ).status()
+  ).toBe(400);
+
+  // Nobody can be absent from a meeting that hasn't started, and host absences aren't tracked.
+  const early = await api.post(
+    `/bookings/${uid}/mark-absent`,
+    { attendees: [{ email: "ada.api@example.com", absent: true }] },
+    "2024-08-13"
+  );
+  expect(early.status()).toBe(400);
+  expect((await api.post(`/bookings/${uid}/mark-absent`, { host: true }, "2024-08-13")).status()).toBe(400);
 }
 
 test("API v2: webhooks can be created, changed, listed and deleted", async ({ page, request }) => {

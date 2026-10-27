@@ -98,7 +98,7 @@ trusted client-IP header) sits behind the `#runtime` alias in `apps/start/src/se
 - [x] Rebuild the `apps/api/v2` endpoints for the MVP domain as Start server routes, keeping
       request/response shapes (see API v2 below)
 - [ ] API v2 endpoints outside the MVP domain: teams, organizations, OAuth clients and managed
-      users, calendars, conferencing, booking seats/attendees/guests/location, mark-absent, reassign
+      users, calendars, conferencing, booking seats and attendees, reassign, host no-shows
 - [ ] Delete `apps/web`, `apps/api/v2`, `packages/trpc`, `packages/prisma`, `packages/kysely`
 - [ ] Rename `apps/start` → `apps/web`
 
@@ -151,6 +151,7 @@ translate between the API's DTOs and the app's services, so no database row reac
 | `GET /v2/bookings` (status, attendee, event type and date filters; sorting; `take`/`skip`) | 2024-08-13 | key |
 | `POST /v2/bookings/:uid/cancel`, `/reschedule` | 2024-08-13 | optional (the host's key cancels as host) |
 | `POST /v2/bookings/:uid/confirm`, `/decline` | 2024-08-13 | key (host) |
+| `POST /v2/bookings/:uid/mark-absent` (attendees only; `host: true` is a 400), `POST /v2/bookings/:uid/guests`, `PATCH /v2/bookings/:uid/location` (address, link, phone, Google Meet) | 2024-08-13 | key (host) |
 | `GET`, `POST /v2/webhooks`, `GET`, `PATCH`, `DELETE /v2/webhooks/:id` | – | key |
 
 Versioned endpoints answer 400 to any other `cal-api-version`, since the older shapes Cal routes
