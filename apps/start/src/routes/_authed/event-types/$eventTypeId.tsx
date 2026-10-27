@@ -29,6 +29,7 @@ import { DEFAULT_BOOKER_LAYOUTS } from "~/lib/booker-layouts";
 import { errorMessageKey } from "~/lib/errors";
 import { useT } from "~/lib/i18n";
 import { loadMessages } from "~/lib/messages";
+import { getConferencingSettings } from "~/server/apps/functions";
 import { deleteEventType, getEventType, updateEventType } from "~/server/event-types/functions";
 import type { EventTypeInput } from "~/server/event-types/types";
 import { listSchedules } from "~/server/schedules/functions";
@@ -70,7 +71,7 @@ const MESSAGE_KEYS = [
 ];
 
 function EventTypeEditorPage() {
-  const { eventType, schedules } = Route.useLoaderData();
+  const { eventType, schedules, conferencing } = Route.useLoaderData();
   const { user, origin } = Route.useRouteContext();
   const t = useT();
   const router = useRouter();
@@ -185,6 +186,7 @@ function EventTypeEditorPage() {
           <LocationsEditor
             value={form.locations}
             onChange={(locations) => set("locations", locations)}
+            apps={conferencing.apps}
             t={t}
           />
         </Field>
@@ -264,12 +266,13 @@ export const Route = createFileRoute("/_authed/event-types/$eventTypeId")({
     stringify: ({ eventTypeId }) => ({ eventTypeId: String(eventTypeId) }),
   },
   loader: async ({ context, params }) => {
-    const [messages, eventType, schedules] = await Promise.all([
+    const [messages, eventType, schedules, conferencing] = await Promise.all([
       loadMessages(context, MESSAGE_KEYS),
       getEventType({ data: { id: params.eventTypeId } }),
       listSchedules(),
+      getConferencingSettings(),
     ]);
-    return { messages, eventType, schedules };
+    return { messages, eventType, schedules, conferencing };
   },
   component: EventTypeEditorPage,
 });
