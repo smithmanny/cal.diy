@@ -11,6 +11,7 @@ import {
 } from "./payload";
 
 const snapshot: BookingSnapshot = {
+  id: 1,
   uid: "uid-1",
   title: "Intro between Hana and Greta",
   description: null,
@@ -20,6 +21,8 @@ const snapshot: BookingSnapshot = {
   location: "https://meet.example/x",
   responses: { name: "Greta", email: "greta@example.com", notes: "Hi", company: "Acme" },
   cancellationReason: null,
+  cancelledBy: null,
+  rejectionReason: null,
   fromReschedule: null,
   recurring: null,
   bookingFields: withSystemFields([
@@ -150,5 +153,23 @@ describe("webhook payload", () => {
     );
     expect(request.headers.get("content-type")).toBe("application/x-www-form-urlencoded");
     expect(await request.text()).toBe("event=BOOKING_CANCELLED&uid=uid-1");
+  });
+});
+
+describe("payloadForEvent for BOOKING_NO_SHOW_UPDATED", () => {
+  it("sends Cal's no-show change instead of the booking", () => {
+    const attendees = [{ email: "greta@example.com", noShow: true }];
+    expect(
+      payloadForEvent({
+        type: "BOOKING_NO_SHOW_UPDATED",
+        booking: snapshot,
+        noShow: { message: "greta@example.com marked as no-show", attendees },
+      })
+    ).toEqual({
+      message: "greta@example.com marked as no-show",
+      attendees,
+      bookingUid: "uid-1",
+      bookingId: 1,
+    });
   });
 });

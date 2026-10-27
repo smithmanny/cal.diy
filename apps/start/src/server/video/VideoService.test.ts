@@ -40,6 +40,9 @@ function snapshot(uid: string, location: string): BookingSnapshot {
     status: "ACCEPTED",
     location,
     responses: {},
+    id: 1,
+    cancelledBy: null,
+    rejectionReason: null,
     cancellationReason: null,
     fromReschedule: null,
     eventType: { id: 1, title: "Intro", slug: "intro", length: 30 },
@@ -156,6 +159,28 @@ describe("VideoService", () => {
     expect(moved.location).not.toBe(first.location);
     const references = await db.select({ deleted: bookingReference.deleted }).from(bookingReference);
     expect(references.map((reference) => reference.deleted)).toEqual([true, null]);
+  });
+
+  it("replaces the meeting when the host changes the location, and removes it when moved off video", async () => {
+    await new CredentialRepository(db).create(hostId, "jitsi_video", null);
+    const created = await insertBooking("b-7", "integrations:daily");
+    await video.onBookingEvent({ type: "BOOKING_CREATED", booking: created });
+    const toJitsi = snapshot("b-7", "integrations:jitsi");
+    await video.onBookingEvent({
+      type: "BOOKING_LOCATION_CHANGED",
+      booking: toJitsi,
+      previousLocation: created.location,
+    });
+    expect(fake.meetings.size).toBe(0);
+    expect(toJitsi.location).toMatch(/^https:\/\/meet\.jit\.si\/cal\//);
+
+    await video.onBookingEvent({
+      type: "BOOKING_LOCATION_CHANGED",
+      booking: snapshot("b-7", "Office"),
+      previousLocation: toJitsi.location,
+    });
+    const live = await db.select({ deleted: bookingReference.deleted }).from(bookingReference);
+    expect(live.every((reference) => reference.deleted)).toBe(true);
   });
 
   it("leaves other locations alone", async () => {

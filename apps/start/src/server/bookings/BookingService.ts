@@ -46,9 +46,14 @@ import { isValidTimeZone } from "../schedules/scheduleMapper";
 import type { TravelScheduleRepository } from "../users/TravelScheduleRepository";
 import type { UserRepository } from "../users/UserRepository";
 import type { BookerVerificationService } from "../verification/BookerVerificationService";
-import type { BookingRepository, HostBookingFilter, NewBooking } from "./BookingRepository";
+import type {
+  BookingRepository,
+  HostBookingFilter,
+  HostBookingSearch,
+  NewBooking,
+} from "./BookingRepository";
 import { dynamicEventType, isDynamicGroup, parseUsernameList } from "./dynamicGroup";
-import type { BookingEvent, BookingListener, BookingSnapshot } from "./events";
+import type { BookingActor, BookingEvent, BookingListener, BookingSnapshot } from "./events";
 import type {
   AppearanceDto,
   BookingDetailsDto,
@@ -302,7 +307,7 @@ export class BookingService {
       throw new AppError("something_went_wrong");
     if (!isValidTimeZone(query.timeZone)) throw new AppError("invalid_timezone");
     const { host, eventType, coHosts } = await this.loadEvent(query.username, query.slug);
-    const { slots, outOfOffice, seatsTaken } = await this.computeSlots(
+    const { slots, outOfOffice, seatsTaken, seatBookingUids } = await this.computeSlots(
       host,
       eventType,
       from,
@@ -322,6 +327,12 @@ export class BookingService {
               total: seats,
               taken: Object.fromEntries(
                 slots.map((slot) => [slot.toISOString(), seatsTaken.get(slot.getTime()) ?? 0])
+              ),
+              bookingUids: Object.fromEntries(
+                slots.flatMap((slot) => {
+                  const uid = seatBookingUids.get(slot.getTime());
+                  return uid ? [[slot.toISOString(), uid]] : [];
+                })
               ),
             }
           : null,
@@ -431,7 +442,8 @@ export class BookingService {
 
     await this.emitCreated(
       bookings.map((occurrence) => occurrence.uid),
-      original?.uid ?? null
+      original?.uid ?? null,
+      actorUserId ? { userId: actorUserId } : { email, name }
     );
     return {
       uid,
@@ -543,6 +555,7 @@ export class BookingService {
     }
 
     const seatInfo = { referenceUid: seat.referenceUid, attendeeEmail: email.toLowerCase() };
+    const actor: BookingActor = byHost ? { userId: host.id } : { email: seatInfo.attendeeEmail, name };
     const snapshot = await this.snapshot(uid);
     if (originalSeat) {
       const previous = await this.leaveSeat(originalSeat);
@@ -552,9 +565,10 @@ export class BookingService {
           booking: snapshot,
           rescheduledFrom: previous ?? undefined,
           seat: seatInfo,
+          actor,
         });
     } else if (snapshot) {
-      this.emit({ type: "BOOKING_CREATED", booking: snapshot, seat: seatInfo });
+      this.emit({ type: "BOOKING_CREATED", booking: snapshot, seat: seatInfo, actor });
     }
     return {
       uid,
@@ -592,17 +606,30 @@ export class BookingService {
         type: "BOOKING_CANCELLED",
         booking: { ...before, cancellationReason: reason },
         seat: { referenceUid, attendeeEmail: seat.email },
+        actor: { email: seat.email, name: null },
+        previousStatus: before.status,
       });
   }
 
-  private async emitCreated(uids: string[], rescheduledFromUid: string | null): Promise<void> {
+  private async emitCreated(
+    uids: string[],
+    rescheduledFromUid: string | null,
+    actor: BookingActor
+  ): Promise<void> {
+    const operationId = uuidv7();
     if (rescheduledFromUid) {
       const [snapshot, previous] = await Promise.all([
         this.snapshot(uids[0]),
         this.snapshot(rescheduledFromUid),
       ]);
       if (snapshot)
-        this.emit({ type: "BOOKING_RESCHEDULED", booking: snapshot, rescheduledFrom: previous ?? undefined });
+        this.emit({
+          type: "BOOKING_RESCHEDULED",
+          booking: snapshot,
+          rescheduledFrom: previous ?? undefined,
+          actor,
+          operationId,
+        });
       return;
     }
     for (const [seriesIndex, uid] of uids.entries()) {
@@ -612,6 +639,8 @@ export class BookingService {
         type: snapshot.status === "PENDING" ? "BOOKING_REQUESTED" : "BOOKING_CREATED",
         booking: snapshot,
         seriesIndex: snapshot.recurring ? seriesIndex : undefined,
+        actor,
+        operationId,
       });
     }
   }
@@ -801,11 +830,22 @@ export class BookingService {
    * Anyone holding the uid (attendee or host) may cancel, as in Cal, unless the event type turned
    * cancelling off; the host can still cancel from their bookings.
    */
-  async cancel(uid: string, reason: string | null, cancelledBy: string | null): Promise<void> {
+  async cancel(
+    uid: string,
+    reason: string | null,
+    cancelledBy: string | null,
+    actor?: BookingActor
+  ): Promise<void> {
     const found = await this.deps.bookingRepo.findByUid(uid);
     if (!found) throw new AppError("booking_not_found", 404);
     if (found.eventType?.disableCancelling) throw new AppError("cannot_cancel_booking", 403);
-    await this.cancelFound(found, reason, cancelledBy);
+    await this.cancelFound(
+      found,
+      reason,
+      cancelledBy,
+      true,
+      actor ?? (cancelledBy ? { email: cancelledBy, name: null } : undefined)
+    );
   }
 
   /**
@@ -816,7 +856,8 @@ export class BookingService {
     found: NonNullable<Awaited<ReturnType<BookingRepository["findByUid"]>>>,
     reason: string | null,
     cancelledBy: string | null,
-    allRemaining = true
+    allRemaining = true,
+    actor?: BookingActor
   ): Promise<void> {
     if (found.status === "CANCELLED" || found.status === "REJECTED")
       throw new AppError("event_cancelled", 409);
@@ -833,24 +874,37 @@ export class BookingService {
       cancellationReason: reason,
       cancelledBy,
     });
-    await this.emitForEach(remaining, "BOOKING_CANCELLED");
+    await this.emitForEach(remaining, "BOOKING_CANCELLED", { actor, previousStatus: found.status });
   }
 
   /** One event per booking; for a series, marked so only the first notifies people. */
-  private async emitForEach(uids: string[], type: BookingEvent["type"]): Promise<void> {
+  private async emitForEach(
+    uids: string[],
+    type: BookingEvent["type"],
+    details: Pick<BookingEvent, "actor" | "previousStatus" | "confirmed"> = {}
+  ): Promise<void> {
+    const operationId = uuidv7();
     for (const [index, uid] of uids.entries()) {
       const snapshot = await this.snapshot(uid);
-      if (snapshot) this.emit({ type, booking: snapshot, seriesIndex: uids.length > 1 ? index : undefined });
+      if (snapshot)
+        this.emit({
+          ...details,
+          type,
+          booking: snapshot,
+          seriesIndex: uids.length > 1 ? index : undefined,
+          operationId,
+        });
     }
   }
 
-  async listForHost(hostId: number, filter: HostBookingFilter, limit: number) {
+  async listForHost(hostId: number, filter: HostBookingFilter, limit: number, search?: HostBookingSearch) {
     const profile = await this.deps.userRepo.findProfile(hostId);
     if (!profile) throw new AppError("user_not_found", 404);
     const rows = await this.deps.bookingRepo.findManyForHost({
       userId: hostId,
       email: profile.email,
       filter,
+      search,
       now: this.deps.now?.() ?? new Date(),
       limit,
     });
@@ -885,7 +939,7 @@ export class BookingService {
     const found = await this.deps.bookingRepo.findByUid(uid);
     if (!found || found.userId !== hostId) throw new AppError("booking_not_found", 404);
     // From the host's list, one occurrence at a time unless they cancel the series.
-    await this.cancelFound(found, reason, found.host?.email ?? null, allRemaining);
+    await this.cancelFound(found, reason, found.host?.email ?? null, allRemaining, { userId: hostId });
   }
 
   /** Host-only decisions on bookings that require confirmation. */
@@ -903,13 +957,18 @@ export class BookingService {
       uids,
       accept ? { status: "ACCEPTED" } : { status: "REJECTED", rejectionReason: reason }
     );
-    await this.emitForEach(uids, accept ? "BOOKING_CREATED" : "BOOKING_REJECTED");
+    await this.emitForEach(uids, accept ? "BOOKING_CREATED" : "BOOKING_REJECTED", {
+      actor: { userId: hostId },
+      confirmed: accept,
+      previousStatus: "PENDING",
+    });
   }
 
   async snapshot(uid: string): Promise<BookingSnapshot | null> {
     const found = await this.deps.bookingRepo.findByUid(uid);
     if (!found?.host) return null;
     return {
+      id: found.id,
       uid: found.uid,
       title: found.title,
       description: found.description,
@@ -919,6 +978,8 @@ export class BookingService {
       location: found.location,
       responses: (found.responses ?? {}) as Record<string, unknown>,
       cancellationReason: found.cancellationReason,
+      cancelledBy: found.cancelledBy,
+      rejectionReason: found.rejectionReason,
       fromReschedule: found.fromReschedule,
       eventType: found.eventType
         ? {
@@ -967,7 +1028,8 @@ export class BookingService {
     return details && { freq: details.freq, interval: details.interval, count: details.count };
   }
 
-  private emit(event: BookingEvent) {
+  /** Hands the event to the listeners in the background; also used by BookingActionsService. */
+  emit(event: BookingEvent) {
     const listeners = this.deps.listeners ?? [];
     if (!listeners.length) return;
     // In order, not in parallel: the calendar listener fills in the Meet link that webhooks and
@@ -1038,7 +1100,13 @@ export class BookingService {
   private async findReschedulable(uid: string, hostId: number, byHost: boolean, now: Date) {
     const original = await this.deps.bookingRepo.findByUid(uid);
     if (!original || original.userId !== hostId) throw new AppError("booking_not_found", 404);
-    if (original.status === "CANCELLED" || original.status === "REJECTED")
+    // After the host requests a reschedule the booking is cancelled, but its attendees may still
+    // book a new time for it, once.
+    const awaitingNewTime =
+      original.status === "CANCELLED" &&
+      original.rescheduled &&
+      !(await this.deps.bookingRepo.hasReplacement(original.uid));
+    if ((original.status === "CANCELLED" || original.status === "REJECTED") && !awaitingNewTime)
       throw new AppError("event_cancelled", 409);
     if (original.eventType?.disableRescheduling) throw new AppError("rescheduling_is_disabled", 403);
     if (
@@ -1068,7 +1136,12 @@ export class BookingService {
     excludeUid: string | undefined,
     length: number,
     coHosts: Host[] = []
-  ): Promise<{ slots: Date[]; outOfOffice: OutOfOfficeData; seatsTaken: Map<number, number> }> {
+  ): Promise<{
+    slots: Date[];
+    outOfOffice: OutOfOfficeData;
+    seatsTaken: Map<number, number>;
+    seatBookingUids: Map<number, string>;
+  }> {
     const own = await this.computeHostSlots(host, eventType, from, to, inviteeTimeZone, excludeUid, length);
     if (!coHosts.length) return own;
     const others = await Promise.all(
@@ -1091,13 +1164,18 @@ export class BookingService {
     inviteeTimeZone: string,
     excludeUid: string | undefined,
     length: number
-  ): Promise<{ slots: Date[]; outOfOffice: OutOfOfficeData; seatsTaken: Map<number, number> }> {
+  ): Promise<{
+    slots: Date[];
+    outOfOffice: OutOfOfficeData;
+    seatsTaken: Map<number, number>;
+    seatBookingUids: Map<number, string>;
+  }> {
     const scheduleId = eventType.scheduleId ?? host.defaultScheduleId;
     const schedule = scheduleId
       ? await this.deps.scheduleRepo.findByIdIncludeAvailability(scheduleId)
       : (await this.deps.scheduleRepo.findManyByUserIdIncludeAvailability(host.id))[0];
     if (!schedule || schedule.userId !== host.id)
-      return { slots: [], outOfOffice: {}, seatsTaken: new Map() };
+      return { slots: [], outOfOffice: {}, seatsTaken: new Map(), seatBookingUids: new Map() };
 
     const event: SlotEventConfig = {
       length,
@@ -1192,7 +1270,10 @@ export class BookingService {
           );
         })
       : computed;
-    return { slots, outOfOffice, seatsTaken };
+    const seatBookingUids = new Map(
+      seated.map((seatedBooking) => [seatedBooking.start.getTime(), seatedBooking.uid])
+    );
+    return { slots, outOfOffice, seatsTaken, seatBookingUids };
   }
 
   private resolveLocation(

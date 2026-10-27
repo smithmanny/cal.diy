@@ -7,6 +7,7 @@ export const SUPPORTED_TRIGGERS = [
   "BOOKING_RESCHEDULED",
   "BOOKING_CANCELLED",
   "BOOKING_REJECTED",
+  "BOOKING_NO_SHOW_UPDATED",
 ] as const;
 
 export type SupportedTrigger = (typeof SUPPORTED_TRIGGERS)[number];

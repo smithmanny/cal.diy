@@ -15,6 +15,7 @@ const TRIGGER_LABEL_KEYS: Record<SupportedTrigger, string> = {
   BOOKING_RESCHEDULED: "booking_rescheduled",
   BOOKING_CANCELLED: "booking_cancelled",
   BOOKING_REJECTED: "booking_rejected",
+  BOOKING_NO_SHOW_UPDATED: "booking_no_show_updated",
 };
 
 export const WEBHOOK_FORM_MESSAGE_KEYS = [

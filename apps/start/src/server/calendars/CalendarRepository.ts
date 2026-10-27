@@ -87,6 +87,7 @@ export class CalendarRepository {
         and(
           eq(booking.uid, uid),
           inArray(bookingReference.type, types),
+          // Events already removed (say, before recreating one with new guests) stay gone.
           or(isNull(bookingReference.deleted), eq(bookingReference.deleted, false))
         )
       );

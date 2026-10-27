@@ -87,6 +87,15 @@ export class EventTypeRepository {
       .orderBy(desc(eventType.position), asc(eventType.id));
   }
 
+  /** Every setting of a user's event types, in the order their list shows them. */
+  findManyByUserIdWithDetails(userId: number, { visibleOnly = false } = {}) {
+    return this.db
+      .select(detailColumns)
+      .from(eventType)
+      .where(and(eq(eventType.userId, userId), visibleOnly ? eq(eventType.hidden, false) : undefined))
+      .orderBy(desc(eventType.position), asc(eventType.id));
+  }
+
   async findByUserIdAndSlug(userId: number, slug: string) {
     const [found] = await this.db
       .select(detailColumns)

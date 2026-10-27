@@ -2,7 +2,12 @@ import "@tanstack/react-start/server-only";
 
 import type { BookingListener } from "../bookings/events";
 import { deliverWebhook, payloadForEvent } from "./payload";
+import { SUPPORTED_TRIGGERS, type SupportedTrigger } from "./types";
 import type { WebhookRepository } from "./WebhookRepository";
+
+function isSupportedTrigger(type: string): type is SupportedTrigger {
+  return (SUPPORTED_TRIGGERS as readonly string[]).includes(type);
+}
 
 /** Delivers booking events to the organizer's active webhooks subscribed to that trigger. */
 export function createWebhookListener(
@@ -10,8 +15,10 @@ export function createWebhookListener(
   fetchImpl: typeof fetch = fetch
 ): BookingListener {
   return async (event) => {
+    const trigger = event.type;
+    if (!isSupportedTrigger(trigger)) return;
     const subscribers = (await repo.findActiveByUserId(event.booking.organizer.id)).filter((webhook) =>
-      (webhook.eventTriggers ?? []).includes(event.type)
+      (webhook.eventTriggers ?? []).includes(trigger)
     );
     if (!subscribers.length) return;
     const payload = payloadForEvent(event);

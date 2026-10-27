@@ -65,9 +65,9 @@ trusted client-IP header) sits behind the `#runtime` alias in `apps/start/src/se
 - [x] CSRF protection on server functions (`createCsrfMiddleware`); errors that aren't `AppError`s
       reach the client as `something_went_wrong`
 - [ ] Email verification, password reset, 2FA (Better Auth `twoFactor`), SAML/OIDC SSO
-- [ ] Data import from an existing Postgres install. Passwords are bcrypt hashes in `UserPassword`;
-      the import would move them to `Account.password` and `createAuth` would need a
-      `password.verify` that also accepts `$2…` hashes
+- [x] Data import from an existing Cal Postgres install (`import:postgres`, see
+      [Migrating from an existing Cal install](#migrating-from-an-existing-cal-install)). Sign-in
+      accepts the imported bcrypt hashes and upgrades them to scrypt
 
 ### Phase 3: core booking ✅
 - [x] Repositories on Drizzle: User, EventType, Schedule/Availability, Booking/Attendee, Credential,
@@ -95,7 +95,10 @@ trusted client-IP header) sits behind the `#runtime` alias in `apps/start/src/se
 - [ ] Other app-store apps (Outlook, CalDAV/Apple, Zoom, Daily/Cal Video, …)
 
 ### Phase 5: public API and cleanup
-- [ ] Rebuild the `apps/api/v2` endpoints as Start server routes, keeping request/response shapes
+- [x] Rebuild the `apps/api/v2` endpoints for the MVP domain as Start server routes, keeping
+      request/response shapes (see API v2 below)
+- [ ] API v2 endpoints outside the MVP domain: teams, organizations, OAuth clients and managed
+      users, calendars, conferencing, booking seats and attendees, reassign, host no-shows
 - [ ] Delete `apps/web`, `apps/api/v2`, `packages/trpc`, `packages/prisma`, `packages/kysely`
 - [ ] Rename `apps/start` → `apps/web`
 
@@ -126,6 +129,34 @@ Settings: `BETTER_AUTH_SECRET` (required in production), `BETTER_AUTH_URL`, and 
 
 Cloudflare note: Better Auth hashes passwords with scrypt, which takes more CPU than the Workers
 free plan allows per request (10 ms), so sign-up and login need the paid plan.
+
+## API v2
+
+`apps/start/src/routes/api/v2/` serves Cal's public API on the same paths and shapes as
+`apps/api/v2`. `src/server/api-v2/http.ts` holds what every endpoint shares: `Authorization: Bearer
+cal_…` API keys (verified by Better Auth's api-key plugin, which also rate-limits each key to 120
+requests a minute), the `cal-api-version` header, the `{ status: "success", data }` envelope with
+`pagination` on lists, and Cal's error shape (`{ status: "error", timestamp, path, error: { code,
+message } }`, with Nest's exception names as codes and English messages). Mappers in the same folder
+translate between the API's DTOs and the app's services, so no database row reaches a response.
+
+| Endpoint | `cal-api-version` | Auth |
+| --- | --- | --- |
+| `GET`, `PATCH /v2/me` (email changes stay in settings, which verify them) | – | key |
+| `GET /v2/event-types` (yours, or `?username=`[`&eventSlug=`] publicly), `POST` | 2024-06-14 | key / optional |
+| `GET`, `PATCH`, `DELETE /v2/event-types/:id` | 2024-06-14 | key |
+| `GET`, `POST /v2/schedules`, `GET /v2/schedules/default`, `GET`, `PATCH`, `DELETE /v2/schedules/:id` | 2024-06-11 | key |
+| `GET /v2/slots` (by `eventTypeId`, or `username` + `eventTypeSlug`; `format=range`) | 2024-09-04 | optional |
+| `POST /v2/bookings` (single, recurring, seated), `GET /v2/bookings/:uid` | 2024-08-13 | optional |
+| `GET /v2/bookings` (status, attendee, event type and date filters; sorting; `take`/`skip`) | 2024-08-13 | key |
+| `POST /v2/bookings/:uid/cancel`, `/reschedule` | 2024-08-13 | optional (the host's key cancels as host) |
+| `POST /v2/bookings/:uid/confirm`, `/decline` | 2024-08-13 | key (host) |
+| `POST /v2/bookings/:uid/mark-absent` (attendees only; `host: true` is a 400), `POST /v2/bookings/:uid/guests`, `PATCH /v2/bookings/:uid/location` (address, link, phone, Google Meet) | 2024-08-13 | key (host) |
+| `GET`, `POST /v2/webhooks`, `GET`, `PATCH`, `DELETE /v2/webhooks/:id` | – | key |
+
+Versioned endpoints answer 400 to any other `cal-api-version`, since the older shapes Cal routes
+those to aren't served. Event type input accepts the settings this app has and rejects unknown
+fields (e.g. `price`) rather than ignoring them.
 
 ## Running it
 
@@ -178,6 +209,56 @@ docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t cal-diy .
 
 The SQLite database lives at `/data/cal.db` in the `cal-data` volume. Set `RUN_MIGRATIONS=false`
 to manage migrations yourself.
+
+## Migrating from an existing Cal install
+
+`import:postgres` copies an existing Cal database into the new schema. It reads Postgres with the
+`psql` client (no driver to install) and either writes a SQLite/libSQL database directly or
+produces a SQL file for D1. Run it from a checkout of this repo; the old install can stay up and is
+only read.
+
+```bash
+export BETTER_AUTH_SECRET=…        # the secret the new app will run with
+export CALENDSO_ENCRYPTION_KEY=…   # the old install's key (keep it for the new app too)
+
+# Docker / Node: writes and migrates a new SQLite file, then copy it into the `cal-data` volume
+# as /data/cal.db
+yarn workspace @calcom/start import:postgres --from "postgresql://user:pass@host:5432/calendso" \
+  --to file:./data/cal.db
+
+# Cloudflare: apply the migrations to the D1 database first, then load the generated SQL
+yarn workspace @calcom/db db:migrate:d1:remote
+yarn workspace @calcom/start import:postgres --from "postgresql://…" --sql import.sql
+npx wrangler d1 execute cal-diy --remote --file import.sql
+```
+
+What comes across, with ids unchanged:
+
+- Users, schedules and availability, event types (with hosts and private links), bookings with
+  attendees, seats and calendar references, credentials (still encrypted with
+  `CALENDSO_ENCRYPTION_KEY`), selected and destination calendars, webhooks, travel schedules,
+  out-of-office entries, holiday settings, secondary emails, and the `App` rows with their keys.
+- **Passwords**: `UserPassword` bcrypt hashes become Better Auth credential accounts. Sign-in
+  checks them with a pure-JS bcrypt (it runs on Workers too) and replaces each with an scrypt
+  hash the first time it matches.
+- **Google sign-in**: NextAuth `Account` rows become Better Auth accounts. Google users without
+  one are linked by email on their next Google sign-in.
+- **API keys**: personal keys keep working. Cal stored SHA-256 of the key as hex and Better Auth
+  stores the same digest as base64url, so the import converts it.
+- **2FA** stays on for everyone who had it, with their unused backup codes (re-encrypted with
+  `BETTER_AUTH_SECRET`). The authenticator secret can't come along: Cal keyed TOTP with the
+  base32-decoded secret, Better Auth with the secret's text. Those users sign in with a backup code
+  and then set up their authenticator app again. The import lists anyone with no codes left; to
+  let them in, delete their `TwoFactor` row and set `users.twoFactorEnabled` to 0.
+
+What doesn't:
+
+- Sessions: everyone signs in again.
+- Teams and organizations, and everything they own (team event types, team webhooks, credentials
+  and API keys), until they land in the new app. References to them are cleared: an organization
+  member becomes a regular user, a booking of a team event type keeps its host and attendees, and
+  a managed event type's per-user copies become ordinary event types.
+- Tables the new app has no feature for yet (workflows, routing forms, insights, payments, …).
 
 ## Changing the schema
 

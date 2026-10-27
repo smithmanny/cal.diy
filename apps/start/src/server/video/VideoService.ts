@@ -60,8 +60,14 @@ export class VideoService {
       case "BOOKING_REJECTED":
         await this.deleteMeetings(event.booking.uid);
         return;
+      // The old meeting goes; a new one is made if the new location is a conferencing app.
+      case "BOOKING_LOCATION_CHANGED":
+        await this.deleteMeetings(event.booking.uid);
+        await this.createMeeting(event.booking);
+        return;
       default:
-        // BOOKING_REQUESTED: like calendar events, the meeting waits for the host to confirm.
+        // BOOKING_REQUESTED: like calendar events, the meeting waits for the host to confirm. New
+        // guests and no-shows leave the meeting as it is.
         return;
     }
   }

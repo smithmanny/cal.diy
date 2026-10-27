@@ -13,6 +13,7 @@ import {
 } from "./templates";
 
 const booking: BookingSnapshot = {
+  id: 1,
   uid: "uid-1",
   title: "Intro between Hana and Greta",
   description: null,
@@ -22,6 +23,8 @@ const booking: BookingSnapshot = {
   location: "Room 1; Floor 2, Building A",
   responses: { notes: "<b>bring slides</b>" },
   cancellationReason: null,
+  cancelledBy: null,
+  rejectionReason: null,
   fromReschedule: null,
   bookingFields: null,
   recurring: null,
@@ -250,6 +253,41 @@ describe("EmailService", () => {
     expect(sent[0].html).toContain("https://cal.test/bookings/unconfirmed");
     expect(errors).toHaveBeenCalled();
     errors.mockRestore();
+  });
+
+  it("confirms the booking to new guests and updates everyone else", async () => {
+    const sent: EmailMessage[] = [];
+    const withGuest = {
+      ...booking,
+      attendees: [
+        ...booking.attendees,
+        { name: "", email: "nina@example.com", timeZone: "UTC", phoneNumber: null, locale: "en" },
+      ],
+    };
+    await service(async (m) => void sent.push(m)).onBookingEvent({
+      type: "BOOKING_GUESTS_ADDED",
+      booking: withGuest,
+      guestsAdded: ["nina@example.com"],
+    });
+    expect(sent.map((m) => [m.to, m.subject.split(":")[0]])).toEqual([
+      ["greta@example.com", "Gäste hinzugefügt"],
+      ["nina@example.com", "Confirmed"],
+      ["hana@example.com", "Guests Added"],
+    ]);
+  });
+
+  it("asks attendees to book a new time with a link back to the booker", async () => {
+    const sent: EmailMessage[] = [];
+    await service(async (m) => void sent.push(m)).onBookingEvent({
+      type: "BOOKING_CANCELLED",
+      booking: { ...booking, status: "CANCELLED", cancellationReason: "Double-booked" },
+      rescheduleRequested: true,
+    });
+    const [attendee, organizer] = sent;
+    expect(attendee.html).toContain("https://cal.test/hana/intro?rescheduleUid=uid-1");
+    expect(attendee.html).toContain("Double-booked");
+    expect(attendee.attachments?.[0].contentType).toBe("text/calendar; method=CANCEL");
+    expect(organizer.subject).toBe("You have requested Greta to reschedule");
   });
 });
 

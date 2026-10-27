@@ -5,6 +5,7 @@ import { AuthCard, FormError } from "~/components/AuthCard";
 import { TextField } from "~/components/TextField";
 import { authClient } from "~/lib/auth-client";
 import { AUTH_ERROR_MESSAGE_KEYS, AUTH_ERROR_VALUES, authErrorKey, safeCallbackUrl } from "~/lib/auth-errors";
+import { normalizeBackupCode } from "~/lib/backup-codes";
 import { useT } from "~/lib/i18n";
 import { loadMessages } from "~/lib/messages";
 import { getAuthProviders } from "~/server/auth/providers";
@@ -69,7 +70,7 @@ function LoginPage() {
     setErrorKey(null);
     const { error } =
       secondFactor === "backup"
-        ? await authClient.twoFactor.verifyBackupCode({ code })
+        ? await authClient.twoFactor.verifyBackupCode({ code: normalizeBackupCode(code) })
         : await authClient.twoFactor.verifyTotp({ code });
     setPending(false);
     if (error) {

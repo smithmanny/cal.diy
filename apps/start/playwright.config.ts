@@ -19,6 +19,8 @@ const fakeAppsEnv = {
   DAILY_API_URL: `${FAKE_APPS}/daily`,
   APPLE_CALDAV_URL: `${FAKE_APPS}/dav/`,
 };
+// Set once in the runner so workers, which re-read this file, reach the same database (see e2e/support/db.ts).
+process.env.E2E_DATABASE_URL ??= `file:./data/e2e-${Date.now()}.db`;
 const externalBaseUrl = process.env.E2E_BASE_URL;
 
 /**
@@ -52,7 +54,7 @@ export default defineConfig({
         timeout: 120_000,
         reuseExistingServer: false,
         env: {
-          DATABASE_URL: `file:./data/e2e-${Date.now()}.db`,
+          DATABASE_URL: process.env.E2E_DATABASE_URL,
           BETTER_AUTH_URL: `http://localhost:${PORT}`,
           BETTER_AUTH_SECRET: "e2e-secret-e2e-secret-e2e-secret-00",
           GOOGLE_CLIENT_ID: "fake-client",

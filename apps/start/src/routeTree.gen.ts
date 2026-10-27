@@ -31,6 +31,7 @@ import { Route as AuthedEventTypesIndexRouteImport } from './routes/_authed/even
 import { Route as AuthedEventTypesEventTypeIdRouteImport } from './routes/_authed/event-types/$eventTypeId'
 import { Route as AuthedSettingsIndexRouteImport } from './routes/_authed/settings/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiV2MeRouteImport } from './routes/api/v2/me'
 import { Route as DLinkSlugRouteImport } from './routes/d/$link/$slug'
 import { Route as AuthedSettingsDeveloperApiKeysRouteImport } from './routes/_authed/settings/developer/api-keys'
 import { Route as AuthedSettingsMyAccountAppearanceRouteImport } from './routes/_authed/settings/my-account/appearance'
@@ -43,9 +44,26 @@ import { Route as AuthedSettingsSecurityPasswordRouteImport } from './routes/_au
 import { Route as AuthedSettingsSecurityTwoFactorAuthRouteImport } from './routes/_authed/settings/security/two-factor-auth'
 import { Route as ApiIntegrationsAppAddRouteImport } from './routes/api/integrations/$app/add'
 import { Route as ApiIntegrationsAppCallbackRouteImport } from './routes/api/integrations/$app/callback'
+import { Route as ApiV2BookingsIndexRouteImport } from './routes/api/v2/bookings/index'
+import { Route as ApiV2EventTypesIndexRouteImport } from './routes/api/v2/event-types/index'
+import { Route as ApiV2EventTypesEventTypeIdRouteImport } from './routes/api/v2/event-types/$eventTypeId'
+import { Route as ApiV2SchedulesIndexRouteImport } from './routes/api/v2/schedules/index'
+import { Route as ApiV2SchedulesScheduleIdRouteImport } from './routes/api/v2/schedules/$scheduleId'
+import { Route as ApiV2SchedulesDefaultRouteImport } from './routes/api/v2/schedules/default'
+import { Route as ApiV2SlotsIndexRouteImport } from './routes/api/v2/slots/index'
+import { Route as ApiV2WebhooksIndexRouteImport } from './routes/api/v2/webhooks/index'
+import { Route as ApiV2WebhooksWebhookIdRouteImport } from './routes/api/v2/webhooks/$webhookId'
 import { Route as DLinkSlugEmbedRouteImport } from './routes/d/$link/$slug_.embed'
 import { Route as AuthedSettingsDeveloperWebhooksIndexRouteImport } from './routes/_authed/settings/developer/webhooks/index'
 import { Route as AuthedSettingsDeveloperWebhooksWebhookIdRouteImport } from './routes/_authed/settings/developer/webhooks/$webhookId'
+import { Route as ApiV2BookingsBookingUidIndexRouteImport } from './routes/api/v2/bookings/$bookingUid/index'
+import { Route as ApiV2BookingsBookingUidCancelRouteImport } from './routes/api/v2/bookings/$bookingUid/cancel'
+import { Route as ApiV2BookingsBookingUidConfirmRouteImport } from './routes/api/v2/bookings/$bookingUid/confirm'
+import { Route as ApiV2BookingsBookingUidDeclineRouteImport } from './routes/api/v2/bookings/$bookingUid/decline'
+import { Route as ApiV2BookingsBookingUidGuestsRouteImport } from './routes/api/v2/bookings/$bookingUid/guests'
+import { Route as ApiV2BookingsBookingUidLocationRouteImport } from './routes/api/v2/bookings/$bookingUid/location'
+import { Route as ApiV2BookingsBookingUidMarkAbsentRouteImport } from './routes/api/v2/bookings/$bookingUid/mark-absent'
+import { Route as ApiV2BookingsBookingUidRescheduleRouteImport } from './routes/api/v2/bookings/$bookingUid/reschedule'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -158,6 +176,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiV2MeRoute = ApiV2MeRouteImport.update({
+  id: '/api/v2/me',
+  path: '/api/v2/me',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DLinkSlugRoute = DLinkSlugRouteImport.update({
   id: '/d/$link/$slug',
   path: '/d/$link/$slug',
@@ -228,6 +251,53 @@ const ApiIntegrationsAppCallbackRoute =
     path: '/api/integrations/$app/callback',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiV2BookingsIndexRoute = ApiV2BookingsIndexRouteImport.update({
+  id: '/api/v2/bookings/',
+  path: '/api/v2/bookings/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV2EventTypesIndexRoute = ApiV2EventTypesIndexRouteImport.update({
+  id: '/api/v2/event-types/',
+  path: '/api/v2/event-types/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV2EventTypesEventTypeIdRoute =
+  ApiV2EventTypesEventTypeIdRouteImport.update({
+    id: '/api/v2/event-types/$eventTypeId',
+    path: '/api/v2/event-types/$eventTypeId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiV2SchedulesIndexRoute = ApiV2SchedulesIndexRouteImport.update({
+  id: '/api/v2/schedules/',
+  path: '/api/v2/schedules/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV2SchedulesScheduleIdRoute =
+  ApiV2SchedulesScheduleIdRouteImport.update({
+    id: '/api/v2/schedules/$scheduleId',
+    path: '/api/v2/schedules/$scheduleId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiV2SchedulesDefaultRoute = ApiV2SchedulesDefaultRouteImport.update({
+  id: '/api/v2/schedules/default',
+  path: '/api/v2/schedules/default',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV2SlotsIndexRoute = ApiV2SlotsIndexRouteImport.update({
+  id: '/api/v2/slots/',
+  path: '/api/v2/slots/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV2WebhooksIndexRoute = ApiV2WebhooksIndexRouteImport.update({
+  id: '/api/v2/webhooks/',
+  path: '/api/v2/webhooks/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiV2WebhooksWebhookIdRoute = ApiV2WebhooksWebhookIdRouteImport.update({
+  id: '/api/v2/webhooks/$webhookId',
+  path: '/api/v2/webhooks/$webhookId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DLinkSlugEmbedRoute = DLinkSlugEmbedRouteImport.update({
   id: '/d/$link/$slug_/embed',
   path: '/d/$link/$slug/embed',
@@ -244,6 +314,54 @@ const AuthedSettingsDeveloperWebhooksWebhookIdRoute =
     id: '/developer/webhooks/$webhookId',
     path: '/developer/webhooks/$webhookId',
     getParentRoute: () => AuthedSettingsRoute,
+  } as any)
+const ApiV2BookingsBookingUidIndexRoute =
+  ApiV2BookingsBookingUidIndexRouteImport.update({
+    id: '/api/v2/bookings/$bookingUid/',
+    path: '/api/v2/bookings/$bookingUid/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiV2BookingsBookingUidCancelRoute =
+  ApiV2BookingsBookingUidCancelRouteImport.update({
+    id: '/api/v2/bookings/$bookingUid/cancel',
+    path: '/api/v2/bookings/$bookingUid/cancel',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiV2BookingsBookingUidConfirmRoute =
+  ApiV2BookingsBookingUidConfirmRouteImport.update({
+    id: '/api/v2/bookings/$bookingUid/confirm',
+    path: '/api/v2/bookings/$bookingUid/confirm',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiV2BookingsBookingUidDeclineRoute =
+  ApiV2BookingsBookingUidDeclineRouteImport.update({
+    id: '/api/v2/bookings/$bookingUid/decline',
+    path: '/api/v2/bookings/$bookingUid/decline',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiV2BookingsBookingUidGuestsRoute =
+  ApiV2BookingsBookingUidGuestsRouteImport.update({
+    id: '/api/v2/bookings/$bookingUid/guests',
+    path: '/api/v2/bookings/$bookingUid/guests',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiV2BookingsBookingUidLocationRoute =
+  ApiV2BookingsBookingUidLocationRouteImport.update({
+    id: '/api/v2/bookings/$bookingUid/location',
+    path: '/api/v2/bookings/$bookingUid/location',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiV2BookingsBookingUidMarkAbsentRoute =
+  ApiV2BookingsBookingUidMarkAbsentRouteImport.update({
+    id: '/api/v2/bookings/$bookingUid/mark-absent',
+    path: '/api/v2/bookings/$bookingUid/mark-absent',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiV2BookingsBookingUidRescheduleRoute =
+  ApiV2BookingsBookingUidRescheduleRouteImport.update({
+    id: '/api/v2/bookings/$bookingUid/reschedule',
+    path: '/api/v2/bookings/$bookingUid/reschedule',
+    getParentRoute: () => rootRouteImport,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -264,6 +382,7 @@ export interface FileRoutesByFullPath {
   '/bookings/$status': typeof AuthedBookingsStatusRoute
   '/event-types/$eventTypeId': typeof AuthedEventTypesEventTypeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/v2/me': typeof ApiV2MeRoute
   '/d/$link/$slug': typeof DLinkSlugRoute
   '/apps/': typeof AuthedAppsIndexRoute
   '/availability/': typeof AuthedAvailabilityIndexRoute
@@ -280,9 +399,26 @@ export interface FileRoutesByFullPath {
   '/settings/security/two-factor-auth': typeof AuthedSettingsSecurityTwoFactorAuthRoute
   '/api/integrations/$app/add': typeof ApiIntegrationsAppAddRoute
   '/api/integrations/$app/callback': typeof ApiIntegrationsAppCallbackRoute
+  '/api/v2/event-types/$eventTypeId': typeof ApiV2EventTypesEventTypeIdRoute
+  '/api/v2/schedules/$scheduleId': typeof ApiV2SchedulesScheduleIdRoute
+  '/api/v2/schedules/default': typeof ApiV2SchedulesDefaultRoute
+  '/api/v2/webhooks/$webhookId': typeof ApiV2WebhooksWebhookIdRoute
   '/d/$link/$slug/embed': typeof DLinkSlugEmbedRoute
+  '/api/v2/bookings/': typeof ApiV2BookingsIndexRoute
+  '/api/v2/event-types/': typeof ApiV2EventTypesIndexRoute
+  '/api/v2/schedules/': typeof ApiV2SchedulesIndexRoute
+  '/api/v2/slots/': typeof ApiV2SlotsIndexRoute
+  '/api/v2/webhooks/': typeof ApiV2WebhooksIndexRoute
   '/settings/developer/webhooks/$webhookId': typeof AuthedSettingsDeveloperWebhooksWebhookIdRoute
+  '/api/v2/bookings/$bookingUid/cancel': typeof ApiV2BookingsBookingUidCancelRoute
+  '/api/v2/bookings/$bookingUid/confirm': typeof ApiV2BookingsBookingUidConfirmRoute
+  '/api/v2/bookings/$bookingUid/decline': typeof ApiV2BookingsBookingUidDeclineRoute
+  '/api/v2/bookings/$bookingUid/guests': typeof ApiV2BookingsBookingUidGuestsRoute
+  '/api/v2/bookings/$bookingUid/location': typeof ApiV2BookingsBookingUidLocationRoute
+  '/api/v2/bookings/$bookingUid/mark-absent': typeof ApiV2BookingsBookingUidMarkAbsentRoute
+  '/api/v2/bookings/$bookingUid/reschedule': typeof ApiV2BookingsBookingUidRescheduleRoute
   '/settings/developer/webhooks/': typeof AuthedSettingsDeveloperWebhooksIndexRoute
+  '/api/v2/bookings/$bookingUid/': typeof ApiV2BookingsBookingUidIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -301,6 +437,7 @@ export interface FileRoutesByTo {
   '/bookings/$status': typeof AuthedBookingsStatusRoute
   '/event-types/$eventTypeId': typeof AuthedEventTypesEventTypeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/v2/me': typeof ApiV2MeRoute
   '/d/$link/$slug': typeof DLinkSlugRoute
   '/apps': typeof AuthedAppsIndexRoute
   '/availability': typeof AuthedAvailabilityIndexRoute
@@ -317,9 +454,26 @@ export interface FileRoutesByTo {
   '/settings/security/two-factor-auth': typeof AuthedSettingsSecurityTwoFactorAuthRoute
   '/api/integrations/$app/add': typeof ApiIntegrationsAppAddRoute
   '/api/integrations/$app/callback': typeof ApiIntegrationsAppCallbackRoute
+  '/api/v2/event-types/$eventTypeId': typeof ApiV2EventTypesEventTypeIdRoute
+  '/api/v2/schedules/$scheduleId': typeof ApiV2SchedulesScheduleIdRoute
+  '/api/v2/schedules/default': typeof ApiV2SchedulesDefaultRoute
+  '/api/v2/webhooks/$webhookId': typeof ApiV2WebhooksWebhookIdRoute
   '/d/$link/$slug/embed': typeof DLinkSlugEmbedRoute
+  '/api/v2/bookings': typeof ApiV2BookingsIndexRoute
+  '/api/v2/event-types': typeof ApiV2EventTypesIndexRoute
+  '/api/v2/schedules': typeof ApiV2SchedulesIndexRoute
+  '/api/v2/slots': typeof ApiV2SlotsIndexRoute
+  '/api/v2/webhooks': typeof ApiV2WebhooksIndexRoute
   '/settings/developer/webhooks/$webhookId': typeof AuthedSettingsDeveloperWebhooksWebhookIdRoute
+  '/api/v2/bookings/$bookingUid/cancel': typeof ApiV2BookingsBookingUidCancelRoute
+  '/api/v2/bookings/$bookingUid/confirm': typeof ApiV2BookingsBookingUidConfirmRoute
+  '/api/v2/bookings/$bookingUid/decline': typeof ApiV2BookingsBookingUidDeclineRoute
+  '/api/v2/bookings/$bookingUid/guests': typeof ApiV2BookingsBookingUidGuestsRoute
+  '/api/v2/bookings/$bookingUid/location': typeof ApiV2BookingsBookingUidLocationRoute
+  '/api/v2/bookings/$bookingUid/mark-absent': typeof ApiV2BookingsBookingUidMarkAbsentRoute
+  '/api/v2/bookings/$bookingUid/reschedule': typeof ApiV2BookingsBookingUidRescheduleRoute
   '/settings/developer/webhooks': typeof AuthedSettingsDeveloperWebhooksIndexRoute
+  '/api/v2/bookings/$bookingUid': typeof ApiV2BookingsBookingUidIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -341,6 +495,7 @@ export interface FileRoutesById {
   '/_authed/bookings/$status': typeof AuthedBookingsStatusRoute
   '/_authed/event-types/$eventTypeId': typeof AuthedEventTypesEventTypeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/v2/me': typeof ApiV2MeRoute
   '/d/$link/$slug': typeof DLinkSlugRoute
   '/_authed/apps/': typeof AuthedAppsIndexRoute
   '/_authed/availability/': typeof AuthedAvailabilityIndexRoute
@@ -357,9 +512,26 @@ export interface FileRoutesById {
   '/_authed/settings/security/two-factor-auth': typeof AuthedSettingsSecurityTwoFactorAuthRoute
   '/api/integrations/$app/add': typeof ApiIntegrationsAppAddRoute
   '/api/integrations/$app/callback': typeof ApiIntegrationsAppCallbackRoute
+  '/api/v2/event-types/$eventTypeId': typeof ApiV2EventTypesEventTypeIdRoute
+  '/api/v2/schedules/$scheduleId': typeof ApiV2SchedulesScheduleIdRoute
+  '/api/v2/schedules/default': typeof ApiV2SchedulesDefaultRoute
+  '/api/v2/webhooks/$webhookId': typeof ApiV2WebhooksWebhookIdRoute
   '/d/$link/$slug_/embed': typeof DLinkSlugEmbedRoute
+  '/api/v2/bookings/': typeof ApiV2BookingsIndexRoute
+  '/api/v2/event-types/': typeof ApiV2EventTypesIndexRoute
+  '/api/v2/schedules/': typeof ApiV2SchedulesIndexRoute
+  '/api/v2/slots/': typeof ApiV2SlotsIndexRoute
+  '/api/v2/webhooks/': typeof ApiV2WebhooksIndexRoute
   '/_authed/settings/developer/webhooks/$webhookId': typeof AuthedSettingsDeveloperWebhooksWebhookIdRoute
+  '/api/v2/bookings/$bookingUid/cancel': typeof ApiV2BookingsBookingUidCancelRoute
+  '/api/v2/bookings/$bookingUid/confirm': typeof ApiV2BookingsBookingUidConfirmRoute
+  '/api/v2/bookings/$bookingUid/decline': typeof ApiV2BookingsBookingUidDeclineRoute
+  '/api/v2/bookings/$bookingUid/guests': typeof ApiV2BookingsBookingUidGuestsRoute
+  '/api/v2/bookings/$bookingUid/location': typeof ApiV2BookingsBookingUidLocationRoute
+  '/api/v2/bookings/$bookingUid/mark-absent': typeof ApiV2BookingsBookingUidMarkAbsentRoute
+  '/api/v2/bookings/$bookingUid/reschedule': typeof ApiV2BookingsBookingUidRescheduleRoute
   '/_authed/settings/developer/webhooks/': typeof AuthedSettingsDeveloperWebhooksIndexRoute
+  '/api/v2/bookings/$bookingUid/': typeof ApiV2BookingsBookingUidIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -381,6 +553,7 @@ export interface FileRouteTypes {
     | '/bookings/$status'
     | '/event-types/$eventTypeId'
     | '/api/auth/$'
+    | '/api/v2/me'
     | '/d/$link/$slug'
     | '/apps/'
     | '/availability/'
@@ -397,9 +570,26 @@ export interface FileRouteTypes {
     | '/settings/security/two-factor-auth'
     | '/api/integrations/$app/add'
     | '/api/integrations/$app/callback'
+    | '/api/v2/event-types/$eventTypeId'
+    | '/api/v2/schedules/$scheduleId'
+    | '/api/v2/schedules/default'
+    | '/api/v2/webhooks/$webhookId'
     | '/d/$link/$slug/embed'
+    | '/api/v2/bookings/'
+    | '/api/v2/event-types/'
+    | '/api/v2/schedules/'
+    | '/api/v2/slots/'
+    | '/api/v2/webhooks/'
     | '/settings/developer/webhooks/$webhookId'
+    | '/api/v2/bookings/$bookingUid/cancel'
+    | '/api/v2/bookings/$bookingUid/confirm'
+    | '/api/v2/bookings/$bookingUid/decline'
+    | '/api/v2/bookings/$bookingUid/guests'
+    | '/api/v2/bookings/$bookingUid/location'
+    | '/api/v2/bookings/$bookingUid/mark-absent'
+    | '/api/v2/bookings/$bookingUid/reschedule'
     | '/settings/developer/webhooks/'
+    | '/api/v2/bookings/$bookingUid/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -418,6 +608,7 @@ export interface FileRouteTypes {
     | '/bookings/$status'
     | '/event-types/$eventTypeId'
     | '/api/auth/$'
+    | '/api/v2/me'
     | '/d/$link/$slug'
     | '/apps'
     | '/availability'
@@ -434,9 +625,26 @@ export interface FileRouteTypes {
     | '/settings/security/two-factor-auth'
     | '/api/integrations/$app/add'
     | '/api/integrations/$app/callback'
+    | '/api/v2/event-types/$eventTypeId'
+    | '/api/v2/schedules/$scheduleId'
+    | '/api/v2/schedules/default'
+    | '/api/v2/webhooks/$webhookId'
     | '/d/$link/$slug/embed'
+    | '/api/v2/bookings'
+    | '/api/v2/event-types'
+    | '/api/v2/schedules'
+    | '/api/v2/slots'
+    | '/api/v2/webhooks'
     | '/settings/developer/webhooks/$webhookId'
+    | '/api/v2/bookings/$bookingUid/cancel'
+    | '/api/v2/bookings/$bookingUid/confirm'
+    | '/api/v2/bookings/$bookingUid/decline'
+    | '/api/v2/bookings/$bookingUid/guests'
+    | '/api/v2/bookings/$bookingUid/location'
+    | '/api/v2/bookings/$bookingUid/mark-absent'
+    | '/api/v2/bookings/$bookingUid/reschedule'
     | '/settings/developer/webhooks'
+    | '/api/v2/bookings/$bookingUid'
   id:
     | '__root__'
     | '/'
@@ -457,6 +665,7 @@ export interface FileRouteTypes {
     | '/_authed/bookings/$status'
     | '/_authed/event-types/$eventTypeId'
     | '/api/auth/$'
+    | '/api/v2/me'
     | '/d/$link/$slug'
     | '/_authed/apps/'
     | '/_authed/availability/'
@@ -473,9 +682,26 @@ export interface FileRouteTypes {
     | '/_authed/settings/security/two-factor-auth'
     | '/api/integrations/$app/add'
     | '/api/integrations/$app/callback'
+    | '/api/v2/event-types/$eventTypeId'
+    | '/api/v2/schedules/$scheduleId'
+    | '/api/v2/schedules/default'
+    | '/api/v2/webhooks/$webhookId'
     | '/d/$link/$slug_/embed'
+    | '/api/v2/bookings/'
+    | '/api/v2/event-types/'
+    | '/api/v2/schedules/'
+    | '/api/v2/slots/'
+    | '/api/v2/webhooks/'
     | '/_authed/settings/developer/webhooks/$webhookId'
+    | '/api/v2/bookings/$bookingUid/cancel'
+    | '/api/v2/bookings/$bookingUid/confirm'
+    | '/api/v2/bookings/$bookingUid/decline'
+    | '/api/v2/bookings/$bookingUid/guests'
+    | '/api/v2/bookings/$bookingUid/location'
+    | '/api/v2/bookings/$bookingUid/mark-absent'
+    | '/api/v2/bookings/$bookingUid/reschedule'
     | '/_authed/settings/developer/webhooks/'
+    | '/api/v2/bookings/$bookingUid/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -493,10 +719,28 @@ export interface RootRouteChildren {
   UsernameIndexRoute: typeof UsernameIndexRoute
   UsernameSlugEmbedRoute: typeof UsernameSlugEmbedRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiV2MeRoute: typeof ApiV2MeRoute
   DLinkSlugRoute: typeof DLinkSlugRoute
   ApiIntegrationsAppAddRoute: typeof ApiIntegrationsAppAddRoute
   ApiIntegrationsAppCallbackRoute: typeof ApiIntegrationsAppCallbackRoute
+  ApiV2EventTypesEventTypeIdRoute: typeof ApiV2EventTypesEventTypeIdRoute
+  ApiV2SchedulesScheduleIdRoute: typeof ApiV2SchedulesScheduleIdRoute
+  ApiV2SchedulesDefaultRoute: typeof ApiV2SchedulesDefaultRoute
+  ApiV2WebhooksWebhookIdRoute: typeof ApiV2WebhooksWebhookIdRoute
   DLinkSlugEmbedRoute: typeof DLinkSlugEmbedRoute
+  ApiV2BookingsIndexRoute: typeof ApiV2BookingsIndexRoute
+  ApiV2EventTypesIndexRoute: typeof ApiV2EventTypesIndexRoute
+  ApiV2SchedulesIndexRoute: typeof ApiV2SchedulesIndexRoute
+  ApiV2SlotsIndexRoute: typeof ApiV2SlotsIndexRoute
+  ApiV2WebhooksIndexRoute: typeof ApiV2WebhooksIndexRoute
+  ApiV2BookingsBookingUidCancelRoute: typeof ApiV2BookingsBookingUidCancelRoute
+  ApiV2BookingsBookingUidConfirmRoute: typeof ApiV2BookingsBookingUidConfirmRoute
+  ApiV2BookingsBookingUidDeclineRoute: typeof ApiV2BookingsBookingUidDeclineRoute
+  ApiV2BookingsBookingUidGuestsRoute: typeof ApiV2BookingsBookingUidGuestsRoute
+  ApiV2BookingsBookingUidLocationRoute: typeof ApiV2BookingsBookingUidLocationRoute
+  ApiV2BookingsBookingUidMarkAbsentRoute: typeof ApiV2BookingsBookingUidMarkAbsentRoute
+  ApiV2BookingsBookingUidRescheduleRoute: typeof ApiV2BookingsBookingUidRescheduleRoute
+  ApiV2BookingsBookingUidIndexRoute: typeof ApiV2BookingsBookingUidIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -655,6 +899,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v2/me': {
+      id: '/api/v2/me'
+      path: '/api/v2/me'
+      fullPath: '/api/v2/me'
+      preLoaderRoute: typeof ApiV2MeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/d/$link/$slug': {
       id: '/d/$link/$slug'
       path: '/d/$link/$slug'
@@ -739,6 +990,69 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiIntegrationsAppCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/v2/bookings/': {
+      id: '/api/v2/bookings/'
+      path: '/api/v2/bookings'
+      fullPath: '/api/v2/bookings/'
+      preLoaderRoute: typeof ApiV2BookingsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v2/event-types/': {
+      id: '/api/v2/event-types/'
+      path: '/api/v2/event-types'
+      fullPath: '/api/v2/event-types/'
+      preLoaderRoute: typeof ApiV2EventTypesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v2/event-types/$eventTypeId': {
+      id: '/api/v2/event-types/$eventTypeId'
+      path: '/api/v2/event-types/$eventTypeId'
+      fullPath: '/api/v2/event-types/$eventTypeId'
+      preLoaderRoute: typeof ApiV2EventTypesEventTypeIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v2/schedules/': {
+      id: '/api/v2/schedules/'
+      path: '/api/v2/schedules'
+      fullPath: '/api/v2/schedules/'
+      preLoaderRoute: typeof ApiV2SchedulesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v2/schedules/$scheduleId': {
+      id: '/api/v2/schedules/$scheduleId'
+      path: '/api/v2/schedules/$scheduleId'
+      fullPath: '/api/v2/schedules/$scheduleId'
+      preLoaderRoute: typeof ApiV2SchedulesScheduleIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v2/schedules/default': {
+      id: '/api/v2/schedules/default'
+      path: '/api/v2/schedules/default'
+      fullPath: '/api/v2/schedules/default'
+      preLoaderRoute: typeof ApiV2SchedulesDefaultRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v2/slots/': {
+      id: '/api/v2/slots/'
+      path: '/api/v2/slots'
+      fullPath: '/api/v2/slots/'
+      preLoaderRoute: typeof ApiV2SlotsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v2/webhooks/': {
+      id: '/api/v2/webhooks/'
+      path: '/api/v2/webhooks'
+      fullPath: '/api/v2/webhooks/'
+      preLoaderRoute: typeof ApiV2WebhooksIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v2/webhooks/$webhookId': {
+      id: '/api/v2/webhooks/$webhookId'
+      path: '/api/v2/webhooks/$webhookId'
+      fullPath: '/api/v2/webhooks/$webhookId'
+      preLoaderRoute: typeof ApiV2WebhooksWebhookIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/d/$link/$slug_/embed': {
       id: '/d/$link/$slug_/embed'
       path: '/d/$link/$slug/embed'
@@ -759,6 +1073,62 @@ declare module '@tanstack/react-router' {
       fullPath: '/settings/developer/webhooks/$webhookId'
       preLoaderRoute: typeof AuthedSettingsDeveloperWebhooksWebhookIdRouteImport
       parentRoute: typeof AuthedSettingsRoute
+    }
+    '/api/v2/bookings/$bookingUid/': {
+      id: '/api/v2/bookings/$bookingUid/'
+      path: '/api/v2/bookings/$bookingUid'
+      fullPath: '/api/v2/bookings/$bookingUid/'
+      preLoaderRoute: typeof ApiV2BookingsBookingUidIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v2/bookings/$bookingUid/cancel': {
+      id: '/api/v2/bookings/$bookingUid/cancel'
+      path: '/api/v2/bookings/$bookingUid/cancel'
+      fullPath: '/api/v2/bookings/$bookingUid/cancel'
+      preLoaderRoute: typeof ApiV2BookingsBookingUidCancelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v2/bookings/$bookingUid/confirm': {
+      id: '/api/v2/bookings/$bookingUid/confirm'
+      path: '/api/v2/bookings/$bookingUid/confirm'
+      fullPath: '/api/v2/bookings/$bookingUid/confirm'
+      preLoaderRoute: typeof ApiV2BookingsBookingUidConfirmRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v2/bookings/$bookingUid/decline': {
+      id: '/api/v2/bookings/$bookingUid/decline'
+      path: '/api/v2/bookings/$bookingUid/decline'
+      fullPath: '/api/v2/bookings/$bookingUid/decline'
+      preLoaderRoute: typeof ApiV2BookingsBookingUidDeclineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v2/bookings/$bookingUid/guests': {
+      id: '/api/v2/bookings/$bookingUid/guests'
+      path: '/api/v2/bookings/$bookingUid/guests'
+      fullPath: '/api/v2/bookings/$bookingUid/guests'
+      preLoaderRoute: typeof ApiV2BookingsBookingUidGuestsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v2/bookings/$bookingUid/location': {
+      id: '/api/v2/bookings/$bookingUid/location'
+      path: '/api/v2/bookings/$bookingUid/location'
+      fullPath: '/api/v2/bookings/$bookingUid/location'
+      preLoaderRoute: typeof ApiV2BookingsBookingUidLocationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v2/bookings/$bookingUid/mark-absent': {
+      id: '/api/v2/bookings/$bookingUid/mark-absent'
+      path: '/api/v2/bookings/$bookingUid/mark-absent'
+      fullPath: '/api/v2/bookings/$bookingUid/mark-absent'
+      preLoaderRoute: typeof ApiV2BookingsBookingUidMarkAbsentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/v2/bookings/$bookingUid/reschedule': {
+      id: '/api/v2/bookings/$bookingUid/reschedule'
+      path: '/api/v2/bookings/$bookingUid/reschedule'
+      fullPath: '/api/v2/bookings/$bookingUid/reschedule'
+      preLoaderRoute: typeof ApiV2BookingsBookingUidRescheduleRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -841,10 +1211,30 @@ const rootRouteChildren: RootRouteChildren = {
   UsernameIndexRoute: UsernameIndexRoute,
   UsernameSlugEmbedRoute: UsernameSlugEmbedRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiV2MeRoute: ApiV2MeRoute,
   DLinkSlugRoute: DLinkSlugRoute,
   ApiIntegrationsAppAddRoute: ApiIntegrationsAppAddRoute,
   ApiIntegrationsAppCallbackRoute: ApiIntegrationsAppCallbackRoute,
+  ApiV2EventTypesEventTypeIdRoute: ApiV2EventTypesEventTypeIdRoute,
+  ApiV2SchedulesScheduleIdRoute: ApiV2SchedulesScheduleIdRoute,
+  ApiV2SchedulesDefaultRoute: ApiV2SchedulesDefaultRoute,
+  ApiV2WebhooksWebhookIdRoute: ApiV2WebhooksWebhookIdRoute,
   DLinkSlugEmbedRoute: DLinkSlugEmbedRoute,
+  ApiV2BookingsIndexRoute: ApiV2BookingsIndexRoute,
+  ApiV2EventTypesIndexRoute: ApiV2EventTypesIndexRoute,
+  ApiV2SchedulesIndexRoute: ApiV2SchedulesIndexRoute,
+  ApiV2SlotsIndexRoute: ApiV2SlotsIndexRoute,
+  ApiV2WebhooksIndexRoute: ApiV2WebhooksIndexRoute,
+  ApiV2BookingsBookingUidCancelRoute: ApiV2BookingsBookingUidCancelRoute,
+  ApiV2BookingsBookingUidConfirmRoute: ApiV2BookingsBookingUidConfirmRoute,
+  ApiV2BookingsBookingUidDeclineRoute: ApiV2BookingsBookingUidDeclineRoute,
+  ApiV2BookingsBookingUidGuestsRoute: ApiV2BookingsBookingUidGuestsRoute,
+  ApiV2BookingsBookingUidLocationRoute: ApiV2BookingsBookingUidLocationRoute,
+  ApiV2BookingsBookingUidMarkAbsentRoute:
+    ApiV2BookingsBookingUidMarkAbsentRoute,
+  ApiV2BookingsBookingUidRescheduleRoute:
+    ApiV2BookingsBookingUidRescheduleRoute,
+  ApiV2BookingsBookingUidIndexRoute: ApiV2BookingsBookingUidIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -4803,5 +4803,12 @@
   "default_conferencing_app_description": "New event types use your default conferencing app as their location.",
   "your_room_link": "Your room link",
   "no_conferencing_apps": "No conferencing apps installed yet.",
+  "no_show": "No-show",
+  "no_show_before_start": "You can only mark no-shows once the booking has started",
+  "all_event_types": "All event types",
+  "start_date": "Start date",
+  "end_date": "End date",
+  "guests_disabled": "This event type doesn't allow guests",
+  "booking_has_ended": "This booking has already ended",
   "ADD_NEW_STRINGS_ABOVE_THIS_LINE_TO_PREVENT_MERGE_CONFLICTS": "↑↑↑↑↑↑↑↑↑↑↑↑↑ Add your new strings above here ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑"
 }

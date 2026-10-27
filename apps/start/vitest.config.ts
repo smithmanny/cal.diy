@@ -14,7 +14,7 @@ export default defineConfig({
     },
   },
   test: {
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.ts", "scripts/**/*.test.ts"],
     server: { deps: { inline: [/better-auth/, /better-call/] } },
   },
 });

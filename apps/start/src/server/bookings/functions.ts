@@ -2,8 +2,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 // Only referenced inside handlers, so this server-only module stays out of the client bundle.
 import { isEmailEnabled } from "../emails/container";
+import { editableLocationSchema } from "../event-types/types";
 import { authMiddleware, optionalUserId } from "../middleware";
-import { getBookingService } from "./container";
+import { getBookingActionsService, getBookingService } from "./container";
 import { createBookingSchema, slotsQuerySchema } from "./types";
 
 const usernameSchema = z.object({ username: z.string().min(1).max(100) });
@@ -65,7 +66,13 @@ export const cancelBookingByUid = createServerFn({ method: "POST" })
     const service = await getBookingService();
     // On a seated booking a booker cancels only their own seat.
     if (data.seatReferenceUid) return service.cancelSeat(data.seatReferenceUid, data.reason ?? null);
-    return service.cancel(data.uid, data.reason ?? null, data.cancelledBy ?? null);
+    const userId = await optionalUserId();
+    return service.cancel(
+      data.uid,
+      data.reason ?? null,
+      data.cancelledBy ?? null,
+      userId ? { userId } : undefined
+    );
   });
 
 // Host endpoints.
@@ -76,10 +83,19 @@ export const listHostBookings = createServerFn({ method: "GET" })
     z.object({
       filter: z.enum(["upcoming", "recurring", "past", "cancelled", "unconfirmed"]),
       limit: z.number().int().min(1).max(500),
+      eventTypeIds: z.array(z.number().int()).max(100).optional(),
+      attendee: z.string().trim().max(200).optional(),
+      from: z.string().datetime().optional(),
+      to: z.string().datetime().optional(),
     })
   )
   .handler(async ({ context, data }) => {
-    const bookings = await (await getBookingService()).listForHost(context.userId, data.filter, data.limit);
+    const bookings = await (await getBookingService()).listForHost(context.userId, data.filter, data.limit, {
+      eventTypeIds: data.eventTypeIds,
+      attendee: data.attendee || undefined,
+      from: data.from ? new Date(data.from) : undefined,
+      to: data.to ? new Date(data.to) : undefined,
+    });
     return bookings.map((booking) => ({
       ...booking,
       startTime: booking.startTime.toISOString(),
@@ -101,4 +117,49 @@ export const decideBooking = createServerFn({ method: "POST" })
   .validator(uidSchema.extend({ accept: z.boolean(), reason: z.string().max(1000).optional() }))
   .handler(async ({ context, data }) =>
     (await getBookingService()).decide(context.userId, data.uid, data.accept, data.reason ?? null)
+  );
+
+export const markNoShow = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(
+    uidSchema.extend({
+      attendees: z
+        .array(z.object({ email: z.string().email().max(320), noShow: z.boolean() }))
+        .min(1)
+        .max(100),
+    })
+  )
+  .handler(async ({ context, data }) =>
+    (await getBookingActionsService()).markNoShow(context.userId, data.uid, data.attendees)
+  );
+
+export const addBookingGuests = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(uidSchema.extend({ emails: z.array(z.string().trim().email().max(320)).min(1).max(10) }))
+  .handler(async ({ context, data }) =>
+    (await getBookingActionsService()).addGuests(context.userId, data.uid, data.emails)
+  );
+
+export const editBookingLocation = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(uidSchema.extend({ location: editableLocationSchema }))
+  .handler(async ({ context, data }) =>
+    (await getBookingActionsService()).editLocation(context.userId, data.uid, data.location)
+  );
+
+export const requestReschedule = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(uidSchema.extend({ reason: z.string().max(1000).optional() }))
+  .handler(async ({ context, data }) =>
+    (await getBookingActionsService()).requestReschedule(context.userId, data.uid, data.reason || null)
+  );
+
+export const getBookingHistory = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .validator(uidSchema.extend({ locale: z.string().max(20).default("en") }))
+  .handler(async ({ context, data }) =>
+    (await getBookingActionsService()).history(context.userId, data.uid, {
+      timeZone: context.userTimeZone,
+      locale: data.locale,
+    })
   );

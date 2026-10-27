@@ -49,6 +49,38 @@ export const eventLocationSchema = z.discriminatedUnion("type", [
 
 export type EventLocation = z.infer<typeof eventLocationSchema>;
 
+/** Where a host can move an existing booking: any location but the attendee's phone, which they'd have to give. */
+export const editableLocationSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("inPerson"), address: z.string().trim().min(1).max(500) }),
+  z.object({ type: z.literal("link"), link: z.string().trim().url().max(2000) }),
+  z.object({
+    type: z.literal("userPhone"),
+    hostPhoneNumber: z
+      .string()
+      .trim()
+      .regex(/^\+?[\d\s().-]{6,20}$/),
+  }),
+  z.object({ type: z.literal("integrations:google:meet") }),
+  // The video listener creates the meeting for the booking's new location.
+  z.object({ type: z.enum(DYNAMIC_VIDEO_LOCATION_TYPES) }),
+]);
+
+export type EditableLocation = z.infer<typeof editableLocationSchema>;
+
+/** The booking's `location` for a chosen location, as when it was booked. */
+export function locationValue(location: EditableLocation): string {
+  switch (location.type) {
+    case "inPerson":
+      return location.address;
+    case "link":
+      return location.link;
+    case "userPhone":
+      return location.hostPhoneNumber;
+    default:
+      return location.type;
+  }
+}
+
 /** Cal's bookingLimits / durationLimits: a booking count or minutes per period. */
 export const intervalLimitSchema = z
   .object({ PER_DAY: limitValue, PER_WEEK: limitValue, PER_MONTH: limitValue, PER_YEAR: limitValue })

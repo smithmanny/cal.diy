@@ -91,6 +91,7 @@ describe("webhook listener", () => {
     const fetchMock = vi.fn(async (_request: Request) => new Response("ok"));
     const listener = createWebhookListener(repo, fetchMock as unknown as typeof fetch);
     const booking = {
+      id: 1,
       uid: "u",
       title: "T",
       description: null,
@@ -100,6 +101,8 @@ describe("webhook listener", () => {
       location: null,
       responses: {},
       cancellationReason: null,
+      cancelledBy: null,
+      rejectionReason: null,
       fromReschedule: null,
       bookingFields: null,
       recurring: null,
