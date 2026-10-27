@@ -1045,7 +1045,13 @@ export class BookingService {
   private async findReschedulable(uid: string, hostId: number, byHost: boolean, now: Date) {
     const original = await this.deps.bookingRepo.findByUid(uid);
     if (!original || original.userId !== hostId) throw new AppError("booking_not_found", 404);
-    if (original.status === "CANCELLED" || original.status === "REJECTED")
+    // After the host requests a reschedule the booking is cancelled, but its attendees may still
+    // book a new time for it, once.
+    const awaitingNewTime =
+      original.status === "CANCELLED" &&
+      original.rescheduled &&
+      !(await this.deps.bookingRepo.hasReplacement(original.uid));
+    if ((original.status === "CANCELLED" || original.status === "REJECTED") && !awaitingNewTime)
       throw new AppError("event_cancelled", 409);
     if (original.eventType?.disableRescheduling) throw new AppError("rescheduling_is_disabled", 403);
     if (

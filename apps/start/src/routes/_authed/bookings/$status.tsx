@@ -3,6 +3,7 @@ import { createFileRoute, Link, notFound, useNavigate, useRouter } from "@tansta
 import { useState } from "react";
 import { PageHeader } from "~/components/AppShell";
 import { FormError } from "~/components/AuthCard";
+import { BOOKING_EDIT_MESSAGE_KEYS, BookingEditMenu } from "~/components/bookings/BookingEditMenu";
 import {
   BOOKING_FILTER_MESSAGE_KEYS,
   BookingFilters,
@@ -50,6 +51,10 @@ const MESSAGE_KEYS = [
   ...Object.values(LOCATION_LABEL_KEYS),
   ...BOOKING_FILTER_MESSAGE_KEYS,
   ...BOOKING_LIST_ITEM_MESSAGE_KEYS,
+  ...BOOKING_EDIT_MESSAGE_KEYS,
+  "guests_disabled",
+  "booking_has_ended",
+  "emails_must_be_unique_valid",
   "no_results",
   "no_show_before_start",
   "bookings",
@@ -71,13 +76,15 @@ const MESSAGE_KEYS = [
 function useBookingAction() {
   const router = useRouter();
   const [errorKey, setErrorKey] = useState<string | null>(null);
-  async function run(action: () => Promise<unknown>) {
+  async function run(action: () => Promise<unknown>): Promise<boolean> {
     setErrorKey(null);
     try {
       await action();
       await router.invalidate();
+      return true;
     } catch (error) {
       setErrorKey(errorMessageKey(error));
+      return false;
     }
   }
   return { run, errorKey };
@@ -90,7 +97,7 @@ function HostActions({
 }: {
   booking: ListedBooking;
   status: Status;
-  run: (action: () => Promise<unknown>) => void;
+  run: (action: () => Promise<unknown>) => Promise<boolean>;
 }) {
   const t = useT();
   if (!booking.isOrganizer) return null;
@@ -124,9 +131,12 @@ function HostActions({
     );
   if (status !== "upcoming" && status !== "recurring") return null;
   return (
-    <Button size="sm" variant="outline" onClick={cancel}>
-      {t("cancel_event")}
-    </Button>
+    <>
+      <BookingEditMenu uid={booking.uid} run={run} />
+      <Button size="sm" variant="outline" onClick={cancel}>
+        {t("cancel_event")}
+      </Button>
+    </>
   );
 }
 

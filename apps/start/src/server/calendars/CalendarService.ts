@@ -141,6 +141,12 @@ export class CalendarService {
       case "BOOKING_REJECTED":
         await this.deleteEvents(event.booking.uid);
         return;
+      // The event is recreated with the new guests or place; for Google Meet that means a new link.
+      case "BOOKING_GUESTS_ADDED":
+      case "BOOKING_LOCATION_CHANGED":
+        await this.deleteEvents(event.booking.uid);
+        await this.createEvent(event.booking);
+        return;
       default:
         // BOOKING_REQUESTED: Cal only adds the event once the host confirms.
         return;

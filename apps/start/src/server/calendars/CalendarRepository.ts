@@ -8,7 +8,7 @@ import {
   destinationCalendar,
   selectedCalendar,
 } from "@calcom/db/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull, or } from "drizzle-orm";
 
 export const GOOGLE_CALENDAR_TYPE = "google_calendar";
 
@@ -147,7 +147,14 @@ export class CalendarRepository {
       })
       .from(bookingReference)
       .innerJoin(booking, eq(booking.id, bookingReference.bookingId))
-      .where(and(eq(booking.uid, uid), eq(bookingReference.type, GOOGLE_CALENDAR_TYPE)));
+      .where(
+        and(
+          eq(booking.uid, uid),
+          eq(bookingReference.type, GOOGLE_CALENDAR_TYPE),
+          // Events already removed (say, before recreating one with new guests) stay gone.
+          or(isNull(bookingReference.deleted), eq(bookingReference.deleted, false))
+        )
+      );
   }
 
   async addReference(data: {

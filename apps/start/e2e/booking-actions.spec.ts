@@ -1,6 +1,6 @@
 import process from "node:process";
 import { moveBookingToPast } from "./support/db";
-import { bookFirstSlot, signUp } from "./support/helpers";
+import { bookFirstSlot, linkFromLatestEmail, signUp, uniqueName } from "./support/helpers";
 import { expect, newClientContext, test } from "./support/test";
 
 test.skip(Boolean(process.env.E2E_BASE_URL), "moves a booking into the past in the dev server's database");
@@ -41,4 +41,66 @@ test("hosts filter their bookings and mark attendees who didn't show up", async 
   // Upcoming bookings can't have no-shows yet.
   await page.getByRole("link", { name: "Upcoming" }).click();
   await expect(rows.getByRole("button", { name: /no-show/ })).toHaveCount(0);
+});
+
+test("hosts move a booking, add guests and ask the attendee to pick a new time", async ({
+  browser,
+  page,
+  request,
+}) => {
+  const { username } = await signUp(page);
+  const guest = await (await newClientContext(browser)).newPage();
+  const ada = `${uniqueName("ada")}@example.com`;
+  const nina = `${uniqueName("nina")}@example.com`;
+  await bookFirstSlot(guest, username, "30min", { name: "Ada", email: ada });
+
+  const row = page.locator("main ul > li");
+  const edit = async (item: string) => {
+    await row.getByRole("button", { name: "Edit" }).click();
+    await page.getByRole("menuitem", { name: item }).click();
+  };
+  await page.goto("/bookings/upcoming");
+
+  await edit("Edit location");
+  await page.getByRole("combobox", { name: "New location" }).selectOption({ label: "Link meeting" });
+  await page.getByRole("textbox", { name: "Link meeting" }).fill("https://meet.example/room");
+  await page.getByRole("button", { name: "Update location" }).click();
+  await expect(row).toContainText("https://meet.example/room");
+  await linkFromLatestEmail(request, ada, /^Location Changed/);
+
+  await edit("Add guests");
+  await page.getByRole("textbox", { name: "Guest email" }).fill(nina);
+  await page.getByRole("button", { name: "Add emails" }).click();
+  await expect(row).toContainText(nina);
+  await linkFromLatestEmail(request, nina, /^Confirmed/);
+  await linkFromLatestEmail(request, ada, /^Guests Added/);
+
+  await edit("Request reschedule");
+  await page.getByRole("textbox", { name: "Reason for reschedule request" }).fill("Something came up");
+  await page.getByRole("button", { name: "Request reschedule" }).click();
+  await expect(
+    page.getByText("As soon as someone books a time with you it will show up here.")
+  ).toBeVisible();
+
+  // The attendee books a new time from the email, and the booking is live again.
+  const rebook = await linkFromLatestEmail(request, ada, /^Action Required Reschedule/);
+  expect(rebook).toContain(`/${username}/30min?rescheduleUid=`);
+  const pickNewTime = async () => {
+    await guest.goto(rebook);
+    await expect(guest.getByText("Reschedule booking")).toBeVisible();
+    await guest.getByRole("button", { name: "View next month" }).click();
+    await guest.locator("td button:not([disabled])").nth(1).click();
+    await guest.locator("ul li button").first().click();
+    await guest.getByLabel("Your name").fill("Ada");
+    await guest.getByLabel("Email address").fill(ada);
+    await guest.getByRole("button", { name: "Confirm" }).click();
+  };
+  await pickNewTime();
+  await expect(guest.getByRole("heading", { level: 1 })).toHaveText("This meeting is scheduled");
+  await page.reload();
+  await expect(row).toHaveCount(1);
+
+  // The request can be answered once.
+  await pickNewTime();
+  await expect(guest.getByText("This event is canceled")).toBeVisible();
 });

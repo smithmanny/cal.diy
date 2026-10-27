@@ -50,7 +50,30 @@ const PLANS: Partial<Record<BookingEvent["type"], Plan>> = {
     sequence: 1,
   },
   BOOKING_REJECTED: { attendee: "attendee_rejected", method: "CANCEL", sequence: 1 },
+  BOOKING_GUESTS_ADDED: {
+    attendee: "attendee_guests_added",
+    organizer: "organizer_guests_added",
+    method: "REQUEST",
+    sequence: 1,
+  },
+  BOOKING_LOCATION_CHANGED: {
+    attendee: "attendee_location_changed",
+    organizer: "organizer_location_changed",
+    method: "REQUEST",
+    sequence: 1,
+  },
 };
+
+const RESCHEDULE_REQUESTED: Plan = {
+  attendee: "attendee_reschedule_requested",
+  organizer: "organizer_reschedule_requested",
+  method: "CANCEL",
+  sequence: 1,
+};
+
+function planFor(event: BookingEvent): Plan | undefined {
+  return event.rescheduleRequested ? RESCHEDULE_REQUESTED : PLANS[event.type];
+}
 
 /** The bare address of a sender like "Cal.diy <cal@example.com>". */
 function senderAddress(from: string): string {
@@ -62,18 +85,19 @@ export class EmailService {
   constructor(private readonly deps: Deps) {}
 
   async onBookingEvent(event: BookingEvent): Promise<void> {
-    const plan = PLANS[event.type];
+    const plan = planFor(event);
     // One email covers a whole recurring series, as in Cal.
     if (!plan || (event.seriesIndex ?? 0) > 0) return;
     const booking = event.booking;
     const manageUrl = `${this.deps.publicUrl}/booking/${booking.uid}`;
     const hideOrganizerEmail = Boolean(booking.eventType?.hideOrganizerEmail);
-    const ics = buildIcs(booking, {
+    const icsContent = buildIcs(booking, {
       method: plan.method,
       sequence: plan.sequence,
       manageUrl,
       organizerEmail: hideOrganizerEmail ? senderAddress(this.deps.from) : undefined,
     });
+    const ics = { content: icsContent, method: plan.method };
     const sends: Promise<void>[] = [];
     // Like Cal, turning off standard emails only drops the confirmation; updates still go out.
     const isConfirmation = event.type === "BOOKING_CREATED" || event.type === "BOOKING_REQUESTED";
@@ -84,13 +108,16 @@ export class EmailService {
       const recipients = event.seat
         ? booking.attendees.filter((attendee) => attendee.email === event.seat?.attendeeEmail)
         : booking.attendees;
+      const attendeeUrl =
+        plan.attendee === "attendee_reschedule_requested" ? this.rebookUrl(booking, manageUrl) : manageUrl;
       for (const attendee of recipients) {
         sends.push(
           this.sendOne(
-            plan.attendee,
+            // Guests just added hear about the booking for the first time.
+            event.guestsAdded?.includes(attendee.email) ? "attendee_scheduled" : plan.attendee,
             booking,
             { email: attendee.email, timeZone: attendee.timeZone, locale: attendee.locale ?? "en" },
-            manageUrl,
+            attendeeUrl,
             ics,
             hideOrganizerEmail ? undefined : booking.organizer.email
           )
@@ -129,6 +156,13 @@ export class EmailService {
     await this.deps.send({ from: this.deps.from, to: recipient.email, subject, html, text });
   }
 
+  /** Where attendees book a new time after the host asked them to (Cal's `rescheduleUid` link). */
+  private rebookUrl(booking: BookingSnapshot, fallback: string): string {
+    const { username } = booking.organizer;
+    if (!username || !booking.eventType) return fallback;
+    return `${this.deps.publicUrl}/${username}/${booking.eventType.slug}?rescheduleUid=${booking.uid}`;
+  }
+
   /** A booker's verification code; failures reach the caller so the booker can retry. */
   async sendBookerCode(email: string, code: string, locale: string): Promise<void> {
     const messages = await this.deps.loadMessages(locale, CODE_EMAIL_MESSAGE_KEYS);
@@ -141,7 +175,7 @@ export class EmailService {
     booking: BookingSnapshot,
     recipient: { email: string; timeZone: string; locale: string },
     manageUrl: string,
-    ics: string,
+    ics: { content: string; method: "REQUEST" | "CANCEL" },
     replyTo: string | undefined
   ): Promise<void> {
     const messages = await this.deps.loadMessages(recipient.locale, EMAIL_MESSAGE_KEYS);
@@ -156,8 +190,8 @@ export class EmailService {
       attachments: [
         {
           filename: "invite.ics",
-          content: ics,
-          contentType: `text/calendar; method=${kind.endsWith("cancelled") || kind.endsWith("rejected") ? "CANCEL" : "REQUEST"}`,
+          content: ics.content,
+          contentType: `text/calendar; method=${ics.method}`,
         },
       ],
     });

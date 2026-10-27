@@ -1,6 +1,6 @@
 import { fieldLabel, formatResponse, userFieldAnswers } from "~/lib/booking-fields";
 import { formatLongDate, formatTime } from "~/lib/date-utils";
-import type { Messages } from "~/lib/i18n";
+import type { Messages, TFunction } from "~/lib/i18n";
 import { createT } from "~/lib/i18n";
 import { RECURRING_MESSAGE_KEYS, recurringSummary } from "~/lib/recurring";
 import type { BookingSnapshot } from "../bookings/events";
@@ -15,9 +15,22 @@ export type EmailKind =
   | "organizer_scheduled"
   | "organizer_requested"
   | "organizer_rescheduled"
-  | "organizer_cancelled";
+  | "organizer_cancelled"
+  | "attendee_guests_added"
+  | "organizer_guests_added"
+  | "attendee_location_changed"
+  | "organizer_location_changed"
+  | "attendee_reschedule_requested"
+  | "organizer_reschedule_requested";
 
-type Content = { subjectKey: string; headingKey: string; showManageLinks: boolean };
+type Content = {
+  subjectKey: string;
+  headingKey: string;
+  showManageLinks: boolean;
+  /** Replaces "manage this event" as the button's label. */
+  actionKey?: string;
+  subtitleKey?: string;
+};
 
 const CONTENT: Record<EmailKind, Content> = {
   attendee_scheduled: {
@@ -65,6 +78,38 @@ const CONTENT: Record<EmailKind, Content> = {
     headingKey: "event_request_cancelled",
     showManageLinks: false,
   },
+  attendee_guests_added: {
+    subjectKey: "guests_added_event_type_subject",
+    headingKey: "new_guests_added",
+    showManageLinks: true,
+  },
+  organizer_guests_added: {
+    subjectKey: "guests_added_event_type_subject",
+    headingKey: "new_guests_added",
+    showManageLinks: true,
+  },
+  attendee_location_changed: {
+    subjectKey: "location_changed_event_type_subject",
+    headingKey: "event_location_changed",
+    showManageLinks: true,
+  },
+  organizer_location_changed: {
+    subjectKey: "location_changed_event_type_subject",
+    headingKey: "event_location_changed",
+    showManageLinks: true,
+  },
+  attendee_reschedule_requested: {
+    subjectKey: "requested_to_reschedule_subject_attendee",
+    headingKey: "request_reschedule_booking",
+    subtitleKey: "request_reschedule_subtitle",
+    actionKey: "book_a_new_time",
+    showManageLinks: true,
+  },
+  organizer_reschedule_requested: {
+    subjectKey: "request_reschedule_title_organizer",
+    headingKey: "request_reschedule_title_organizer",
+    showManageLinks: false,
+  },
 };
 
 // Cal's headings for the first email about a recurring booking.
@@ -77,7 +122,14 @@ const RECURRING_HEADINGS: Partial<Record<EmailKind, string>> = {
 };
 
 export const EMAIL_MESSAGE_KEYS = [
-  ...new Set(Object.values(CONTENT).flatMap((c) => [c.subjectKey, c.headingKey])),
+  ...new Set(
+    Object.values(CONTENT).flatMap((c) => [
+      c.subjectKey,
+      c.headingKey,
+      c.actionKey ?? "",
+      c.subtitleKey ?? "",
+    ])
+  ),
   ...Object.values(RECURRING_HEADINGS),
   ...RECURRING_MESSAGE_KEYS,
   "what",
@@ -91,9 +143,16 @@ export const EMAIL_MESSAGE_KEYS = [
   "manage_this_event",
   "confirm_or_reject_request",
   "reason_for_reschedule",
+  "reason_for_reschedule_request",
   "yes",
   "no",
 ];
+
+function emailAction(kind: EmailKind, content: Content, t: TFunction): string | null {
+  if (kind === "organizer_requested") return t("confirm_or_reject_request");
+  if (!content.showManageLinks) return null;
+  return t(content.actionKey ?? "manage_this_event");
+}
 
 export function renderBookingEmail(
   kind: EmailKind,
@@ -110,15 +169,19 @@ export function renderBookingEmail(
   const attendee = booking.attendees[0];
   const eventTitle = booking.eventType?.title ?? booking.title;
   const date = `${formatTime(booking.startTime, recipient.timeZone, recipient.locale)} - ${formatTime(booking.endTime, recipient.timeZone, recipient.locale)}, ${formatLongDate(booking.startTime, recipient.timeZone, recipient.locale)}`;
-  const subject = t(content.subjectKey, {
+  const organizerName = booking.organizer.name ?? booking.organizer.email;
+  const values = {
     eventType: eventTitle,
     title: booking.title,
-    name: kind.startsWith("attendee")
-      ? (booking.organizer.name ?? booking.organizer.email)
-      : (attendee?.name ?? ""),
+    name: kind.startsWith("attendee") ? organizerName : (attendee?.name ?? ""),
     attendeeName: attendee?.name ?? "",
+    attendee: attendee?.name || attendee?.email || "",
+    organizer: organizerName,
     date,
-  });
+  };
+  const subject = t(content.subjectKey, values);
+  const heading = t(content.headingKey, values);
+  const subtitle = content.subtitleKey ? t(content.subtitleKey, values) : null;
 
   const notes = typeof booking.responses.notes === "string" ? booking.responses.notes : null;
   const rows: [string, string | null][] = [
@@ -148,24 +211,24 @@ export function renderBookingEmail(
         : null,
     ],
     [t("cancellation_reason"), kind.endsWith("cancelled") ? booking.cancellationReason : null],
+    [
+      t("reason_for_reschedule_request"),
+      kind.endsWith("reschedule_requested") ? booking.cancellationReason : null,
+    ],
   ];
   const visible = rows.filter((row): row is [string, string] => Boolean(row[1]));
-  const action =
-    kind === "organizer_requested"
-      ? t("confirm_or_reject_request")
-      : content.showManageLinks
-        ? t("manage_this_event")
-        : null;
+  const action = emailAction(kind, content, t);
 
   const text = [
-    t(content.headingKey),
+    heading,
+    ...(subtitle ? ["", subtitle] : []),
     "",
     ...visible.map(([label, value]) => `${label}: ${value}`),
     ...(action ? ["", `${action}: ${manageUrl}`] : []),
   ].join("\n");
   const html = emailLayout(
-    t(content.headingKey),
-    `${visible
+    heading,
+    `${subtitle ? emailParagraph(subtitle) : ""}${visible
       .map(
         ([label, value]) =>
           `<p style="margin:0 0 4px;font-size:13px;color:#6b7280">${htmlEscape(label)}</p><p style="margin:0 0 16px;font-size:15px;white-space:pre-line">${htmlEscape(value)}</p>`

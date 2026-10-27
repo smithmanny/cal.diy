@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 // Only referenced inside handlers, so this server-only module stays out of the client bundle.
 import { isEmailEnabled } from "../emails/container";
+import { editableLocationSchema } from "../event-types/types";
 import { authMiddleware, optionalUserId } from "../middleware";
 import { getBookingActionsService, getBookingService } from "./container";
 import { createBookingSchema, slotsQuerySchema } from "./types";
@@ -124,4 +125,25 @@ export const markNoShow = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) =>
     (await getBookingActionsService()).markNoShow(context.userId, data.uid, data.attendees)
+  );
+
+export const addBookingGuests = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(uidSchema.extend({ emails: z.array(z.string().trim().email().max(320)).min(1).max(10) }))
+  .handler(async ({ context, data }) =>
+    (await getBookingActionsService()).addGuests(context.userId, data.uid, data.emails)
+  );
+
+export const editBookingLocation = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(uidSchema.extend({ location: editableLocationSchema }))
+  .handler(async ({ context, data }) =>
+    (await getBookingActionsService()).editLocation(context.userId, data.uid, data.location)
+  );
+
+export const requestReschedule = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(uidSchema.extend({ reason: z.string().max(1000).optional() }))
+  .handler(async ({ context, data }) =>
+    (await getBookingActionsService()).requestReschedule(context.userId, data.uid, data.reason || null)
   );

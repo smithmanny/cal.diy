@@ -55,7 +55,10 @@ export type BookingEventType =
   | "BOOKING_RESCHEDULED"
   | "BOOKING_CANCELLED"
   | "BOOKING_REJECTED"
-  | "BOOKING_NO_SHOW_UPDATED";
+  | "BOOKING_NO_SHOW_UPDATED"
+  // Not webhook triggers in Cal; they update calendars and email the people on the booking.
+  | "BOOKING_GUESTS_ADDED"
+  | "BOOKING_LOCATION_CHANGED";
 
 export type BookingEvent = {
   type: BookingEventType;
@@ -70,6 +73,12 @@ export type BookingEvent = {
   seat?: { referenceUid: string; attendeeEmail: string };
   /** For BOOKING_NO_SHOW_UPDATED: the attendees whose flag changed, and Cal's message for it. */
   noShow?: { message: string; attendees: { email: string; noShow: boolean }[] };
+  /** For BOOKING_GUESTS_ADDED: who was added; they get a confirmation, the others an update. */
+  guestsAdded?: string[];
+  /** For BOOKING_LOCATION_CHANGED. */
+  previousLocation?: string | null;
+  /** A BOOKING_CANCELLED where the host asked the attendees to book a new time (Cal's request reschedule). */
+  rescheduleRequested?: boolean;
 };
 
 /** Side effects run after the booking is committed; a failing listener never fails the booking. */

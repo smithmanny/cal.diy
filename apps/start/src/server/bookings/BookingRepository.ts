@@ -193,6 +193,12 @@ export class BookingRepository {
           )
         )
     );
+    // A booking is replaced once: a second reschedule of it (say, after the host asked for one) loses.
+    const notYetReplaced = options.replacesUid
+      ? notExists(
+          this.db.select({ one: sql`1` }).from(booking).where(eq(booking.fromReschedule, options.replacesUid))
+        )
+      : undefined;
     const inserted = (uid: string) =>
       this.db.select({ id: booking.id }).from(booking).where(eq(booking.uid, uid));
     const firstInserted = inserted(first.uid);
@@ -203,7 +209,7 @@ export class BookingRepository {
           conditionalInsert(
             booking,
             { ...bookingValues, iCalUID: `${bookingValues.uid}@cal.diy` },
-            index === 0 ? slotIsFree : exists(firstInserted)
+            index === 0 ? (and(slotIsFree, notYetReplaced) ?? slotIsFree) : exists(firstInserted)
           )
         ),
         ...newAttendees.map((newAttendee) =>
@@ -543,6 +549,27 @@ export class BookingRepository {
     }
   ) {
     if (uids.length) await this.db.update(booking).set(data).where(inArray(booking.uid, uids));
+  }
+
+  async hasReplacement(uid: string): Promise<boolean> {
+    const [found] = await this.db
+      .select({ id: booking.id })
+      .from(booking)
+      .where(eq(booking.fromReschedule, uid))
+      .limit(1);
+    return Boolean(found);
+  }
+
+  /** Adds attendees and records them in the booking's `guests` response, as Cal does. */
+  async addAttendees(bookingId: number, attendees: NewAttendee[], responses: { [key: string]: JsonValue }) {
+    const [first, ...rest] = attendees;
+    if (!first) return;
+    await this.db.batch([
+      this.db
+        .insert(attendee)
+        .values([first, ...rest].map((added) => ({ ...added, email: added.email.toLowerCase(), bookingId }))),
+      this.db.update(booking).set({ responses }).where(eq(booking.id, bookingId)),
+    ]);
   }
 
   async updateLocationAndMetadata(
