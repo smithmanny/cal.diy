@@ -1,7 +1,7 @@
 import "@tanstack/react-start/server-only";
 
 import type { Messages } from "~/lib/i18n";
-import { PLURAL_SUFFIXES } from "~/lib/i18n";
+import { nestedKeys, PLURAL_SUFFIXES } from "~/lib/i18n";
 import { DEFAULT_LOCALE, matchLocale } from "~/lib/locales";
 import { readStaticAsset } from "#runtime";
 
@@ -43,10 +43,16 @@ export async function pickMessages(locale: string, keys: readonly string[]): Pro
     loadCatalog(DEFAULT_LOCALE),
   ]);
   const picked: Messages = {};
-  for (const key of keys) {
+  const pending = [...keys];
+  while (pending.length) {
+    const key = pending.pop() as string;
     for (const variant of [key, ...PLURAL_SUFFIXES.map((suffix) => `${key}${suffix}`)]) {
+      if (variant in picked) continue;
       const message = lookup(primary, variant) ?? lookup(fallback, variant);
-      if (message !== undefined) picked[variant] = message;
+      if (message === undefined) continue;
+      picked[variant] = message;
+      // Messages that nest others ($t(minute_timeUnit)) need those too.
+      pending.push(...nestedKeys(message).filter((nested) => !(nested in picked)));
     }
   }
   return picked;

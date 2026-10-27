@@ -165,6 +165,12 @@ export function AdvancedEditor({ form, set, t }: EditorProps) {
         <ConfirmationOptions form={form} set={set} t={t} />
       </ToggleBlock>
       <ToggleBlock
+        title={t("requires_booker_email_verification")}
+        description={t("description_requires_booker_email_verification")}
+        checked={form.requiresBookerEmailVerification}
+        onCheckedChange={(checked) => set("requiresBookerEmailVerification", checked)}
+      />
+      <ToggleBlock
         title={t("disable_cancelling")}
         description={withoutLinks(t("description_disable_cancelling"))}
         checked={form.disableCancelling}
@@ -279,6 +285,8 @@ export const ADVANCED_MESSAGE_KEYS = [
   "minutes",
   "hours",
   "requires_confirmation_will_block_slot_description",
+  "requires_booker_email_verification",
+  "description_requires_booker_email_verification",
   "disable_cancelling",
   "description_disable_cancelling",
   "disable_rescheduling",

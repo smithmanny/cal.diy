@@ -13,10 +13,20 @@ import { useT } from "~/lib/i18n";
 import { LOCATION_LABEL_KEYS } from "~/lib/location-labels";
 import { loadMessages } from "~/lib/messages";
 import { NOINDEX_META } from "~/lib/seo";
-import { createBooking, getPublicEvent } from "~/server/bookings/functions";
+import { createBooking, getPublicEvent, sendBookerVerificationCode } from "~/server/bookings/functions";
 
 const MESSAGE_KEYS = [
   ...BOOKING_FIELD_MESSAGE_KEYS,
+  "duration",
+  "multiple_duration_mins",
+  "invalid_event_length",
+  "verification_code_sent",
+  "verification_code",
+  "email_verification_code_placeholder",
+  "email_verification_required",
+  "invalid_verification_code",
+  "too_many_attempts",
+  "resend",
   "powered_by",
   ...Object.values(LOCATION_LABEL_KEYS),
   "minutes",
@@ -80,11 +90,14 @@ function BookerPage() {
   const { username, slug } = Route.useParams();
   const t = useT();
   const navigate = useNavigate();
+  const [duration, setDuration] = useState(event.eventType.length);
+  const hasDurationChoice = event.eventType.durations.length > 1;
   const slots = useMonthSlots({
     username,
     slug,
     rescheduleUid,
     lockedTimeZone: event.eventType.lockedTimeZone,
+    duration: hasDurationChoice ? duration : undefined,
   });
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [hour12, setHour12] = useStoredHour12();
@@ -99,6 +112,8 @@ function BookerPage() {
         timeZone: slots.timeZone,
         locale,
         responses: submission.responses,
+        duration: hasDurationChoice ? duration : undefined,
+        verificationCode: submission.verificationCode,
         rescheduleUid: submission.rescheduleUid ?? rescheduleUid,
       },
     });
@@ -122,6 +137,11 @@ function BookerPage() {
               rescheduling={Boolean(rescheduleUid)}
               timeZone={slots.timeZone}
               onTimeZoneChange={slots.setTimeZone}
+              duration={duration}
+              onDurationChange={(minutes) => {
+                setDuration(minutes);
+                setSelectedSlot(null);
+              }}
               t={t}
             />
             <section className="p-6">
@@ -133,6 +153,11 @@ function BookerPage() {
                   locations={event.eventType.locations}
                   fields={event.eventType.bookingFields}
                   view={rescheduleUid ? "reschedule" : "booking"}
+                  onSendCode={
+                    event.eventType.requiresBookerEmailVerification && !rescheduleUid
+                      ? (email) => sendBookerVerificationCode({ data: { username, slug, email, locale } })
+                      : undefined
+                  }
                   onBack={() => setSelectedSlot(null)}
                   onSubmit={book}
                   t={t}

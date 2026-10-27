@@ -4796,5 +4796,6 @@
   "move_up": "Move up",
   "move_down": "Move down",
   "option_label": "Option",
+  "invalid_event_length": "This event can't be booked for that length of time",
   "ADD_NEW_STRINGS_ABOVE_THIS_LINE_TO_PREVENT_MERGE_CONFLICTS": "↑↑↑↑↑↑↑↑↑↑↑↑↑ Add your new strings above here ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑"
 }

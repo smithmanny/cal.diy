@@ -207,3 +207,29 @@ export function renderAuthEmail(
   const text = [...content.lines, "", `${content.button}: ${url}`, "", ...content.after].join("\n");
   return { subject: content.subject, html, text };
 }
+
+export const CODE_EMAIL_MESSAGE_KEYS = [
+  "verify_email_subject_verifying_email",
+  "verify_email_email_header",
+  "verify_email_by_code_email_body",
+  "happy_scheduling",
+];
+
+/** A one-time code a booker types into the booking page (Cal's booker email verification). */
+export function renderCodeEmail(
+  code: string,
+  messages: Messages
+): { subject: string; html: string; text: string } {
+  const t = createT(messages);
+  const subject = t("verify_email_subject_verifying_email", { appName: "Cal.diy" });
+  const body = t("verify_email_by_code_email_body");
+  const html = emailLayout(
+    t("verify_email_email_header"),
+    [
+      emailParagraph(body),
+      `<p style="margin:16px 0;font-size:28px;font-weight:600;letter-spacing:6px">${htmlEscape(code)}</p>`,
+      emailParagraph(t("happy_scheduling")),
+    ].join("\n")
+  );
+  return { subject, html, text: [body, "", code, "", t("happy_scheduling")].join("\n") };
+}

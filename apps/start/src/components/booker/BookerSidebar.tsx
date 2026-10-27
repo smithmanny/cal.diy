@@ -9,12 +9,16 @@ export function BookerSidebar({
   rescheduling,
   timeZone,
   onTimeZoneChange,
+  duration,
+  onDurationChange,
   t,
 }: {
   event: PublicEventDto;
   rescheduling: boolean;
   timeZone: string | null;
   onTimeZoneChange: (timeZone: string) => void;
+  duration: number;
+  onDurationChange: (minutes: number) => void;
   t: TFunction;
 }) {
   const { eventType, host } = event;
@@ -26,10 +30,30 @@ export function BookerSidebar({
       {eventType.description && (
         <p className="whitespace-pre-line text-muted-foreground text-sm">{eventType.description}</p>
       )}
-      <p className="flex items-center gap-2 text-sm">
-        <ClockIcon className="size-4 text-muted-foreground" />
-        {eventType.length} {t("minutes")}
-      </p>
+      {eventType.durations.length > 1 ? (
+        <div
+          role="radiogroup"
+          aria-label={t("duration")}
+          className="flex flex-wrap items-center gap-1.5 text-sm">
+          <ClockIcon className="size-4 text-muted-foreground" />
+          {eventType.durations.map((minutes) => (
+            <button
+              key={minutes}
+              type="button"
+              role="radio"
+              aria-checked={duration === minutes}
+              onClick={() => onDurationChange(minutes)}
+              className={`rounded-md border px-2 py-0.5 ${duration === minutes ? "border-primary bg-primary text-primary-foreground" : "hover:bg-muted"}`}>
+              {t("multiple_duration_mins", { count: minutes })}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <p className="flex items-center gap-2 text-sm">
+          <ClockIcon className="size-4 text-muted-foreground" />
+          {eventType.length} {t("minutes")}
+        </p>
+      )}
       {eventType.locations.map((location) => (
         <p key={location.type} className="flex items-center gap-2 text-sm">
           <MapPinIcon className="size-4 text-muted-foreground" />

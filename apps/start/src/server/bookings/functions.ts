@@ -27,6 +27,18 @@ export const createBooking = createServerFn({ method: "POST" })
   .validator(createBookingSchema)
   .handler(async ({ data }) => (await getBookingService()).create(data, await optionalUserId()));
 
+export const sendBookerVerificationCode = createServerFn({ method: "POST" })
+  .validator(
+    usernameSchema.extend({
+      slug: z.string().min(1).max(200),
+      email: z.string().trim().email().max(320),
+      locale: z.string().max(20).default("en"),
+    })
+  )
+  .handler(async ({ data }) =>
+    (await getBookingService()).sendVerificationCode(data.username, data.slug, data.email, data.locale)
+  );
+
 // The uid is an unguessable token handed to the attendee and host, as in Cal.
 
 export const getBookingByUid = createServerFn({ method: "GET" })

@@ -19,6 +19,7 @@ import {
   parseEventTypeColor,
   parseIntervalLimit,
   parseMetadata,
+  parseMultipleDuration,
   toPeriodType,
 } from "./fields";
 import {
@@ -53,6 +54,7 @@ function toDto(row: EventTypeRow): EventTypeDto {
     slug: row.slug,
     description: row.description,
     length: row.length,
+    multipleDuration: parseMultipleDuration(row.metadata),
     hidden: row.hidden,
     scheduleId: row.scheduleId,
     locations: parseLocations(row.locations),
@@ -83,6 +85,7 @@ function toDto(row: EventTypeRow): EventTypeDto {
     hideCalendarNotes: row.hideCalendarNotes,
     hideCalendarEventDetails: row.hideCalendarEventDetails,
     hideOrganizerEmail: row.hideOrganizerEmail,
+    requiresBookerEmailVerification: row.requiresBookerEmailVerification,
     lockTimeZoneToggleOnBookingPage: row.lockTimeZoneToggleOnBookingPage,
     lockedTimeZone: row.lockedTimeZone,
     eventTypeColor: parseEventTypeColor(row.eventTypeColor),
@@ -196,10 +199,15 @@ export class EventTypeService {
           ? input.requiresConfirmationThreshold
           : null,
         disableStandardEmails: disableStandardEmails(row.metadata, input.disableConfirmationEmails),
+        multipleDuration:
+          input.multipleDuration && input.multipleDuration.length > 1
+            ? [...new Set(input.multipleDuration)].sort((a, b) => a - b)
+            : null,
       }),
       hideCalendarNotes: input.hideCalendarNotes,
       hideCalendarEventDetails: input.hideCalendarEventDetails,
       hideOrganizerEmail: input.hideOrganizerEmail,
+      requiresBookerEmailVerification: input.requiresBookerEmailVerification,
       lockTimeZoneToggleOnBookingPage: input.lockTimeZoneToggleOnBookingPage,
       lockedTimeZone: input.lockTimeZoneToggleOnBookingPage ? input.lockedTimeZone : null,
       eventTypeColor: input.eventTypeColor,

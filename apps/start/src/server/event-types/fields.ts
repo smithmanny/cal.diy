@@ -56,3 +56,11 @@ export function parseDisabledConfirmationEmails(
     return { host: false, attendee: false };
   return { host: flag(confirmation.host), attendee: flag(confirmation.attendee) };
 }
+
+/** The booker's choice of lengths, or just the event's length. */
+export function parseMultipleDuration(metadata: unknown): number[] | null {
+  const value = parseMetadata(metadata).multipleDuration;
+  if (!Array.isArray(value)) return null;
+  const lengths = value.filter((item): item is number => Number.isInteger(item) && Number(item) > 0);
+  return lengths.length ? [...new Set(lengths)].sort((a, b) => a - b) : null;
+}

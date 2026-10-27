@@ -52,6 +52,7 @@ const detailColumns = {
   lockedTimeZone: eventType.lockedTimeZone,
   eventTypeColor: eventType.eventTypeColor,
   interfaceLanguage: eventType.interfaceLanguage,
+  requiresBookerEmailVerification: eventType.requiresBookerEmailVerification,
 };
 
 type WritableColumns = Partial<Omit<typeof eventType.$inferInsert, "id" | "userId" | "teamId">>;

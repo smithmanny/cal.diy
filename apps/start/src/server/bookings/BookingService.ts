@@ -30,6 +30,7 @@ import {
   parseDisabledConfirmationEmails,
   parseEventTypeColor,
   parseIntervalLimit,
+  parseMultipleDuration,
   toPeriodType,
 } from "../event-types/fields";
 import { type EventLocation, eventLocationSchema } from "../event-types/types";
@@ -39,6 +40,7 @@ import type { ScheduleRepository } from "../schedules/ScheduleRepository";
 import { isValidTimeZone } from "../schedules/scheduleMapper";
 import type { TravelScheduleRepository } from "../users/TravelScheduleRepository";
 import type { UserRepository } from "../users/UserRepository";
+import type { BookerVerificationService } from "../verification/BookerVerificationService";
 import type { BookingRepository } from "./BookingRepository";
 import type { BookingEvent, BookingListener, BookingSnapshot } from "./events";
 import type {
@@ -62,6 +64,7 @@ type Deps = {
   travelScheduleRepo: Pick<TravelScheduleRepository, "findByUserId">;
   oooRepo: Pick<OutOfOfficeRepository, "findOverlappingIncludeReasonAndUsers">;
   holidayService: Pick<HolidayService, "blockedDays">;
+  bookerVerification?: Pick<BookerVerificationService, "send" | "verify">;
   busyTimesProviders?: BusyTimesProvider[];
   listeners?: BookingListener[];
   runInBackground?: (promise: Promise<unknown>) => void;
@@ -77,6 +80,17 @@ function bookingFieldsOf(eventType: { bookingFields: unknown; disableGuests: boo
 }
 
 type EventTypeRow = NonNullable<Awaited<ReturnType<EventTypeRepository["findByUserIdAndSlug"]>>>;
+
+/** Cal's validateEventLength: the booker's pick must be one the host offers. */
+function eventLength(
+  eventType: Pick<EventTypeRow, "length" | "metadata">,
+  requested: number | undefined
+): number {
+  if (requested === undefined) return eventType.length;
+  const allowed = parseMultipleDuration(eventType.metadata) ?? [eventType.length];
+  if (!allowed.includes(requested)) throw new AppError("invalid_event_length");
+  return requested;
+}
 
 /** Cal's isWithinMinimumRescheduleNotice: the booking starts soon, but hasn't started yet. */
 function isWithinRescheduleNotice(startTime: Date, notice: number | null | undefined, now: Date): boolean {
@@ -201,6 +215,7 @@ export class BookingService {
         slug: eventType.slug,
         description: eventType.description,
         length: eventType.length,
+        durations: parseMultipleDuration(eventType.metadata) ?? [eventType.length],
         requiresConfirmation: eventType.requiresConfirmation,
         // Only what the booker needs to choose; host phone numbers and links are revealed after booking.
         locations: parseLocations(eventType.locations).map((location) =>
@@ -210,6 +225,7 @@ export class BookingService {
         ),
         bookingFields: bookingFieldsOf(eventType),
         // Cal falls back to the host's zone when the event locks one without naming it.
+        requiresBookerEmailVerification: eventType.requiresBookerEmailVerification,
         lockedTimeZone: eventType.lockTimeZoneToggleOnBookingPage
           ? eventType.lockedTimeZone || host.timeZone
           : null,
@@ -231,7 +247,8 @@ export class BookingService {
       from,
       to,
       query.timeZone,
-      query.rescheduleUid
+      query.rescheduleUid,
+      eventLength(eventType, query.duration)
     );
     return {
       slots: slots.map((slot) => slot.toISOString()),
@@ -262,38 +279,21 @@ export class BookingService {
     const { host, eventType } = await this.loadEvent(input.username, input.slug);
     const now = this.deps.now?.() ?? new Date();
     const start = new Date(input.start);
-    const end = new Date(start.getTime() + eventType.length * 60_000);
+    const length = eventLength(eventType, input.duration);
+    const end = new Date(start.getTime() + length * 60_000);
 
     const original = input.rescheduleUid
       ? await this.findReschedulable(input.rescheduleUid, host.id, actorUserId === host.id, now)
       : null;
 
-    // The slot list is the source of truth for what may be booked (hours, buffers, notice, window).
-    const dayAround = 24 * 60 * 60 * 1000;
-    const { slots } = await this.computeSlots(
-      host,
-      eventType,
-      new Date(start.getTime() - dayAround),
-      new Date(start.getTime() + dayAround),
-      input.timeZone,
-      original?.uid
-    );
-    if (!slots.some((slot) => slot.getTime() === start.getTime()))
-      throw new AppError("booking_conflict_error", 409);
+    await this.assertSlotOffered(host, eventType, start, input.timeZone, original?.uid, length);
     const locations = parseLocations(eventType.locations);
-    const { responses, errors } = validateBookingResponses(bookingFieldsOf(eventType), input.responses, {
-      view: original ? "reschedule" : "booking",
-      locationTypes: locations.map((option) => option.type),
-    });
-    if (errors.length) {
-      const [first] = errors;
-      throw new AppError(first.key, 400, { field: first.field, ...first.values });
-    }
+    const responses = this.checkedResponses(eventType, input.responses, locations, Boolean(original));
     // name and email are system fields that are always shown and required.
     const name = String(responses.name);
     const email = String(responses.email);
-    // Like Cal, moving an existing booking never counts against the booker's limit.
-    if (!original) await this.assertBookerUnderLimit(eventType, email);
+    // Like Cal, moving an existing booking never counts against the booker's limit or needs a code.
+    if (!original) await this.assertNewBookerAllowed(eventType, email, input.verificationCode);
 
     const locationResponse = responses.location as LocationResponse | undefined;
     const location = this.resolveLocation(locations, locationResponse);
@@ -301,21 +301,7 @@ export class BookingService {
       (locationResponse?.value === "phone" ? locationResponse.optionValue : undefined) ||
       (typeof responses.attendeePhoneNumber === "string" ? responses.attendeePhoneNumber : null);
     const notes = typeof responses.notes === "string" ? responses.notes : null;
-    const locationKey = LOCATION_LABEL_KEYS[locationResponse?.value ?? ""];
-    const messages = await pickMessages(host.locale ?? "en", [
-      "event_between_users",
-      ...(locationKey ? [locationKey] : []),
-    ]);
-    const title = getEventName({
-      template: eventType.eventName,
-      eventTypeTitle: eventType.title,
-      host: host.name ?? host.username ?? host.email,
-      attendeeName: name,
-      locationLabel: (locationKey && messages[locationKey]) || location || "",
-      eventDuration: eventType.length,
-      responses,
-      defaultTemplate: messages.event_between_users ?? "{{eventName}} between {{host}} and {{attendeeName}}",
-    });
+    const title = await this.bookingTitle({ host, eventType, responses, name, location, length });
     const status = this.needsConfirmation(eventType, start, now) ? "PENDING" : "ACCEPTED";
 
     // Cal drops guests that repeat the booker.
@@ -348,18 +334,7 @@ export class BookingService {
     );
     if (!created) throw new AppError("booking_conflict_error", 409);
 
-    const snapshot = await this.snapshot(uid);
-    if (snapshot) {
-      if (original) {
-        const previous = await this.snapshot(original.uid);
-        this.emit({ type: "BOOKING_RESCHEDULED", booking: snapshot, rescheduledFrom: previous ?? undefined });
-      } else {
-        this.emit({
-          type: snapshot.status === "PENDING" ? "BOOKING_REQUESTED" : "BOOKING_CREATED",
-          booking: snapshot,
-        });
-      }
-    }
+    await this.emitCreated(uid, original?.uid ?? null);
     return {
       uid,
       status,
@@ -378,6 +353,104 @@ export class BookingService {
           })
         : null,
     };
+  }
+
+  private async emitCreated(uid: string, rescheduledFromUid: string | null): Promise<void> {
+    const snapshot = await this.snapshot(uid);
+    if (!snapshot) return;
+    if (rescheduledFromUid) {
+      const previous = await this.snapshot(rescheduledFromUid);
+      this.emit({ type: "BOOKING_RESCHEDULED", booking: snapshot, rescheduledFrom: previous ?? undefined });
+      return;
+    }
+    this.emit({
+      type: snapshot.status === "PENDING" ? "BOOKING_REQUESTED" : "BOOKING_CREATED",
+      booking: snapshot,
+    });
+  }
+
+  /** The slot list is the source of truth for what may be booked (hours, buffers, notice, window). */
+  private async assertSlotOffered(
+    host: NonNullable<Awaited<ReturnType<UserRepository["findByUsername"]>>>,
+    eventType: EventTypeRow,
+    start: Date,
+    timeZone: string,
+    excludeUid: string | undefined,
+    length: number
+  ): Promise<void> {
+    const dayAround = 24 * 60 * 60 * 1000;
+    const { slots } = await this.computeSlots(
+      host,
+      eventType,
+      new Date(start.getTime() - dayAround),
+      new Date(start.getTime() + dayAround),
+      timeZone,
+      excludeUid,
+      length
+    );
+    if (!slots.some((slot) => slot.getTime() === start.getTime()))
+      throw new AppError("booking_conflict_error", 409);
+  }
+
+  /** The booker's answers, checked against the event's questions; the first problem is thrown. */
+  private checkedResponses(
+    eventType: EventTypeRow,
+    raw: Record<string, unknown>,
+    locations: EventLocation[],
+    rescheduling: boolean
+  ) {
+    const { responses, errors } = validateBookingResponses(bookingFieldsOf(eventType), raw, {
+      view: rescheduling ? "reschedule" : "booking",
+      locationTypes: locations.map((option) => option.type),
+    });
+    if (errors.length) {
+      const [first] = errors;
+      throw new AppError(first.key, 400, { field: first.field, ...first.values });
+    }
+    return responses;
+  }
+
+  private async assertNewBookerAllowed(eventType: EventTypeRow, email: string, code: string | undefined) {
+    await this.assertBookerUnderLimit(eventType, email);
+    if (!eventType.requiresBookerEmailVerification) return;
+    if (!code || !this.deps.bookerVerification)
+      throw new AppError("email_verification_required", 400, { field: "verificationCode" });
+    await this.deps.bookerVerification.verify(email, code);
+  }
+
+  private async bookingTitle(booking: {
+    host: NonNullable<Awaited<ReturnType<UserRepository["findByUsername"]>>>;
+    eventType: EventTypeRow;
+    responses: Record<string, unknown>;
+    name: string;
+    location: string | null;
+    length: number;
+  }): Promise<string> {
+    const { host, eventType, responses } = booking;
+    const locationValue = (responses.location as LocationResponse | undefined)?.value ?? "";
+    const locationKey = LOCATION_LABEL_KEYS[locationValue];
+    const messages = await pickMessages(host.locale ?? "en", [
+      "event_between_users",
+      ...(locationKey ? [locationKey] : []),
+    ]);
+    return getEventName({
+      template: eventType.eventName,
+      eventTypeTitle: eventType.title,
+      host: host.name ?? host.username ?? host.email,
+      attendeeName: booking.name,
+      locationLabel: (locationKey && messages[locationKey]) || booking.location || "",
+      eventDuration: booking.length,
+      responses,
+      defaultTemplate: messages.event_between_users ?? "{{eventName}} between {{host}} and {{attendeeName}}",
+    });
+  }
+
+  /** Emails the booker a code, only for event types that ask for one. */
+  async sendVerificationCode(username: string, slug: string, email: string, locale: string): Promise<void> {
+    const { eventType } = await this.loadEvent(username, slug);
+    if (!eventType.requiresBookerEmailVerification || !this.deps.bookerVerification)
+      throw new AppError("something_went_wrong");
+    await this.deps.bookerVerification.send(email, locale);
   }
 
   async getBooking(uid: string): Promise<BookingDetailsDto> {
@@ -595,7 +668,8 @@ export class BookingService {
     from: Date,
     to: Date,
     inviteeTimeZone: string,
-    excludeUid?: string
+    excludeUid: string | undefined,
+    length: number
   ): Promise<{ slots: Date[]; outOfOffice: OutOfOfficeData }> {
     const scheduleId = eventType.scheduleId ?? host.defaultScheduleId;
     const schedule = scheduleId
@@ -604,7 +678,7 @@ export class BookingService {
     if (!schedule || schedule.userId !== host.id) return { slots: [], outOfOffice: {} };
 
     const event: SlotEventConfig = {
-      length: eventType.length,
+      length,
       slotInterval: eventType.slotInterval,
       minimumBookingNotice: eventType.minimumBookingNotice,
       beforeEventBuffer: eventType.beforeEventBuffer,

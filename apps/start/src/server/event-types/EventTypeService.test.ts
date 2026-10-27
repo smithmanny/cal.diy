@@ -198,6 +198,23 @@ describe("EventTypeService", () => {
     expect(after.metadata).toEqual({ disableStandardEmails: { all: { host: true } } });
   });
 
+  it("stores multiple durations in Cal's metadata", async () => {
+    const { id } = await service.create(ownerId, {
+      title: "Intro",
+      slug: "intro",
+      description: null,
+      length: 30,
+    });
+    await service.update(ownerId, id, {
+      ...(await baseInput(id)),
+      length: 30,
+      multipleDuration: [60, 30, 15],
+    });
+    expect((await service.get(ownerId, id)).multipleDuration).toEqual([15, 30, 60]);
+    await service.update(ownerId, id, { ...(await baseInput(id)), multipleDuration: [30] });
+    expect((await service.get(ownerId, id)).multipleDuration).toBeNull();
+  });
+
   it("rejects a URL the same user already uses, but allows it for other users", async () => {
     await service.create(ownerId, { title: "Intro", slug: "intro", description: null, length: 30 });
     await expect(

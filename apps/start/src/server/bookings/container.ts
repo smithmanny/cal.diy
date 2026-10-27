@@ -7,6 +7,7 @@ import { OutOfOfficeRepository } from "../out-of-office/OutOfOfficeRepository";
 import { ScheduleRepository } from "../schedules/ScheduleRepository";
 import { TravelScheduleRepository } from "../users/TravelScheduleRepository";
 import { UserRepository } from "../users/UserRepository";
+import { createBookerVerification } from "../verification/container";
 import { BookingRepository } from "./BookingRepository";
 import { BookingService } from "./BookingService";
 import { getBookingListeners, getBusyTimesProviders } from "./integrations";
@@ -22,6 +23,7 @@ export async function getBookingService(): Promise<BookingService> {
     travelScheduleRepo: new TravelScheduleRepository(db),
     oooRepo: new OutOfOfficeRepository(db),
     holidayService: createHolidayService(db),
+    bookerVerification: createBookerVerification(db),
     busyTimesProviders: getBusyTimesProviders(db),
     listeners: getBookingListeners(db),
     runInBackground,

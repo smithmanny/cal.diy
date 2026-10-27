@@ -1,4 +1,5 @@
 import { Button } from "@coss/ui/components/button";
+import { Input } from "@coss/ui/components/input";
 import { ArrowLeftIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import {
@@ -16,10 +17,60 @@ import type { PublicEventLocation } from "~/server/bookings/types";
 import { FormError } from "../AuthCard";
 import { BookingFieldInput } from "./BookingFieldInput";
 
-type BookingSubmission = { responses: Record<string, unknown>; rescheduleUid?: string };
+type BookingSubmission = {
+  responses: Record<string, unknown>;
+  rescheduleUid?: string;
+  verificationCode?: string;
+};
 
 type SubmitError = { key: string; values?: Record<string, string | number> };
 type FieldErrors = Record<string, SubmitError>;
+
+/** Cal's booker email verification: a code is emailed, then typed in before booking. */
+function VerificationCodeStep({
+  code,
+  onCodeChange,
+  error,
+  onResend,
+  sending,
+  t,
+}: {
+  code: string;
+  onCodeChange: (code: string) => void;
+  error: string | null;
+  onResend: () => void;
+  sending: boolean;
+  t: TFunction;
+}) {
+  return (
+    <div className="flex flex-col gap-2 rounded-md border p-3 text-sm">
+      <p className="text-muted-foreground">{t("verification_code_sent")}</p>
+      <label htmlFor="booking-verification-code" className="font-medium">
+        {t("verification_code")}
+      </label>
+      <Input
+        id="booking-verification-code"
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        maxLength={6}
+        placeholder={t("email_verification_code_placeholder")}
+        aria-invalid={error ? true : undefined}
+        value={code}
+        onChange={(event) => onCodeChange(event.target.value.replace(/\D/g, ""))}
+      />
+      {error && <p className="text-destructive-foreground">{error}</p>}
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="self-start"
+        disabled={sending}
+        onClick={onResend}>
+        {t("resend")}
+      </Button>
+    </div>
+  );
+}
 
 function initialValues(locations: PublicEventLocation[]): Record<string, unknown> {
   return locations.length ? { location: { value: locations[0].type, optionValue: "" } } : {};
@@ -34,6 +85,7 @@ export function BookingForm({
   view,
   onBack,
   onSubmit,
+  onSendCode,
   t,
 }: {
   slot: string;
@@ -44,8 +96,13 @@ export function BookingForm({
   view: BookingView;
   onBack: () => void;
   onSubmit: (submission: BookingSubmission) => Promise<void>;
+  /** Set when the event type requires booker email verification; emails a code. */
+  onSendCode?: (email: string) => Promise<void>;
   t: TFunction;
 }) {
+  const [code, setCode] = useState("");
+  const [codeSent, setCodeSent] = useState(false);
+  const [sendingCode, setSendingCode] = useState(false);
   const [values, setValues] = useState<Record<string, unknown>>(() => initialValues(locations));
   const hour12 = useHour12() ?? localeUsesHour12(locale);
   const [error, setError] = useState<SubmitError | null>(null);
@@ -85,7 +142,25 @@ export function BookingForm({
       );
       return;
     }
-    void submit({ responses: values });
+    if (onSendCode && !codeSent) {
+      void sendCode();
+      return;
+    }
+    void submit({ responses: values, verificationCode: onSendCode ? code : undefined });
+  }
+
+  async function sendCode() {
+    if (!onSendCode) return;
+    setSendingCode(true);
+    setError(null);
+    try {
+      await onSendCode(String(values.email ?? ""));
+      setCodeSent(true);
+    } catch (thrown) {
+      setError({ key: errorMessageKey(thrown), values: errorMessageValues(thrown) });
+    } finally {
+      setSendingCode(false);
+    }
   }
 
   // The host allows one upcoming booking per person, and offered to move the existing one here.
@@ -117,6 +192,16 @@ export function BookingForm({
           />
         );
       })}
+      {codeSent && (
+        <VerificationCodeStep
+          code={code}
+          onCodeChange={setCode}
+          error={fieldErrors.verificationCode ? t(fieldErrors.verificationCode.key) : null}
+          onResend={() => void sendCode()}
+          sending={sendingCode}
+          t={t}
+        />
+      )}
       {rescheduleOffer && lastSubmission ? (
         <div role="alert" className="flex flex-col gap-2 rounded-md border p-3 text-sm">
           <p>
@@ -135,7 +220,7 @@ export function BookingForm({
       ) : (
         <FormError message={error && t(error.key, error.values)} />
       )}
-      <Button type="submit" disabled={submitting}>
+      <Button type="submit" disabled={submitting || sendingCode}>
         {submitting ? t("loading") : t("confirm")}
       </Button>
     </form>

@@ -7,10 +7,12 @@ import type { EmailSender } from "./sender";
 import {
   AUTH_EMAIL_MESSAGE_KEYS,
   type AuthEmailKind,
+  CODE_EMAIL_MESSAGE_KEYS,
   EMAIL_MESSAGE_KEYS,
   type EmailKind,
   renderAuthEmail,
   renderBookingEmail,
+  renderCodeEmail,
 } from "./templates";
 
 type Deps = {
@@ -120,6 +122,13 @@ export class EmailService {
     const messages = await this.deps.loadMessages(recipient.locale ?? "en", AUTH_EMAIL_MESSAGE_KEYS);
     const { subject, html, text } = renderAuthEmail(kind, recipient, url, messages);
     await this.deps.send({ from: this.deps.from, to: recipient.email, subject, html, text });
+  }
+
+  /** A booker's verification code; failures reach the caller so the booker can retry. */
+  async sendBookerCode(email: string, code: string, locale: string): Promise<void> {
+    const messages = await this.deps.loadMessages(locale, CODE_EMAIL_MESSAGE_KEYS);
+    const { subject, html, text } = renderCodeEmail(code, messages);
+    await this.deps.send({ from: this.deps.from, to: email, subject, html, text });
   }
 
   private async sendOne(

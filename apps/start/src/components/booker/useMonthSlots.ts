@@ -16,8 +16,10 @@ export function useMonthSlots(query: {
   rescheduleUid?: string;
   /** The event's locked zone, used instead of the browser's. */
   lockedTimeZone?: string | null;
+  /** The length the booker picked, when the event offers several. */
+  duration?: number;
 }) {
-  const { username, slug, rescheduleUid, lockedTimeZone } = query;
+  const { username, slug, rescheduleUid, lockedTimeZone, duration } = query;
   const [timeZone, setTimeZone] = useState<string | null>(null);
   const [cursor, setCursor] = useState<MonthCursor | null>(null);
   const [result, setResult] = useState<SlotsDto | null>(null);
@@ -37,7 +39,15 @@ export function useMonthSlots(query: {
     setErrorKey(null);
     const { from, to } = monthRangeInTimeZone(cursor.year, cursor.month, timeZone);
     getAvailableSlots({
-      data: { username, slug, from: from.toISOString(), to: to.toISOString(), timeZone, rescheduleUid },
+      data: {
+        username,
+        slug,
+        from: from.toISOString(),
+        to: to.toISOString(),
+        timeZone,
+        rescheduleUid,
+        duration,
+      },
     })
       .then((loaded) => {
         if (!cancelled) setResult(loaded);
@@ -50,7 +60,7 @@ export function useMonthSlots(query: {
     return () => {
       cancelled = true;
     };
-  }, [timeZone, cursor, username, slug, rescheduleUid]);
+  }, [timeZone, cursor, username, slug, rescheduleUid, duration]);
 
   const slotsByDate = useMemo(() => {
     const grouped = new Map<string, string[]>();

@@ -12,6 +12,7 @@ import {
   BOOKING_QUESTIONS_MESSAGE_KEYS,
   BookingQuestionsEditor,
 } from "~/components/event-types/BookingQuestionsEditor";
+import { DURATION_MESSAGE_KEYS, DurationEditor } from "~/components/event-types/DurationEditor";
 import { Field, Section } from "~/components/event-types/EditorLayout";
 import { LIMITS_MESSAGE_KEYS, LimitsEditor, limitsErrorKey } from "~/components/event-types/LimitsEditor";
 import { LOCATIONS_MESSAGE_KEYS, LocationsEditor } from "~/components/event-types/LocationsEditor";
@@ -25,6 +26,7 @@ import { listSchedules } from "~/server/schedules/functions";
 
 const MESSAGE_KEYS = [
   ...ADVANCED_MESSAGE_KEYS,
+  ...DURATION_MESSAGE_KEYS,
   ...BOOKING_QUESTIONS_MESSAGE_KEYS,
   ...LOCATIONS_MESSAGE_KEYS,
   ...LIMITS_MESSAGE_KEYS,
@@ -70,6 +72,9 @@ function EventTypeEditorPage() {
     const redirect = form.successRedirectUrl?.trim() || null;
     const invalid =
       limitsErrorKey(form) ??
+      (form.multipleDuration && !form.multipleDuration.length
+        ? "event_setup_multiple_duration_error"
+        : null) ??
       (redirect && !/^https?:\/\/\S+$/i.test(redirect) ? "url_validation_error" : null);
     if (invalid) {
       setStatus({ kind: "error", key: invalid });
@@ -152,15 +157,7 @@ function EventTypeEditorPage() {
               />
             </Field>
           </div>
-          <Field label={`${t("duration")} (${t("minutes")})`}>
-            <Input
-              type="number"
-              min={1}
-              max={1440}
-              value={form.length}
-              onChange={(e) => set("length", Number(e.target.value))}
-            />
-          </Field>
+          <DurationEditor form={form} set={set} t={t} />
         </div>
         <Field label={t("location")}>
           <LocationsEditor

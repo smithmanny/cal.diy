@@ -13,6 +13,8 @@ import { ScheduleService } from "../schedules/ScheduleService";
 import { DEFAULT_WEEKLY_HOURS } from "../schedules/scheduleMapper";
 import { TravelScheduleRepository } from "../users/TravelScheduleRepository";
 import { UserRepository } from "../users/UserRepository";
+import { BookerVerificationService } from "../verification/BookerVerificationService";
+import { VerificationRepository } from "../verification/VerificationRepository";
 import { BookingRepository } from "./BookingRepository";
 import { BookingService } from "./BookingService";
 import type { BookingEvent } from "./events";
@@ -139,6 +141,62 @@ describe("BookingService", () => {
     });
     const { uid } = await book(at("10:00"));
     expect((await service.getBooking(uid)).host).toMatchObject({ name: "Hana Host", email: null });
+  });
+
+  it("offers the event's durations and books the one picked", async () => {
+    await db
+      .update(eventType)
+      .set({ length: 60, metadata: { multipleDuration: [30, 60, 90] } })
+      .where(eq(eventType.slug, "intro"));
+    expect((await service.getPublicEvent("host", "intro")).eventType.durations).toEqual([30, 60, 90]);
+    const query = {
+      username: "host",
+      slug: "intro",
+      from: at("00:00"),
+      to: `${MONDAY}T23:59:00.000Z`,
+      timeZone: "UTC",
+    };
+    const half = (await service.getAvailableSlots({ ...query, duration: 30 })).slots;
+    expect(half).toContain(at("16:30"));
+    expect((await service.getAvailableSlots(query)).slots).not.toContain(at("16:30"));
+    await expect(service.getAvailableSlots({ ...query, duration: 45 })).rejects.toMatchObject({
+      code: "invalid_event_length",
+    });
+
+    const { uid } = await service.create({ ...input(at("16:30")), duration: 30 });
+    const booked = await service.getBooking(uid);
+    expect(booked.endTime).toBe(at("17:00"));
+  });
+
+  it("asks bookers for an emailed code when the event type requires one", async () => {
+    const codes: string[] = [];
+    const verifying = new BookingService({
+      ...serviceDeps,
+      bookerVerification: new BookerVerificationService({
+        repo: new VerificationRepository(db),
+        secret: "s",
+        sendCode: async (_email, code) => void codes.push(code),
+      }),
+    });
+    await db
+      .update(eventType)
+      .set({ requiresBookerEmailVerification: true })
+      .where(eq(eventType.slug, "intro"));
+    expect((await verifying.getPublicEvent("host", "intro")).eventType.requiresBookerEmailVerification).toBe(
+      true
+    );
+    await expect(verifying.create(input(at("10:00")))).rejects.toMatchObject({
+      code: "email_verification_required",
+    });
+    await verifying.sendVerificationCode("host", "intro", "guest@example.com", "en");
+    const { uid } = await verifying.create({ ...input(at("10:00")), verificationCode: codes[0] });
+    // Moving the booking later needs no new code.
+    await expect(verifying.create({ ...input(at("11:00")), rescheduleUid: uid })).resolves.toBeTruthy();
+    await expect(
+      verifying.sendVerificationCode("host", "approval", "x@example.com", "en")
+    ).rejects.toMatchObject({
+      code: "something_went_wrong",
+    });
   });
 
   it("hides links and phone numbers from the public event details", async () => {

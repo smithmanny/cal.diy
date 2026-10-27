@@ -10,6 +10,8 @@ export const slotsQuerySchema = z.object({
   to: z.string().datetime(),
   timeZone: z.string().min(1).max(100),
   rescheduleUid: z.string().max(100).optional(),
+  /** One of the event's lengths when the booker may choose; defaults to the event's length. */
+  duration: z.number().int().min(1).max(1440).optional(),
 });
 
 export const createBookingSchema = z.object({
@@ -23,6 +25,12 @@ export const createBookingSchema = z.object({
     message: "something_went_wrong",
   }),
   rescheduleUid: z.string().max(100).optional(),
+  duration: z.number().int().min(1).max(1440).optional(),
+  /** The code emailed to the booker, for event types that require booker email verification. */
+  verificationCode: z
+    .string()
+    .regex(/^\d{6}$/)
+    .optional(),
 });
 
 export type SlotsQuery = z.infer<typeof slotsQuerySchema>;
@@ -64,9 +72,13 @@ export type PublicEventDto = {
     slug: string;
     description: string | null;
     length: number;
+    /** Lengths the booker can choose from; just `length` when there is no choice. */
+    durations: number[];
     requiresConfirmation: boolean;
     locations: PublicEventLocation[];
     bookingFields: BookingField[];
+    /** Bookers confirm their email with an emailed code before booking. */
+    requiresBookerEmailVerification: boolean;
     /** Bookers see times in this zone and can't change it. */
     lockedTimeZone: string | null;
     /** The page's language, if the host chose one over the visitor's. */

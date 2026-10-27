@@ -36,6 +36,8 @@ export const eventTypeFields = z.object({
   slug: z.string().trim().min(1).max(200),
   description: z.string().max(5000).nullable(),
   length: z.number().int().min(1).max(1440),
+  /** Cal's metadata.multipleDuration: lengths the booker may pick, `length` being the default. */
+  multipleDuration: z.array(z.number().int().min(1).max(1440)).min(1).max(30).nullable(),
   hidden: z.boolean(),
   scheduleId: z.number().int().positive().nullable(),
   locations: z.array(eventLocationSchema).max(10),
@@ -75,6 +77,7 @@ export const eventTypeFields = z.object({
   hideCalendarNotes: z.boolean(),
   hideCalendarEventDetails: z.boolean(),
   hideOrganizerEmail: z.boolean(),
+  requiresBookerEmailVerification: z.boolean(),
   lockTimeZoneToggleOnBookingPage: z.boolean(),
   lockedTimeZone: z.string().max(100).nullable(),
   /** Cal's eventTypeColor, shown next to the event and its bookings. */
@@ -90,6 +93,10 @@ export const eventTypeFields = z.object({
 });
 
 export const eventTypeInputSchema = eventTypeFields
+  .refine((input) => !input.multipleDuration || input.multipleDuration.includes(input.length), {
+    path: ["length"],
+    message: "event_setup_multiple_duration_default_error",
+  })
   .refine((input) => !["ROLLING", "ROLLING_WINDOW"].includes(input.periodType) || input.periodDays !== null, {
     path: ["periodDays"],
   })

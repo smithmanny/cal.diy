@@ -72,3 +72,18 @@ export async function linkFromLatestEmail(
     .not.toBe("");
   return link;
 }
+
+/** The 6-digit code in the newest email to `to`, from the fake Resend. */
+export async function codeFromLatestEmail(request: APIRequestContext, to: string): Promise<string> {
+  let code = "";
+  await expect
+    .poll(async () => {
+      const emails: CapturedEmail[] = await (
+        await request.get(`http://localhost:${FAKE_RESEND_PORT}/emails?to=${encodeURIComponent(to)}`)
+      ).json();
+      code = emails.at(-1)?.text.match(/\b\d{6}\b/)?.[0] ?? "";
+      return code;
+    })
+    .not.toBe("");
+  return code;
+}

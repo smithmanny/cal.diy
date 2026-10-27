@@ -8,7 +8,7 @@ export type AppErrorValues = Record<string, string | number>;
 export class AppError extends Error {
   constructor(
     readonly code: string,
-    readonly status: 400 | 401 | 403 | 404 | 409 = 400,
+    readonly status: 400 | 401 | 403 | 404 | 409 | 429 = 400,
     readonly values?: AppErrorValues
   ) {
     super(values ? `${code}:${JSON.stringify(values)}` : code);

@@ -1,9 +1,25 @@
 import { describe, expect, it } from "vitest";
 import { pickMessages } from "../server/catalog";
-import { createT } from "./i18n";
+import { createT, nestedKeys } from "./i18n";
 import { localeDirection, localeFromAcceptLanguage, matchLocale } from "./locales";
 
 describe("createT", () => {
+  it("resolves i18next nesting, with options and interpolated keys", () => {
+    const t = createT({
+      multiple_duration_mins: "{{count}} $t(minute_timeUnit)",
+      multiple_duration_timeUnit: "{{count}} $t({{unit}}_timeUnit)",
+      minute_timeUnit: "mins",
+      hour_timeUnit: "hours",
+      redirecting: 'Redirecting in $t(second, {"count": {{seconds}} })',
+      second_one: "{{count}} second",
+      second_other: "{{count}} seconds",
+    });
+    expect(t("multiple_duration_mins", { count: 45 })).toBe("45 mins");
+    expect(t("multiple_duration_timeUnit", { count: 2, unit: "hour" })).toBe("2 hours");
+    expect(t("redirecting", { seconds: 1 })).toBe("Redirecting in 1 second");
+    expect(nestedKeys("{{count}} $t(minute_timeUnit) $t(second, {})")).toEqual(["minute_timeUnit", "second"]);
+  });
+
   it("interpolates {{values}} and falls back to the key", () => {
     const t = createT({ signed_in_as: "Signed in as {{name}}" });
     expect(t("signed_in_as", { name: "Jane" })).toBe("Signed in as Jane");
@@ -23,6 +39,12 @@ describe("createT", () => {
 });
 
 describe("pickMessages", () => {
+  it("brings along the messages a message nests", async () => {
+    const picked = await pickMessages("en", ["multiple_duration_mins"]);
+    expect(picked.minute_timeUnit).toBe("mins");
+    expect(createT(picked)("multiple_duration_mins", { count: 15 })).toBe("15 mins");
+  });
+
   it("returns only the requested keys, including dotted nested ones", async () => {
     const picked = await pickMessages("en", ["sign_in", "booking_audit_action.created", "not_a_key"]);
     expect(Object.keys(picked).sort()).toEqual(["booking_audit_action.created", "sign_in"]);
