@@ -95,7 +95,10 @@ trusted client-IP header) sits behind the `#runtime` alias in `apps/start/src/se
 - [ ] Other app-store apps (Outlook, CalDAV/Apple, Zoom, Daily/Cal Video, …)
 
 ### Phase 5: public API and cleanup
-- [ ] Rebuild the `apps/api/v2` endpoints as Start server routes, keeping request/response shapes
+- [x] Rebuild the `apps/api/v2` endpoints for the MVP domain as Start server routes, keeping
+      request/response shapes (see API v2 below)
+- [ ] API v2 endpoints outside the MVP domain: teams, organizations, OAuth clients and managed
+      users, calendars, conferencing, booking seats/attendees/guests/location, mark-absent, reassign
 - [ ] Delete `apps/web`, `apps/api/v2`, `packages/trpc`, `packages/prisma`, `packages/kysely`
 - [ ] Rename `apps/start` → `apps/web`
 
@@ -126,6 +129,33 @@ Settings: `BETTER_AUTH_SECRET` (required in production), `BETTER_AUTH_URL`, and 
 
 Cloudflare note: Better Auth hashes passwords with scrypt, which takes more CPU than the Workers
 free plan allows per request (10 ms), so sign-up and login need the paid plan.
+
+## API v2
+
+`apps/start/src/routes/api/v2/` serves Cal's public API on the same paths and shapes as
+`apps/api/v2`. `src/server/api-v2/http.ts` holds what every endpoint shares: `Authorization: Bearer
+cal_…` API keys (verified by Better Auth's api-key plugin, which also rate-limits each key to 120
+requests a minute), the `cal-api-version` header, the `{ status: "success", data }` envelope with
+`pagination` on lists, and Cal's error shape (`{ status: "error", timestamp, path, error: { code,
+message } }`, with Nest's exception names as codes and English messages). Mappers in the same folder
+translate between the API's DTOs and the app's services, so no database row reaches a response.
+
+| Endpoint | `cal-api-version` | Auth |
+| --- | --- | --- |
+| `GET`, `PATCH /v2/me` (email changes stay in settings, which verify them) | – | key |
+| `GET /v2/event-types` (yours, or `?username=`[`&eventSlug=`] publicly), `POST` | 2024-06-14 | key / optional |
+| `GET`, `PATCH`, `DELETE /v2/event-types/:id` | 2024-06-14 | key |
+| `GET`, `POST /v2/schedules`, `GET /v2/schedules/default`, `GET`, `PATCH`, `DELETE /v2/schedules/:id` | 2024-06-11 | key |
+| `GET /v2/slots` (by `eventTypeId`, or `username` + `eventTypeSlug`; `format=range`) | 2024-09-04 | optional |
+| `POST /v2/bookings` (single, recurring, seated), `GET /v2/bookings/:uid` | 2024-08-13 | optional |
+| `GET /v2/bookings` (status, attendee, event type and date filters; sorting; `take`/`skip`) | 2024-08-13 | key |
+| `POST /v2/bookings/:uid/cancel`, `/reschedule` | 2024-08-13 | optional (the host's key cancels as host) |
+| `POST /v2/bookings/:uid/confirm`, `/decline` | 2024-08-13 | key (host) |
+| `GET`, `POST /v2/webhooks`, `GET`, `PATCH`, `DELETE /v2/webhooks/:id` | – | key |
+
+Versioned endpoints answer 400 to any other `cal-api-version`, since the older shapes Cal routes
+those to aren't served. Event type input accepts the settings this app has and rejects unknown
+fields (e.g. `price`) rather than ignoring them.
 
 ## Running it
 
