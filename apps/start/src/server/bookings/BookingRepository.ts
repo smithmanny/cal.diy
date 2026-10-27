@@ -3,7 +3,7 @@ import { conditionalInsert } from "@calcom/db/conditional-insert";
 import type { Database } from "@calcom/db/database";
 import type { BookingStatus } from "@calcom/db/enums";
 import type { JsonValue } from "@calcom/db/ids";
-import { attendee, booking, eventType, user } from "@calcom/db/schema";
+import { attendee, booking, bookingSeat, eventType, user } from "@calcom/db/schema";
 import {
   and,
   asc,
@@ -14,6 +14,7 @@ import {
   gte,
   inArray,
   isNotNull,
+  isNull,
   lt,
   lte,
   ne,
@@ -78,6 +79,8 @@ export type NewBooking = {
   recurringEventId: string | null;
   /** The booker first, then any guests they added. */
   attendees: [NewAttendee, ...NewAttendee[]];
+  /** For seated events, the booker's seat (BookingSeat.referenceUid) and their answers. */
+  seat?: { referenceUid: string; data: { [key: string]: JsonValue } };
 };
 
 export type NewAttendee = {
@@ -105,12 +108,15 @@ export class BookingRepository {
     from,
     to,
     excludeUid,
+    excludeEventTypeId,
   }: {
     userId: number;
     email: string;
     from: Date;
     to: Date;
     excludeUid?: string;
+    /** A seated event's own bookings, which it checks seat by seat instead. */
+    excludeEventTypeId?: number;
   }) {
     const overlaps = and(
       or(
@@ -119,7 +125,10 @@ export class BookingRepository {
       ),
       lt(booking.startTime, to),
       gt(booking.endTime, from),
-      excludeUid ? ne(booking.uid, excludeUid) : undefined
+      excludeUid ? ne(booking.uid, excludeUid) : undefined,
+      excludeEventTypeId
+        ? or(isNull(booking.eventTypeId), ne(booking.eventTypeId, excludeEventTypeId))
+        : undefined
     );
     const asAttendee = this.db
       .select({ id: attendee.bookingId })
@@ -179,7 +188,7 @@ export class BookingRepository {
     const inserted = (uid: string) =>
       this.db.select({ id: booking.id }).from(booking).where(eq(booking.uid, uid));
     const firstInserted = inserted(first.uid);
-    const statements = bookings.flatMap(({ attendees: newAttendees, ...bookingValues }, index) => {
+    const statements = bookings.flatMap(({ attendees: newAttendees, seat, ...bookingValues }, index) => {
       const insertedBooking = inserted(bookingValues.uid);
       return [
         this.db.run(
@@ -202,6 +211,7 @@ export class BookingRepository {
             )
           )
         ),
+        ...(seat ? [this.insertSeatStatement(insertedBooking, newAttendees[0].email, seat)] : []),
       ];
     });
     const [head, ...tail] = statements;
@@ -216,6 +226,158 @@ export class BookingRepository {
     ]);
     const [created] = await firstInserted.limit(1);
     return Boolean(created);
+  }
+
+  private insertSeatStatement(
+    insertedBooking: ReturnType<BookingRepository["bookingIdByUid"]>,
+    email: string,
+    seat: NonNullable<NewBooking["seat"]>
+  ) {
+    const seatedAttendee = this.db
+      .select({ id: attendee.id })
+      .from(attendee)
+      .where(and(eq(attendee.bookingId, sql`(${insertedBooking})`), eq(attendee.email, email.toLowerCase())));
+    return this.db.run(
+      conditionalInsert(
+        bookingSeat,
+        {
+          referenceUid: seat.referenceUid,
+          bookingId: sql`(${insertedBooking})`,
+          attendeeId: sql`(${seatedAttendee})`,
+          data: seat.data,
+        },
+        exists(seatedAttendee)
+      )
+    );
+  }
+
+  private bookingIdByUid(uid: string) {
+    return this.db.select({ id: booking.id }).from(booking).where(eq(booking.uid, uid));
+  }
+
+  private unseatedAttendee(bookingId: ReturnType<BookingRepository["bookingIdByUid"]>, email: string) {
+    return this.db
+      .select({ id: attendee.id })
+      .from(attendee)
+      .where(
+        and(
+          eq(attendee.bookingId, sql`(${bookingId})`),
+          eq(attendee.email, email),
+          // Qualified by hand: Drizzle would leave "id" unqualified, matching the seat's own id.
+          sql`not exists (select 1 from "BookingSeat" where "BookingSeat"."attendeeId" = "Attendee"."id")`
+        )
+      );
+  }
+
+  /**
+   * Adds a booker to a seated booking, only while it is accepted, has a free seat and doesn't
+   * already have them. The check and the insert are one statement, so two bookers can't both
+   * take the last seat. Returns false when the seat couldn't be taken.
+   */
+  async addSeat(
+    bookingUid: string,
+    newAttendee: NewAttendee,
+    seat: NonNullable<NewBooking["seat"]>,
+    seatsPerTimeSlot: number
+  ): Promise<boolean> {
+    const bookingId = this.bookingIdByUid(bookingUid);
+    const email = newAttendee.email.toLowerCase();
+    const seatsTaken = this.db
+      .select({ count: sql<number>`count(*)` })
+      .from(bookingSeat)
+      .where(eq(bookingSeat.bookingId, sql`(${bookingId})`));
+    const hasRoom = sql.join(
+      [
+        exists(
+          this.db
+            .select({ one: sql`1` })
+            .from(booking)
+            .where(and(eq(booking.uid, bookingUid), eq(booking.status, "ACCEPTED")))
+        ),
+        sql`(${seatsTaken}) < ${seatsPerTimeSlot}`,
+        notExists(
+          this.db
+            .select({ one: sql`1` })
+            .from(attendee)
+            .where(and(eq(attendee.bookingId, sql`(${bookingId})`), eq(attendee.email, email)))
+        ),
+      ],
+      sql` and `
+    );
+    const unseated = this.unseatedAttendee(bookingId, email);
+    await this.db.batch([
+      this.db.run(
+        conditionalInsert(attendee, { ...newAttendee, email, bookingId: sql`(${bookingId})` }, hasRoom)
+      ),
+      // Only the attendee row just added has no seat yet.
+      this.db.run(
+        conditionalInsert(
+          bookingSeat,
+          {
+            referenceUid: seat.referenceUid,
+            bookingId: sql`(${bookingId})`,
+            attendeeId: sql`(${unseated})`,
+            data: seat.data,
+          },
+          exists(unseated)
+        )
+      ),
+    ]);
+    return Boolean(await this.findSeat(seat.referenceUid));
+  }
+
+  async findSeat(referenceUid: string) {
+    const [found] = await this.db
+      .select({
+        referenceUid: bookingSeat.referenceUid,
+        attendeeId: bookingSeat.attendeeId,
+        bookingUid: booking.uid,
+        email: attendee.email,
+        name: attendee.name,
+        timeZone: attendee.timeZone,
+        data: bookingSeat.data,
+      })
+      .from(bookingSeat)
+      .innerJoin(booking, eq(booking.id, bookingSeat.bookingId))
+      .innerJoin(attendee, eq(attendee.id, bookingSeat.attendeeId))
+      .where(eq(bookingSeat.referenceUid, referenceUid))
+      .limit(1);
+    return found ?? null;
+  }
+
+  async countSeats(bookingUid: string): Promise<number> {
+    const [row] = await this.db
+      .select({ count: sql<number>`count(*)` })
+      .from(bookingSeat)
+      .where(eq(bookingSeat.bookingId, sql`(${this.bookingIdByUid(bookingUid)})`));
+    return Number(row?.count ?? 0);
+  }
+
+  /** Frees a seat; the BookingSeat row goes with its attendee. */
+  async removeAttendee(attendeeId: number): Promise<void> {
+    await this.db.delete(attendee).where(eq(attendee.id, attendeeId));
+  }
+
+  /** A seated event's accepted bookings overlapping [from, to], with how many seats each has taken. */
+  findSeatedForEventType({ eventTypeId, from, to }: { eventTypeId: number; from: Date; to: Date }) {
+    return this.db
+      .select({
+        uid: booking.uid,
+        start: booking.startTime,
+        end: booking.endTime,
+        // Spelled out: inside a single-table select Drizzle leaves column names unqualified, which
+        // would compare the seat's own id here.
+        seatsTaken: sql<number>`(select count(*) from "BookingSeat" where "BookingSeat"."bookingId" = "Booking"."id")`,
+      })
+      .from(booking)
+      .where(
+        and(
+          eq(booking.eventTypeId, eventTypeId),
+          eq(booking.status, "ACCEPTED"),
+          lt(booking.startTime, to),
+          gt(booking.endTime, from)
+        )
+      );
   }
 
   /** The other bookings of a recurring series, oldest first. */
@@ -321,6 +483,8 @@ export class BookingRepository {
               disableGuests: eventType.disableGuests,
               disableCancelling: eventType.disableCancelling,
               recurringEvent: eventType.recurringEvent,
+              seatsPerTimeSlot: eventType.seatsPerTimeSlot,
+              seatsShowAttendees: eventType.seatsShowAttendees,
               disableRescheduling: eventType.disableRescheduling,
               minimumRescheduleNotice: eventType.minimumRescheduleNotice,
               hideCalendarNotes: eventType.hideCalendarNotes,

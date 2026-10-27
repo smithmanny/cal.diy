@@ -79,9 +79,12 @@ export function buildBookingPayload(booking: BookingSnapshot, extra: Record<stri
 }
 
 export function payloadForEvent(event: BookingEvent) {
+  // Cal's seat payloads name the seat that changed.
+  const seat = event.seat ? { attendeeSeatId: event.seat.referenceUid } : {};
   if (event.type !== "BOOKING_RESCHEDULED" || !event.rescheduledFrom)
-    return buildBookingPayload(event.booking);
+    return buildBookingPayload(event.booking, seat);
   return buildBookingPayload(event.booking, {
+    ...seat,
     rescheduleUid: event.rescheduledFrom.uid,
     rescheduleStartTime: event.rescheduledFrom.startTime.toISOString(),
     rescheduleEndTime: event.rescheduledFrom.endTime.toISOString(),

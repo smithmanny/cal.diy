@@ -8,7 +8,7 @@ const limitValue = z.number().int().min(1).max(100_000).optional();
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 /** Every occurrence is inserted in one batch, so a series is capped. */
-export const MAX_RECURRING_COUNT = 100;
+const MAX_RECURRING_COUNT = 100;
 
 const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 
@@ -49,6 +49,10 @@ export const eventTypeFields = z.object({
       count: z.number().int().min(1).max(MAX_RECURRING_COUNT),
     })
     .nullable(),
+  /** Cal's seats: several bookers join one booking until it's full. */
+  seatsPerTimeSlot: z.number().int().min(1).max(1000).nullable(),
+  seatsShowAttendees: z.boolean(),
+  seatsShowAvailabilityCount: z.boolean(),
   hidden: z.boolean(),
   scheduleId: z.number().int().positive().nullable(),
   locations: z.array(eventLocationSchema).max(10),
@@ -104,6 +108,23 @@ export const eventTypeFields = z.object({
 });
 
 export const eventTypeInputSchema = eventTypeFields
+  // Cal's limits on seats: they can't combine with these.
+  .refine((input) => !input.seatsPerTimeSlot || !input.requiresConfirmation, {
+    path: ["seatsPerTimeSlot"],
+    message: "seat_options_doesnt_support_confirmation",
+  })
+  .refine((input) => !input.seatsPerTimeSlot || !input.recurringEvent, {
+    path: ["seatsPerTimeSlot"],
+    message: "recurring_event_seats_error",
+  })
+  .refine((input) => !input.seatsPerTimeSlot || !input.multipleDuration, {
+    path: ["seatsPerTimeSlot"],
+    message: "seat_options_doesnt_multiple_durations",
+  })
+  .refine((input) => !input.seatsPerTimeSlot || input.locations.length <= 1, {
+    path: ["seatsPerTimeSlot"],
+    message: "seats_option_doesnt_support_multi_location",
+  })
   .refine((input) => !input.recurringEvent || !input.maxActiveBookingsPerBooker, {
     path: ["recurringEvent"],
     message: "recurring_event_doesnt_support_booker_booking_limit",
@@ -141,3 +162,5 @@ export type EventTypeSummaryDto = Pick<
   EventTypeDto,
   "id" | "title" | "slug" | "length" | "hidden" | "description" | "eventTypeColor"
 >;
+
+export { MAX_RECURRING_COUNT };

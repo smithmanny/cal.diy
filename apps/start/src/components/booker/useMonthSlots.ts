@@ -54,7 +54,7 @@ export function useMonthSlots(query: {
       })
       .catch((error) => {
         if (cancelled) return;
-        setResult({ slots: [], outOfOffice: {} });
+        setResult({ slots: [], outOfOffice: {}, seats: null });
         setErrorKey(errorMessageKey(error));
       });
     return () => {
@@ -88,6 +88,7 @@ export function useMonthSlots(query: {
     loading: result === null,
     slotsByDate,
     outOfOffice: result?.outOfOffice ?? {},
+    seats: result?.seats ?? null,
     errorKey,
   };
 }

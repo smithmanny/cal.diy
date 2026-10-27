@@ -101,6 +101,8 @@ export type BookingDetailsDto = {
   cancellationReason: string | null;
   rescheduled: boolean;
   notes: string | null;
+  /** The viewer's seat on a seated booking. */
+  seatReferenceUid: string | null;
   /** Whether the booker may still cancel or move it, per the event type's settings. */
   canCancel: boolean;
   canReschedule: boolean;
@@ -138,6 +140,8 @@ export type OutOfOfficeDayDto = {
 
 export type SlotsDto = {
   slots: string[];
+  /** For seated events that show availability: seats per time and how many each slot has taken. */
+  seats: { total: number; taken: Record<string, number> } | null;
   /** Keyed by YYYY-MM-DD (UTC), like Cal. */
   outOfOffice: Record<string, OutOfOfficeDayDto>;
 };

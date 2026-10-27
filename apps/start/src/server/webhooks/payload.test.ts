@@ -79,6 +79,16 @@ describe("webhook payload", () => {
     expect(Object.keys(payload.userFieldsResponses)).toEqual(["company"]);
   });
 
+  it("names the seat that changed, like Cal's attendeeSeatId", () => {
+    expect(
+      payloadForEvent({
+        type: "BOOKING_CREATED",
+        booking: snapshot,
+        seat: { referenceUid: "seat-1", attendeeEmail: "x" },
+      })
+    ).toMatchObject({ attendeeSeatId: "seat-1" });
+  });
+
   it("adds the previous times on reschedules", () => {
     const payload = payloadForEvent({
       type: "BOOKING_RESCHEDULED",

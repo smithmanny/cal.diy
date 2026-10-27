@@ -64,6 +64,8 @@ export type BookingEvent = {
    * about the first; webhooks and calendars still get every occurrence.
    */
   seriesIndex?: number;
+  /** Set when one booker took, moved or gave up a seat; only they (and the host) are emailed. */
+  seat?: { referenceUid: string; attendeeEmail: string };
 };
 
 /** Side effects run after the booking is committed; a failing listener never fails the booking. */

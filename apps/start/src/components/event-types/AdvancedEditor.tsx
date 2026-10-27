@@ -137,6 +137,51 @@ function ColorFields({ form, set, t }: EditorProps) {
   );
 }
 
+function SeatOptions({ form, set, t }: EditorProps) {
+  return (
+    <div className="flex flex-col gap-3 text-sm">
+      <Field label={t("number_of_seats")}>
+        <Input
+          type="number"
+          min={1}
+          max={1000}
+          className="max-w-40"
+          value={form.seatsPerTimeSlot ?? 2}
+          onChange={(event) =>
+            set("seatsPerTimeSlot", Math.min(1000, Math.max(1, Math.floor(Number(event.target.value) || 1))))
+          }
+        />
+      </Field>
+      <label className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          checked={form.seatsShowAttendees}
+          onChange={(event) => set("seatsShowAttendees", event.target.checked)}
+        />
+        {t("show_attendees")}
+      </label>
+      <label className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          checked={form.seatsShowAvailabilityCount}
+          onChange={(event) => set("seatsShowAvailabilityCount", event.target.checked)}
+        />
+        {t("show_available_seats_count")}
+      </label>
+    </div>
+  );
+}
+
+/** Cal's seat restrictions, checked before saving so the host sees which setting conflicts. */
+export function seatsErrorKey(form: EventTypeInput): string | null {
+  if (!form.seatsPerTimeSlot) return null;
+  if (form.requiresConfirmation) return "seat_options_doesnt_support_confirmation";
+  if (form.recurringEvent) return "recurring_event_seats_error";
+  if (form.multipleDuration) return "seat_options_doesnt_multiple_durations";
+  if (form.locations.length > 1) return "seats_option_doesnt_support_multi_location";
+  return null;
+}
+
 export function AdvancedEditor({ form, set, t }: EditorProps) {
   // Node and browsers ship different ICU data, so names would differ between SSR and hydration.
   const hydrated = useHydrated();
@@ -163,6 +208,13 @@ export function AdvancedEditor({ form, set, t }: EditorProps) {
         checked={form.requiresConfirmation}
         onCheckedChange={(checked) => set("requiresConfirmation", checked)}>
         <ConfirmationOptions form={form} set={set} t={t} />
+      </ToggleBlock>
+      <ToggleBlock
+        title={t("offer_seats")}
+        description={withoutLinks(t("offer_seats_description"))}
+        checked={form.seatsPerTimeSlot !== null}
+        onCheckedChange={(checked) => set("seatsPerTimeSlot", checked ? 2 : null)}>
+        <SeatOptions form={form} set={set} t={t} />
       </ToggleBlock>
       <ToggleBlock
         title={t("requires_booker_email_verification")}
@@ -285,6 +337,15 @@ export const ADVANCED_MESSAGE_KEYS = [
   "minutes",
   "hours",
   "requires_confirmation_will_block_slot_description",
+  "offer_seats",
+  "offer_seats_description",
+  "number_of_seats",
+  "show_attendees",
+  "show_available_seats_count",
+  "seat_options_doesnt_support_confirmation",
+  "recurring_event_seats_error",
+  "seat_options_doesnt_multiple_durations",
+  "seats_option_doesnt_support_multi_location",
   "requires_booker_email_verification",
   "description_requires_booker_email_verification",
   "disable_cancelling",

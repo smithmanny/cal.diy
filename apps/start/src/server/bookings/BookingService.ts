@@ -75,11 +75,26 @@ type Deps = {
 
 const MAX_RANGE_MS = 62 * 24 * 60 * 60 * 1000;
 
-function bookingFieldsOf(eventType: { bookingFields: unknown; disableGuests: boolean }): BookingField[] {
-  return withSystemFields(parseBookingFields(eventType.bookingFields), {
+function bookingFieldsOf(eventType: {
+  bookingFields: unknown;
+  disableGuests: boolean;
+  seatsPerTimeSlot?: number | null;
+}): BookingField[] {
+  const fields = withSystemFields(parseBookingFields(eventType.bookingFields), {
     disableGuests: eventType.disableGuests,
   });
+  // Like Cal, seats replace guests: everyone books their own seat.
+  if (!eventType.seatsPerTimeSlot) return fields;
+  return fields.map((field) => (field.name === "guests" ? { ...field, hidden: true } : field));
 }
+
+type CreatedBooking = {
+  uid: string;
+  status: string;
+  redirectUrl: string | null;
+  /** The booker's own seat, for seated events; it is how they cancel or move just their place. */
+  seatReferenceUid?: string;
+};
 
 type EventTypeRow = NonNullable<Awaited<ReturnType<EventTypeRepository["findByUserIdAndSlug"]>>>;
 
@@ -251,7 +266,7 @@ export class BookingService {
       throw new AppError("something_went_wrong");
     if (!isValidTimeZone(query.timeZone)) throw new AppError("invalid_timezone");
     const { host, eventType } = await this.loadEvent(query.username, query.slug);
-    const { slots, outOfOffice } = await this.computeSlots(
+    const { slots, outOfOffice, seatsTaken } = await this.computeSlots(
       host,
       eventType,
       from,
@@ -260,8 +275,19 @@ export class BookingService {
       query.rescheduleUid,
       eventLength(eventType, query.duration)
     );
+    const seats = eventType.seatsPerTimeSlot;
     return {
       slots: slots.map((slot) => slot.toISOString()),
+      // Cal lets hosts hide how full a time is; then bookers only learn it's still bookable.
+      seats:
+        seats && eventType.seatsShowAvailabilityCount
+          ? {
+              total: seats,
+              taken: Object.fromEntries(
+                slots.map((slot) => [slot.toISOString(), seatsTaken.get(slot.getTime()) ?? 0])
+              ),
+            }
+          : null,
       outOfOffice: Object.fromEntries(
         Object.entries(outOfOffice).map(([date, day]) => [
           date,
@@ -281,13 +307,12 @@ export class BookingService {
   }
 
   /** `actorUserId` is the signed-in user, if any; a host may move their own booking at any time. */
-  async create(
-    input: CreateBookingInput,
-    actorUserId: number | null = null
-  ): Promise<{ uid: string; status: string; redirectUrl: string | null }> {
+  async create(input: CreateBookingInput, actorUserId: number | null = null): Promise<CreatedBooking> {
     if (!isValidTimeZone(input.timeZone)) throw new AppError("invalid_timezone");
     const { host, eventType } = await this.loadEvent(input.username, input.slug);
     const now = this.deps.now?.() ?? new Date();
+    if (eventType.seatsPerTimeSlot)
+      return this.bookSeat(input, host, eventType, eventType.seatsPerTimeSlot, actorUserId === host.id, now);
     const start = new Date(input.start);
     const length = eventLength(eventType, input.duration);
     const end = new Date(start.getTime() + length * 60_000);
@@ -379,6 +404,140 @@ export class BookingService {
           })
         : null,
     };
+  }
+
+  /**
+   * Cal's handleSeats: the booker joins the booking already at that time if it has a free seat, or
+   * starts one. With a seat reference as `rescheduleUid`, the seat moves: the booker takes a seat
+   * at the new time and leaves the old one, which is cancelled once it has nobody left.
+   */
+  private async bookSeat(
+    input: CreateBookingInput,
+    host: NonNullable<Awaited<ReturnType<UserRepository["findByUsername"]>>>,
+    eventType: EventTypeRow,
+    seats: number,
+    byHost: boolean,
+    now: Date
+  ): Promise<CreatedBooking> {
+    const repo = this.deps.bookingRepo;
+    const start = new Date(input.start);
+    const end = new Date(start.getTime() + eventType.length * 60_000);
+    const originalSeat = input.rescheduleUid ? await repo.findSeat(input.rescheduleUid) : null;
+    if (input.rescheduleUid && !originalSeat) throw new AppError("booking_not_found", 404);
+    if (originalSeat) await this.findReschedulable(originalSeat.bookingUid, host.id, byHost, now);
+
+    await this.assertSlotOffered(host, eventType, start, input.timeZone, undefined, eventType.length);
+    const locations = parseLocations(eventType.locations);
+    const responses = this.checkedResponses(eventType, input.responses, locations, Boolean(originalSeat));
+    const name = String(responses.name);
+    const email = String(responses.email);
+    if (!originalSeat) await this.assertNewBookerAllowed(eventType, email, input.verificationCode);
+
+    const notes = typeof responses.notes === "string" ? responses.notes : null;
+    const locationResponse = responses.location as LocationResponse | undefined;
+    const location = this.resolveLocation(locations, locationResponse);
+    const phone = locationResponse?.value === "phone" ? locationResponse.optionValue : null;
+    const booker = {
+      name,
+      email,
+      timeZone: input.timeZone,
+      locale: input.locale,
+      phoneNumber: phone || null,
+    };
+    const seat = {
+      referenceUid: crypto.randomUUID(),
+      data: { description: notes, responses: responses as { [key: string]: JsonValue } },
+    };
+
+    const existing = (
+      await repo.findSeatedForEventType({ eventTypeId: eventType.id, from: start, to: end })
+    ).find((seated) => seated.start.getTime() === start.getTime());
+    let uid: string;
+    if (existing) {
+      uid = existing.uid;
+      if (!(await repo.addSeat(uid, booker, seat, seats))) {
+        const found = await repo.findByUid(uid);
+        const signedUp = found?.attendees.some((attendee) => attendee.email === email.toLowerCase());
+        throw new AppError(
+          signedUp ? "already_signed_up_for_this_booking_error" : "booking_seats_full_error",
+          409
+        );
+      }
+    } else {
+      uid = cuid();
+      const title = await this.bookingTitle({
+        host,
+        eventType,
+        responses,
+        name,
+        location,
+        length: eventType.length,
+      });
+      const created = await repo.insertIfSlotFree({
+        uid,
+        userId: host.id,
+        userPrimaryEmail: host.email,
+        eventTypeId: eventType.id,
+        title,
+        description: notes,
+        startTime: start,
+        endTime: end,
+        location,
+        status: "ACCEPTED",
+        responses: responses as { [key: string]: JsonValue },
+        fromReschedule: null,
+        recurringEventId: null,
+        attendees: [booker],
+        seat,
+      });
+      if (!created) throw new AppError("booking_conflict_error", 409);
+    }
+
+    const seatInfo = { referenceUid: seat.referenceUid, attendeeEmail: email.toLowerCase() };
+    const snapshot = await this.snapshot(uid);
+    if (originalSeat) {
+      const previous = await this.leaveSeat(originalSeat);
+      if (snapshot)
+        this.emit({
+          type: "BOOKING_RESCHEDULED",
+          booking: snapshot,
+          rescheduledFrom: previous ?? undefined,
+          seat: seatInfo,
+        });
+    } else if (snapshot) {
+      this.emit({ type: "BOOKING_CREATED", booking: snapshot, seat: seatInfo });
+    }
+    return { uid, status: "ACCEPTED", seatReferenceUid: seat.referenceUid, redirectUrl: null };
+  }
+
+  /**
+   * Frees a seat, cancelling the booking when it was the last one. Returns the booking as it was
+   * before, so listeners can still reach the attendee who left.
+   */
+  private async leaveSeat(seat: NonNullable<Awaited<ReturnType<BookingRepository["findSeat"]>>>) {
+    const before = await this.snapshot(seat.bookingUid);
+    await this.deps.bookingRepo.removeAttendee(seat.attendeeId);
+    if ((await this.deps.bookingRepo.countSeats(seat.bookingUid)) === 0)
+      await this.deps.bookingRepo.updateStatus(seat.bookingUid, { status: "CANCELLED" });
+    return before;
+  }
+
+  /** A booker gives up their seat; the booking goes on for everyone else. */
+  async cancelSeat(referenceUid: string, reason: string | null): Promise<void> {
+    const seat = await this.deps.bookingRepo.findSeat(referenceUid);
+    if (!seat) throw new AppError("booking_not_found", 404);
+    const found = await this.deps.bookingRepo.findByUid(seat.bookingUid);
+    if (!found) throw new AppError("booking_not_found", 404);
+    if (found.eventType?.disableCancelling) throw new AppError("cannot_cancel_booking", 403);
+    if (found.status === "CANCELLED" || found.status === "REJECTED")
+      throw new AppError("event_cancelled", 409);
+    const before = await this.leaveSeat(seat);
+    if (before)
+      this.emit({
+        type: "BOOKING_CANCELLED",
+        booking: { ...before, cancellationReason: reason },
+        seat: { referenceUid, attendeeEmail: seat.email },
+      });
   }
 
   private async emitCreated(uids: string[], rescheduledFromUid: string | null): Promise<void> {
@@ -486,10 +645,25 @@ export class BookingService {
     await this.deps.bookerVerification.send(email, locale);
   }
 
-  async getBooking(uid: string): Promise<BookingDetailsDto> {
+  /**
+   * The booking page's view. On a seated booking, `seatReferenceUid` says whose seat it is: their
+   * answers are shown, and other attendees only when the host shares them.
+   */
+  async getBooking(uid: string, seatReferenceUid?: string): Promise<BookingDetailsDto> {
     const found = await this.deps.bookingRepo.findByUid(uid);
     if (!found) throw new AppError("booking_not_found", 404);
-    const responses = (found.responses ?? {}) as Record<string, unknown>;
+    const seated = Boolean(found.eventType?.seatsPerTimeSlot);
+    const seat = seatReferenceUid ? await this.deps.bookingRepo.findSeat(seatReferenceUid) : null;
+    if (seatReferenceUid && seat?.bookingUid !== uid) throw new AppError("booking_not_found", 404);
+    const seatData = (seat?.data ?? {}) as { responses?: Record<string, unknown> };
+    const responses = (seat ? (seatData.responses ?? {}) : (found.responses ?? {})) as Record<
+      string,
+      unknown
+    >;
+    const attendees =
+      seated && !found.eventType?.seatsShowAttendees
+        ? found.attendees.filter((attendee) => attendee.email === seat?.email)
+        : found.attendees;
     return {
       uid: found.uid,
       title: found.title,
@@ -500,11 +674,14 @@ export class BookingService {
       cancellationReason: found.cancellationReason,
       rescheduled: Boolean(found.rescheduled),
       notes: typeof responses.notes === "string" ? responses.notes : null,
-      canCancel: !found.eventType?.disableCancelling,
+      seatReferenceUid: seat?.referenceUid ?? null,
+      // On a seated booking a booker can only cancel or move their own seat.
+      canCancel: !found.eventType?.disableCancelling && (!seated || Boolean(seat)),
       recurring: await this.recurringDetails(found),
       // Like Cal's booking page, a series can be cancelled but not moved as a whole.
       canReschedule:
         !found.recurringEventId &&
+        (!seated || Boolean(seat)) &&
         !found.eventType?.disableRescheduling &&
         !isWithinRescheduleNotice(
           found.startTime,
@@ -531,7 +708,7 @@ export class BookingService {
       eventType: found.eventType
         ? { title: found.eventType.title, slug: found.eventType.slug, length: found.eventType.length }
         : null,
-      attendees: found.attendees.map(({ name, email, timeZone }) => ({ name, email, timeZone })),
+      attendees: attendees.map(({ name, email, timeZone }) => ({ name, email, timeZone })),
     };
   }
 
@@ -778,12 +955,13 @@ export class BookingService {
     inviteeTimeZone: string,
     excludeUid: string | undefined,
     length: number
-  ): Promise<{ slots: Date[]; outOfOffice: OutOfOfficeData }> {
+  ): Promise<{ slots: Date[]; outOfOffice: OutOfOfficeData; seatsTaken: Map<number, number> }> {
     const scheduleId = eventType.scheduleId ?? host.defaultScheduleId;
     const schedule = scheduleId
       ? await this.deps.scheduleRepo.findByIdIncludeAvailability(scheduleId)
       : (await this.deps.scheduleRepo.findManyByUserIdIncludeAvailability(host.id))[0];
-    if (!schedule || schedule.userId !== host.id) return { slots: [], outOfOffice: {} };
+    if (!schedule || schedule.userId !== host.id)
+      return { slots: [], outOfOffice: {}, seatsTaken: new Map() };
 
     const event: SlotEventConfig = {
       length,
@@ -802,6 +980,7 @@ export class BookingService {
       durationLimits: parseIntervalLimit(eventType.durationLimits),
     };
     const scheduleTimeZone = schedule.timeZone ?? host.timeZone;
+    const seats = eventType.seatsPerTimeSlot;
     // A rolling window counts available days from today, so it may need data before `from`.
     const range = availabilityRange(event, from, to, this.deps.now?.());
     const limitRange =
@@ -822,20 +1001,35 @@ export class BookingService {
             excludeUid,
           })
         : Promise.resolve([]),
-      this.deps.bookingRepo.findBusyForUser({ userId: host.id, email: host.email, ...range, excludeUid }),
+      this.deps.bookingRepo.findBusyForUser({
+        userId: host.id,
+        email: host.email,
+        ...range,
+        excludeUid,
+        excludeEventTypeId: seats ? eventType.id : undefined,
+      }),
       ...(this.deps.busyTimesProviders ?? []).map((provider) => provider({ userId: host.id, ...range })),
     ]);
+    const seated = seats
+      ? (await this.deps.bookingRepo.findSeatedForEventType({ eventTypeId: eventType.id, ...range })).filter(
+          (seatedBooking) => seatedBooking.uid !== excludeUid
+        )
+      : [];
 
     // An explicit out-of-office entry wins over a holiday on the same day, as in Cal.
     const outOfOffice = {
       ...holidays,
       ...outOfOfficeByDate(oooEntries, schedule.availability, this.deps.now?.()),
     };
-    const slots = computeAvailableSlots({
+    // A full seated booking is busy like any other; one with seats left only blocks other start times.
+    const fullSeated = seated
+      .filter((seatedBooking) => seats !== null && seatedBooking.seatsTaken >= seats)
+      .map(({ start, end }) => ({ start, end }));
+    const computed = computeAvailableSlots({
       availability: schedule.availability,
       scheduleTimeZone,
       event,
-      busy: [...bookings, ...external.flat()],
+      busy: [...bookings, ...fullSeated, ...external.flat()],
       from,
       to,
       inviteeTimeZone,
@@ -848,7 +1042,21 @@ export class BookingService {
       outOfOffice,
       limitBookings,
     });
-    return { slots, outOfOffice };
+    const seatsTaken = new Map(
+      seated.map((seatedBooking) => [seatedBooking.start.getTime(), seatedBooking.seatsTaken])
+    );
+    const slots = seated.length
+      ? computed.filter((slot) => {
+          const end = slot.getTime() + length * 60_000;
+          return seated.every(
+            (seatedBooking) =>
+              seatedBooking.start.getTime() === slot.getTime() ||
+              seatedBooking.end.getTime() <= slot.getTime() ||
+              seatedBooking.start.getTime() >= end
+          );
+        })
+      : computed;
+    return { slots, outOfOffice, seatsTaken };
   }
 
   private resolveLocation(

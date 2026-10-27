@@ -7,7 +7,11 @@ import { ArrowLeftIcon, ExternalLinkIcon } from "lucide-react";
 import { useState } from "react";
 import { FormError } from "~/components/AuthCard";
 import { selectClass } from "~/components/availability/TimeSelect";
-import { ADVANCED_MESSAGE_KEYS, AdvancedEditor } from "~/components/event-types/AdvancedEditor";
+import {
+  ADVANCED_MESSAGE_KEYS,
+  AdvancedEditor,
+  seatsErrorKey,
+} from "~/components/event-types/AdvancedEditor";
 import {
   BOOKING_QUESTIONS_MESSAGE_KEYS,
   BookingQuestionsEditor,
@@ -75,6 +79,7 @@ function EventTypeEditorPage() {
     const redirect = form.successRedirectUrl?.trim() || null;
     const invalid =
       limitsErrorKey(form) ??
+      seatsErrorKey(form) ??
       (form.multipleDuration && !form.multipleDuration.length
         ? "event_setup_multiple_duration_error"
         : null) ??

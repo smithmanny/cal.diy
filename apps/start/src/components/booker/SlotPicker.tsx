@@ -21,6 +21,7 @@ export function SlotPicker({
   onSelectSlot,
   weekStartDay,
   onHour12Change,
+  seats,
   t,
 }: {
   cursor: MonthCursor | null;
@@ -34,6 +35,8 @@ export function SlotPicker({
   onSelectSlot: (slot: string) => void;
   weekStartDay: number;
   onHour12Change: (hour12: boolean) => void;
+  /** Seats per time and those taken, when the host shows them. */
+  seats?: { total: number; taken: Record<string, number> } | null;
   t: TFunction;
 }) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -102,6 +105,12 @@ export function SlotPicker({
                 <li key={slot}>
                   <Button variant="outline" className="w-full" onClick={() => onSelectSlot(slot)}>
                     {formatTime(slot, timeZone, locale, hour12)}
+                    {seats && (
+                      <span className="ms-2 font-normal text-muted-foreground text-xs">
+                        {seats.total - (seats.taken[slot] ?? 0)}{" "}
+                        {t("seats_available", { count: seats.total - (seats.taken[slot] ?? 0) })}
+                      </span>
+                    )}
                   </Button>
                 </li>
               ))}

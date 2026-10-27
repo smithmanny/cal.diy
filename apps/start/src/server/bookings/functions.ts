@@ -42,20 +42,27 @@ export const sendBookerVerificationCode = createServerFn({ method: "POST" })
 // The uid is an unguessable token handed to the attendee and host, as in Cal.
 
 export const getBookingByUid = createServerFn({ method: "GET" })
-  .validator(uidSchema)
+  .validator(uidSchema.extend({ seatReferenceUid: z.string().max(100).optional() }))
   .handler(async ({ data }) => ({
-    ...(await (await getBookingService()).getBooking(data.uid)),
+    ...(await (await getBookingService()).getBooking(data.uid, data.seatReferenceUid)),
     // The confirmation page only promises an email when one is actually sent.
     emailsEnabled: isEmailEnabled(),
   }));
 
 export const cancelBookingByUid = createServerFn({ method: "POST" })
   .validator(
-    uidSchema.extend({ reason: z.string().max(1000).optional(), cancelledBy: z.string().email().optional() })
+    uidSchema.extend({
+      reason: z.string().max(1000).optional(),
+      cancelledBy: z.string().email().optional(),
+      seatReferenceUid: z.string().max(100).optional(),
+    })
   )
-  .handler(async ({ data }) =>
-    (await getBookingService()).cancel(data.uid, data.reason ?? null, data.cancelledBy ?? null)
-  );
+  .handler(async ({ data }) => {
+    const service = await getBookingService();
+    // On a seated booking a booker cancels only their own seat.
+    if (data.seatReferenceUid) return service.cancelSeat(data.seatReferenceUid, data.reason ?? null);
+    return service.cancel(data.uid, data.reason ?? null, data.cancelledBy ?? null);
+  });
 
 // Host endpoints.
 

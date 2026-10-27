@@ -77,7 +77,13 @@ function ManageFooter({
   slug,
   t,
 }: {
-  booking: { uid: string; canCancel: boolean; canReschedule: boolean; recurring: object | null };
+  booking: {
+    uid: string;
+    canCancel: boolean;
+    canReschedule: boolean;
+    recurring: object | null;
+    seatReferenceUid: string | null;
+  };
   username: string;
   slug: string;
   t: TFunction;
@@ -92,7 +98,13 @@ function ManageFooter({
     setPending(true);
     setErrorKey(null);
     try {
-      await cancelBookingByUid({ data: { uid: booking.uid, reason: reason || undefined } });
+      await cancelBookingByUid({
+        data: {
+          uid: booking.uid,
+          reason: reason || undefined,
+          seatReferenceUid: booking.seatReferenceUid ?? undefined,
+        },
+      });
       setCancelling(false);
       await router.invalidate();
     } catch (error) {
@@ -275,10 +287,14 @@ function BookingPage() {
 }
 
 export const Route = createFileRoute("/booking/$uid")({
-  loader: async ({ context, params }) => {
+  validateSearch: (search: Record<string, unknown>): { seatReferenceUid?: string } => ({
+    seatReferenceUid: typeof search.seatReferenceUid === "string" ? search.seatReferenceUid : undefined,
+  }),
+  loaderDeps: ({ search }) => ({ seatReferenceUid: search.seatReferenceUid }),
+  loader: async ({ context, params, deps }) => {
     const [messages, booking] = await Promise.all([
       loadMessages(context, MESSAGE_KEYS),
-      getBookingByUid({ data: { uid: params.uid } }).catch(() => {
+      getBookingByUid({ data: { uid: params.uid, seatReferenceUid: deps.seatReferenceUid } }).catch(() => {
         throw notFound();
       }),
     ]);

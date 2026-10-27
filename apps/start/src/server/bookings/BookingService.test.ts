@@ -199,6 +199,106 @@ describe("BookingService", () => {
     });
   });
 
+  describe("seats", () => {
+    beforeEach(async () => {
+      await db
+        .update(eventType)
+        .set({ seatsPerTimeSlot: 3, locations: [{ type: "link", link: "https://meet.example/x" }] })
+        .where(eq(eventType.slug, "intro"));
+    });
+
+    const seatFor = (email: string, start = at("10:00")) =>
+      service.create({
+        ...input(start, "intro", email),
+        responses: { name: email, email, location: { value: "link" } },
+      });
+
+    it("seats bookers on one booking until it's full, and shows what's left", async () => {
+      const first = await seatFor("a@example.com");
+      const second = await seatFor("b@example.com");
+      expect(second.uid).toBe(first.uid);
+      expect(second.seatReferenceUid).not.toBe(first.seatReferenceUid);
+      const { slots: open, seats } = await daySlots();
+      expect(open).toContain(at("10:00"));
+      expect(seats?.taken[at("10:00")]).toBe(2);
+      await expect(seatFor("a@example.com")).rejects.toMatchObject({
+        code: "already_signed_up_for_this_booking_error",
+      });
+      await seatFor("c@example.com");
+      expect(await slots()).not.toContain(at("10:00"));
+      await expect(seatFor("d@example.com")).rejects.toMatchObject({ code: "booking_conflict_error" });
+      await Promise.all(pending);
+      expect(events.map((event) => event.seat?.attendeeEmail)).toEqual([
+        "a@example.com",
+        "b@example.com",
+        "c@example.com",
+      ]);
+    });
+
+    it("never fills a seat twice when bookers race for the last one", async () => {
+      await db.update(eventType).set({ seatsPerTimeSlot: 1 }).where(eq(eventType.slug, "intro"));
+      const { uid } = await seatFor("a@example.com");
+      const repo = new BookingRepository(db);
+      const seat = (ref: string) => ({ referenceUid: ref, data: {} });
+      const guest = { name: "x", email: "x@example.com", timeZone: "UTC", locale: "en", phoneNumber: null };
+      expect(await repo.addSeat(uid, guest, seat("r1"), 1)).toBe(false);
+      expect(await repo.addSeat(uid, guest, seat("r2"), 2)).toBe(true);
+      expect(await repo.addSeat(uid, { ...guest, email: "y@example.com" }, seat("r3"), 2)).toBe(false);
+      // Someone already seated never gets a second seat, whatever the limit.
+      expect(await repo.addSeat(uid, { ...guest, email: "a@example.com" }, seat("r4"), 5)).toBe(false);
+      expect(await repo.countSeats(uid)).toBe(2);
+    });
+
+    it("shows bookers only their own seat unless the host shares attendees", async () => {
+      const first = await seatFor("a@example.com");
+      const second = await seatFor("b@example.com");
+      const view = await service.getBooking(second.uid, second.seatReferenceUid);
+      expect(view.attendees.map((attendee) => attendee.email)).toEqual(["b@example.com"]);
+      expect(view).toMatchObject({
+        canCancel: true,
+        canReschedule: true,
+        seatReferenceUid: second.seatReferenceUid,
+      });
+      expect(await service.getBooking(first.uid)).toMatchObject({ attendees: [], canCancel: false });
+      await db.update(eventType).set({ seatsShowAttendees: true }).where(eq(eventType.slug, "intro"));
+      expect((await service.getBooking(first.uid)).attendees).toHaveLength(2);
+      await expect(service.getBooking("other", second.seatReferenceUid)).rejects.toMatchObject({
+        code: "booking_not_found",
+      });
+    });
+
+    it("cancels one seat at a time, and the booking with the last one", async () => {
+      const first = await seatFor("a@example.com");
+      const second = await seatFor("b@example.com");
+      await service.cancelSeat(first.seatReferenceUid ?? "", "Can't make it");
+      expect((await service.getBooking(first.uid)).status).toBe("ACCEPTED");
+      expect(await slots()).toContain(at("10:00"));
+      await service.cancelSeat(second.seatReferenceUid ?? "", null);
+      expect((await service.getBooking(first.uid)).status).toBe("CANCELLED");
+      await Promise.all(pending);
+      const cancelled = events.filter((event) => event.type === "BOOKING_CANCELLED");
+      expect(cancelled.map((event) => event.seat?.attendeeEmail)).toEqual(["a@example.com", "b@example.com"]);
+    });
+
+    it("moves a seat to another time", async () => {
+      const first = await seatFor("a@example.com");
+      const moved = await service.create({
+        ...input(at("11:00"), "intro", "a@example.com"),
+        rescheduleUid: first.seatReferenceUid,
+      });
+      expect(moved.uid).not.toBe(first.uid);
+      expect((await service.getBooking(first.uid)).status).toBe("CANCELLED");
+      expect((await service.getBooking(moved.uid, moved.seatReferenceUid)).attendees).toEqual([
+        expect.objectContaining({ email: "a@example.com" }),
+      ]);
+    });
+
+    it("hides the guests question on seated events", async () => {
+      const { eventType: details } = await service.getPublicEvent("host", "intro");
+      expect(details.bookingFields.find((field) => field.name === "guests")?.hidden).toBe(true);
+    });
+  });
+
   describe("recurring events", () => {
     beforeEach(async () => {
       await db

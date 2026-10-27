@@ -80,7 +80,11 @@ export class EmailService {
     const disabled = isConfirmation ? booking.eventType?.disableConfirmationEmails : undefined;
 
     if (plan.attendee && !disabled?.attendee) {
-      for (const attendee of booking.attendees) {
+      // A seat change concerns one booker; the others don't hear about it.
+      const recipients = event.seat
+        ? booking.attendees.filter((attendee) => attendee.email === event.seat?.attendeeEmail)
+        : booking.attendees;
+      for (const attendee of recipients) {
         sends.push(
           this.sendOne(
             plan.attendee,

@@ -212,6 +212,23 @@ describe("EmailService", () => {
     expect(sent[1].text).toContain("Every week for 3 occurrences");
   });
 
+  it("tells only the booker whose seat changed, and the organizer", async () => {
+    const sent: EmailMessage[] = [];
+    const seated = {
+      ...booking,
+      attendees: [
+        ...booking.attendees,
+        { name: "Sam", email: "sam@example.com", timeZone: "UTC", phoneNumber: null, locale: "en" },
+      ],
+    };
+    await service(async (m) => void sent.push(m)).onBookingEvent({
+      type: "BOOKING_CREATED",
+      booking: seated,
+      seat: { referenceUid: "seat-1", attendeeEmail: "sam@example.com" },
+    });
+    expect(sent.map((m) => m.to)).toEqual(["sam@example.com", "hana@example.com"]);
+  });
+
   it("only tells the attendee about a rejection, and sends cancellations as CANCEL", async () => {
     const sent: EmailMessage[] = [];
     const svc = service(async (m) => void sent.push(m));

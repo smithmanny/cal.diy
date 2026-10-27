@@ -23,6 +23,9 @@ const MESSAGE_KEYS = [
   "duration",
   "multiple_duration_mins",
   "invalid_event_length",
+  "seats_available",
+  "booking_seats_full_error",
+  "already_signed_up_for_this_booking_error",
   "verification_code_sent",
   "verification_code",
   "email_verification_code_placeholder",
@@ -108,7 +111,7 @@ function BookerPage() {
 
   async function book(submission: BookingSubmission) {
     if (!selectedSlot || !slots.timeZone) return;
-    const { uid, redirectUrl } = await createBooking({
+    const { uid, redirectUrl, seatReferenceUid } = await createBooking({
       data: {
         username,
         slug,
@@ -124,7 +127,7 @@ function BookerPage() {
     });
     // The host's own thank-you page replaces ours, as in Cal.
     if (redirectUrl) window.location.assign(redirectUrl);
-    else await navigate({ to: "/booking/$uid", params: { uid } });
+    else await navigate({ to: "/booking/$uid", params: { uid }, search: { seatReferenceUid } });
   }
 
   return (
@@ -190,6 +193,7 @@ function BookerPage() {
                   onSelectSlot={setSelectedSlot}
                   weekStartDay={event.host.weekStartDay}
                   onHour12Change={setHour12}
+                  seats={slots.seats}
                   t={t}
                 />
               )}
