@@ -861,7 +861,7 @@ describe("BookingService", () => {
     expect(await uids("cancelled")).toEqual([cancelled.uid]);
     expect(await uids("past")).toEqual([]);
     expect((await service.listForHost(hostId, "upcoming", 50))[0].attendees).toEqual([
-      { name: "Guest", email: "guest@example.com" },
+      { name: "Guest", email: "guest@example.com", noShow: false },
     ]);
   });
 

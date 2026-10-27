@@ -121,3 +121,72 @@ describe("BookingRepository.findBusyForUser", () => {
     ]);
   });
 });
+
+describe("BookingRepository.findManyForHost search", () => {
+  const now = new Date("2030-01-01T00:00:00Z");
+  const list = (search: Parameters<BookingRepository["findManyForHost"]>[0]["search"]) =>
+    repo.findManyForHost({
+      userId: hostId,
+      email: "host@example.com",
+      filter: "upcoming",
+      search,
+      now,
+      limit: 50,
+    });
+
+  beforeEach(async () => {
+    const [{ id: otherType }] = await db
+      .insert(eventType)
+      .values({ userId: hostId, title: "Deep dive", slug: "deep", length: 60 })
+      .returning({ id: eventType.id });
+    await repo.insertIfSlotFree(newBooking("2030-01-07T10:00:00Z", { title: "Ada" }));
+    await repo.insertIfSlotFree(
+      newBooking("2030-01-09T10:00:00Z", {
+        title: "Grace",
+        eventTypeId: otherType,
+        attendees: [
+          { name: "Grace 100%", email: "grace@navy.mil", timeZone: "UTC", locale: "en", phoneNumber: null },
+        ],
+      })
+    );
+  });
+
+  it("filters by event type, attendee name or email, and dates", async () => {
+    expect((await list({ eventTypeIds: [eventTypeId] })).map((b) => b.title)).toEqual(["Ada"]);
+    expect((await list({ attendee: "NAVY" })).map((b) => b.title)).toEqual(["Grace"]);
+    expect((await list({ attendee: "grace 1" })).map((b) => b.title)).toEqual(["Grace"]);
+    // `%` is matched literally, not as a wildcard.
+    expect((await list({ attendee: "e 100%" })).map((b) => b.title)).toEqual(["Grace"]);
+    expect((await list({ attendee: "%" })).map((b) => b.title)).toEqual(["Grace"]);
+    expect(
+      (await list({ from: new Date("2030-01-08T00:00:00Z"), to: new Date("2030-01-10T00:00:00Z") })).map(
+        (b) => b.title
+      )
+    ).toEqual(["Grace"]);
+    expect((await list({})).map((b) => b.title)).toEqual(["Ada", "Grace"]);
+  });
+});
+
+describe("BookingRepository.setAttendeesNoShow", () => {
+  it("flags only the booking's own attendees", async () => {
+    const data = newBooking("2030-01-07T10:00:00Z");
+    await repo.insertIfSlotFree(data);
+    const found = await repo.findByUid(data.uid);
+    const applied = await repo.setAttendeesNoShow(found?.id ?? 0, [
+      { email: "guest@example.com", noShow: true },
+      { email: "stranger@example.com", noShow: true },
+    ]);
+    expect(applied).toEqual([{ email: "guest@example.com", noShow: true }]);
+    const [listed] = await repo.findManyForHost({
+      userId: hostId,
+      email: "host@example.com",
+      filter: "upcoming",
+      now: new Date("2030-01-01T00:00:00Z"),
+      limit: 10,
+    });
+    expect(listed.attendees).toEqual([{ name: "Guest", email: "guest@example.com", noShow: true }]);
+    expect(await repo.setAttendeesNoShow(found?.id ?? 0, [{ email: "x@example.com", noShow: true }])).toEqual(
+      []
+    );
+  });
+});

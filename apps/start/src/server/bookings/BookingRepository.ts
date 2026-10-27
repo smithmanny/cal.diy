@@ -93,6 +93,14 @@ export type NewAttendee = {
 
 export type HostBookingFilter = "upcoming" | "recurring" | "past" | "cancelled" | "unconfirmed";
 
+export type HostBookingSearch = {
+  eventTypeIds?: number[];
+  /** Part of an attendee's name or email. */
+  attendee?: string;
+  from?: Date;
+  to?: Date;
+};
+
 export type BusyBooking = { start: Date; end: Date; beforeBuffer: number; afterBuffer: number };
 
 export class BookingRepository {
@@ -549,6 +557,7 @@ export class BookingRepository {
     userId,
     email,
     filter,
+    search = {},
     now,
     limit,
   }: {
@@ -556,6 +565,7 @@ export class BookingRepository {
     /** Bookings this user attends, like a group link's other members, are listed too. */
     email: string;
     filter: HostBookingFilter;
+    search?: HostBookingSearch;
     now: Date;
     limit: number;
   }) {
@@ -603,26 +613,85 @@ export class BookingRepository {
                 .where(eq(attendee.email, email.toLowerCase()))
             )
           ),
-          conditions[filter]
+          conditions[filter],
+          this.searchConditions(search)
         )
       )
       .orderBy(order)
       .limit(limit);
     if (!rows.length) return [];
     const attendees = await this.db
-      .select({ bookingId: attendee.bookingId, name: attendee.name, email: attendee.email })
+      .select({
+        bookingId: attendee.bookingId,
+        name: attendee.name,
+        email: attendee.email,
+        noShow: attendee.noShow,
+      })
       .from(attendee)
       .where(
         inArray(
           attendee.bookingId,
           rows.map((row) => row.id)
         )
-      );
-    const byBooking = new Map<number, { name: string; email: string }[]>();
-    for (const { bookingId, ...rest } of attendees) {
+      )
+      .orderBy(asc(attendee.id));
+    const byBooking = new Map<number, { name: string; email: string; noShow: boolean }[]>();
+    for (const { bookingId, noShow, ...rest } of attendees) {
       if (bookingId === null) continue;
-      byBooking.set(bookingId, [...(byBooking.get(bookingId) ?? []), rest]);
+      byBooking.set(bookingId, [...(byBooking.get(bookingId) ?? []), { ...rest, noShow: Boolean(noShow) }]);
     }
     return rows.map(({ id, ...row }) => ({ ...row, attendees: byBooking.get(id) ?? [] }));
+  }
+
+  private searchConditions({ eventTypeIds, attendee: text, from, to }: HostBookingSearch): SQL | undefined {
+    const pattern = text ? `%${text.replace(/[\\%_]/g, (char) => `\\${char}`)}%` : null;
+    return and(
+      eventTypeIds?.length ? inArray(booking.eventTypeId, eventTypeIds) : undefined,
+      from ? gte(booking.endTime, from) : undefined,
+      to ? lte(booking.startTime, to) : undefined,
+      pattern
+        ? exists(
+            this.db
+              .select({ one: sql`1` })
+              .from(attendee)
+              .where(
+                and(
+                  eq(attendee.bookingId, booking.id),
+                  // SQLite's LIKE ignores ASCII case.
+                  or(
+                    sql`${attendee.name} LIKE ${pattern} ESCAPE '\\'`,
+                    sql`${attendee.email} LIKE ${pattern} ESCAPE '\\'`
+                  )
+                )
+              )
+          )
+        : undefined
+    );
+  }
+
+  /** Sets attendees' no-show flags by email; returns the attendees that exist on the booking. */
+  async setAttendeesNoShow(bookingId: number, updates: { email: string; noShow: boolean }[]) {
+    const current = await this.db
+      .select({ id: attendee.id, email: attendee.email })
+      .from(attendee)
+      .where(
+        and(
+          eq(attendee.bookingId, bookingId),
+          inArray(
+            attendee.email,
+            updates.map((update) => update.email)
+          )
+        )
+      );
+    const ids = new Map(current.map((row) => [row.email, row.id]));
+    const applied = updates.filter((update) => ids.has(update.email));
+    const [first, ...rest] = applied.map((update) =>
+      this.db
+        .update(attendee)
+        .set({ noShow: update.noShow })
+        .where(eq(attendee.id, ids.get(update.email) ?? 0))
+    );
+    if (first) await this.db.batch([first, ...rest]);
+    return applied;
   }
 }

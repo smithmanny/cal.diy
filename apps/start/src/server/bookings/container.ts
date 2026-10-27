@@ -9,6 +9,7 @@ import { ScheduleRepository } from "../schedules/ScheduleRepository";
 import { TravelScheduleRepository } from "../users/TravelScheduleRepository";
 import { UserRepository } from "../users/UserRepository";
 import { createBookerVerification } from "../verification/container";
+import { BookingActionsService } from "./BookingActionsService";
 import { BookingRepository } from "./BookingRepository";
 import { BookingService } from "./BookingService";
 import { getBookingListeners, getBusyTimesProviders } from "./integrations";
@@ -29,5 +30,13 @@ export async function getBookingService(): Promise<BookingService> {
     busyTimesProviders: getBusyTimesProviders(db),
     listeners: getBookingListeners(db),
     runInBackground,
+  });
+}
+
+export async function getBookingActionsService(): Promise<BookingActionsService> {
+  const db = await getDb();
+  return new BookingActionsService({
+    bookingRepo: new BookingRepository(db),
+    events: await getBookingService(),
   });
 }

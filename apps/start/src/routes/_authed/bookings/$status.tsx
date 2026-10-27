@@ -1,18 +1,34 @@
-import { Badge } from "@coss/ui/components/badge";
 import { Button } from "@coss/ui/components/button";
-import { createFileRoute, Link, notFound, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { PageHeader } from "~/components/AppShell";
 import { FormError } from "~/components/AuthCard";
-import { EventColorBar } from "~/components/EventColorBar";
+import {
+  BOOKING_FILTER_MESSAGE_KEYS,
+  BookingFilters,
+  type BookingSearch,
+  hasBookingSearch,
+  parseBookingSearch,
+} from "~/components/bookings/BookingFilters";
+import {
+  BOOKING_LIST_ITEM_MESSAGE_KEYS,
+  BookingListItem,
+  type ListedBooking,
+} from "~/components/bookings/BookingListItem";
 import { HydratedFieldset } from "~/components/HydratedFieldset";
-import { formatLongDate, formatTime } from "~/lib/date-utils";
+import { dayRangeInTimeZone } from "~/lib/date-utils";
 import { errorMessageKey } from "~/lib/errors";
 import { useT } from "~/lib/i18n";
 import { LOCATION_LABEL_KEYS } from "~/lib/location-labels";
 import { loadMessages } from "~/lib/messages";
-import { RECURRING_MESSAGE_KEYS, recurringSummary } from "~/lib/recurring";
-import { cancelBookingAsHost, decideBooking, listHostBookings } from "~/server/bookings/functions";
+import { RECURRING_MESSAGE_KEYS } from "~/lib/recurring";
+import {
+  cancelBookingAsHost,
+  decideBooking,
+  listHostBookings,
+  markNoShow,
+} from "~/server/bookings/functions";
+import { listEventTypes } from "~/server/event-types/functions";
 
 const STATUSES = ["upcoming", "unconfirmed", "recurring", "past", "cancelled"] as const;
 type Status = (typeof STATUSES)[number];
@@ -32,6 +48,10 @@ const MESSAGE_KEYS = [
   ...RECURRING_MESSAGE_KEYS,
   ...Object.values(EMPTY_KEYS),
   ...Object.values(LOCATION_LABEL_KEYS),
+  ...BOOKING_FILTER_MESSAGE_KEYS,
+  ...BOOKING_LIST_ITEM_MESSAGE_KEYS,
+  "no_results",
+  "no_show_before_start",
   "bookings",
   "accept",
   "reject",
@@ -42,22 +62,15 @@ const MESSAGE_KEYS = [
   "reschedule",
   "view_booking",
   "load_more_results",
-  "unconfirmed",
-  "rejected",
   "something_went_wrong",
   "booking_not_found",
   "event_cancelled",
 ];
 
-function BookingsPage() {
-  const { bookings } = Route.useLoaderData();
-  const { status } = Route.useParams();
-  const limit = Route.useSearch().limit ?? PAGE_SIZE;
-  const { locale, user } = Route.useRouteContext();
-  const t = useT();
+/** Runs a booking action, then reloads the list; failures show above it. */
+function useBookingAction() {
   const router = useRouter();
   const [errorKey, setErrorKey] = useState<string | null>(null);
-
   async function run(action: () => Promise<unknown>) {
     setErrorKey(null);
     try {
@@ -67,105 +80,117 @@ function BookingsPage() {
       setErrorKey(errorMessageKey(error));
     }
   }
+  return { run, errorKey };
+}
 
-  const cancel = (uid: string) => {
+function HostActions({
+  booking,
+  status,
+  run,
+}: {
+  booking: ListedBooking;
+  status: Status;
+  run: (action: () => Promise<unknown>) => void;
+}) {
+  const t = useT();
+  if (!booking.isOrganizer) return null;
+  const cancel = () => {
     const reason = window.prompt(t("cancellation_reason"));
     if (reason !== null)
       run(() =>
         cancelBookingAsHost({
           // In the recurring tab a row stands for the series, so cancelling cancels what remains of it.
-          data: { uid, reason: reason || undefined, allRemaining: status === "recurring" },
+          data: { uid: booking.uid, reason: reason || undefined, allRemaining: status === "recurring" },
         })
       );
   };
-  const reject = (uid: string) => {
+  const reject = () => {
     const reason = window.prompt(`${t("rejection_reason_title")}\n${t("rejection_reason")}`);
     if (reason !== null)
-      run(() => decideBooking({ data: { uid, accept: false, reason: reason || undefined } }));
+      run(() => decideBooking({ data: { uid: booking.uid, accept: false, reason: reason || undefined } }));
   };
+  if (status === "unconfirmed")
+    return (
+      <>
+        <Button
+          size="sm"
+          onClick={() => run(() => decideBooking({ data: { uid: booking.uid, accept: true } }))}>
+          {t("accept")}
+        </Button>
+        <Button size="sm" variant="outline" onClick={reject}>
+          {t("reject")}
+        </Button>
+      </>
+    );
+  if (status !== "upcoming" && status !== "recurring") return null;
+  return (
+    <Button size="sm" variant="outline" onClick={cancel}>
+      {t("cancel_event")}
+    </Button>
+  );
+}
+
+function StatusTabs({ search }: { search: BookingSearch }) {
+  const t = useT();
+  return (
+    <nav className="mb-4 flex gap-1 overflow-x-auto border-b">
+      {STATUSES.map((tab) => (
+        <Link
+          key={tab}
+          to="/bookings/$status"
+          params={{ status: tab }}
+          search={search}
+          className="-mb-px whitespace-nowrap border-b-2 px-3 py-2 font-medium text-sm"
+          activeProps={{ className: "border-foreground text-foreground" }}
+          inactiveProps={{ className: "border-transparent text-muted-foreground" }}>
+          {t(tab)}
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
+function BookingsPage() {
+  const { bookings, eventTypes, now } = Route.useLoaderData();
+  const { status } = Route.useParams();
+  const { limit = PAGE_SIZE, ...search } = Route.useSearch();
+  const { locale, user } = Route.useRouteContext();
+  const t = useT();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const { run, errorKey } = useBookingAction();
+  const viewer = { timeZone: user.timeZone, locale, hour12: user.hour12 };
+  // Attendees can be marked absent once the meeting has started, as in Cal.
+  const noShowHandler = (booking: ListedBooking) =>
+    booking.isOrganizer && new Date(booking.startTime).getTime() <= now && booking.status === "ACCEPTED"
+      ? (email: string, noShow: boolean) =>
+          run(() => markNoShow({ data: { uid: booking.uid, attendees: [{ email, noShow }] } }))
+      : undefined;
 
   return (
     <HydratedFieldset>
       <PageHeader title={t("bookings")} />
-      <nav className="mb-4 flex gap-1 overflow-x-auto border-b">
-        {STATUSES.map((tab) => (
-          <Link
-            key={tab}
-            to="/bookings/$status"
-            params={{ status: tab }}
-            className="-mb-px whitespace-nowrap border-b-2 px-3 py-2 font-medium text-sm"
-            activeProps={{ className: "border-foreground text-foreground" }}
-            inactiveProps={{ className: "border-transparent text-muted-foreground" }}>
-            {t(tab)}
-          </Link>
-        ))}
-      </nav>
+      <StatusTabs search={search} />
+      <BookingFilters
+        search={search}
+        eventTypes={eventTypes}
+        onChange={(next) => navigate({ search: next, replace: true })}
+      />
       <FormError message={errorKey && t(errorKey)} />
       {bookings.length === 0 ? (
         <p className="rounded-xl border border-dashed p-8 text-center text-muted-foreground text-sm">
-          {t(EMPTY_KEYS[status])}
+          {t(hasBookingSearch(search) ? "no_results" : EMPTY_KEYS[status])}
         </p>
       ) : (
         <ul className="divide-y overflow-hidden rounded-xl border">
           {bookings.map((booking) => (
-            <li key={booking.uid} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start">
-              <EventColorBar color={booking.eventTypeColor} />
-              <div className="w-48 shrink-0 text-sm">
-                <div className="font-medium">{formatLongDate(booking.startTime, user.timeZone, locale)}</div>
-                <div className="text-muted-foreground">
-                  {formatTime(booking.startTime, user.timeZone, locale, user.hour12)} -{" "}
-                  {formatTime(booking.endTime, user.timeZone, locale, user.hour12)}
-                </div>
-                {status === "recurring" && booking.recurring && (
-                  <div className="text-muted-foreground text-xs">
-                    {recurringSummary(booking.recurring, t)}
-                  </div>
-                )}
-                {booking.status === "PENDING" && <Badge variant="warning">{t("unconfirmed")}</Badge>}
-                {booking.status === "REJECTED" && <Badge variant="error">{t("rejected")}</Badge>}
-              </div>
-              <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <Link
-                  to="/booking/$uid"
-                  params={{ uid: booking.uid }}
-                  className="font-medium hover:underline">
-                  {booking.title}
-                </Link>
-                <span className="text-muted-foreground text-sm">
-                  {booking.attendees
-                    .map((attendee) =>
-                      attendee.name ? `${attendee.name} <${attendee.email}>` : attendee.email
-                    )
-                    .join(", ")}
-                </span>
-                {booking.location && (
-                  <span className="truncate text-muted-foreground text-xs">
-                    {LOCATION_LABEL_KEYS[booking.location]
-                      ? t(LOCATION_LABEL_KEYS[booking.location])
-                      : booking.location}
-                  </span>
-                )}
-              </div>
-              <div className="flex shrink-0 gap-2">
-                {booking.isOrganizer && status === "unconfirmed" && (
-                  <>
-                    <Button
-                      size="sm"
-                      onClick={() => run(() => decideBooking({ data: { uid: booking.uid, accept: true } }))}>
-                      {t("accept")}
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => reject(booking.uid)}>
-                      {t("reject")}
-                    </Button>
-                  </>
-                )}
-                {booking.isOrganizer && (status === "upcoming" || status === "recurring") && (
-                  <Button size="sm" variant="outline" onClick={() => cancel(booking.uid)}>
-                    {t("cancel_event")}
-                  </Button>
-                )}
-              </div>
-            </li>
+            <BookingListItem
+              key={booking.uid}
+              booking={booking}
+              viewer={viewer}
+              showRecurring={status === "recurring"}
+              onNoShow={noShowHandler(booking)}
+              actions={<HostActions booking={booking} status={status} run={run} />}
+            />
           ))}
         </ul>
       )}
@@ -174,7 +199,11 @@ function BookingsPage() {
           <Button
             variant="outline"
             render={
-              <Link to="/bookings/$status" params={{ status }} search={{ limit: limit + PAGE_SIZE }} />
+              <Link
+                to="/bookings/$status"
+                params={{ status }}
+                search={{ ...search, limit: limit + PAGE_SIZE }}
+              />
             }>
             {t("load_more_results")}
           </Button>
@@ -182,6 +211,14 @@ function BookingsPage() {
       )}
     </HydratedFieldset>
   );
+}
+
+/** Whole days in the host's time zone, as the server's instants. */
+function searchRange(search: BookingSearch, timeZone: string) {
+  return {
+    from: search.from ? dayRangeInTimeZone(search.from, 1, timeZone).from.toISOString() : undefined,
+    to: search.to ? dayRangeInTimeZone(search.to, 1, timeZone).to.toISOString() : undefined,
+  };
 }
 
 export const Route = createFileRoute("/_authed/bookings/$status")({
@@ -192,17 +229,35 @@ export const Route = createFileRoute("/_authed/bookings/$status")({
     },
     stringify: ({ status }) => ({ status }),
   },
-  validateSearch: (search: Record<string, unknown>): { limit?: number } => {
+  validateSearch: (search: Record<string, unknown>): BookingSearch & { limit?: number } => {
     const limit = Number(search.limit);
-    return { limit: Number.isInteger(limit) && limit > 0 && limit <= 500 ? limit : undefined };
+    return {
+      ...parseBookingSearch(search),
+      limit: Number.isInteger(limit) && limit > 0 && limit <= 500 ? limit : undefined,
+    };
   },
-  loaderDeps: ({ search }) => ({ limit: search.limit ?? PAGE_SIZE }),
+  loaderDeps: ({ search }) => ({ ...search, limit: search.limit ?? PAGE_SIZE }),
   loader: async ({ context, params, deps }) => {
-    const [messages, bookings] = await Promise.all([
+    const { limit, eventTypeId, attendee } = deps;
+    const [messages, bookings, eventTypes] = await Promise.all([
       loadMessages(context, MESSAGE_KEYS),
-      listHostBookings({ data: { filter: params.status, limit: deps.limit } }),
+      listHostBookings({
+        data: {
+          filter: params.status,
+          limit,
+          eventTypeIds: eventTypeId ? [eventTypeId] : undefined,
+          attendee,
+          ...searchRange(deps, context.user.timeZone),
+        },
+      }),
+      listEventTypes(),
     ]);
-    return { messages, bookings };
+    return {
+      messages,
+      bookings,
+      eventTypes: eventTypes.map(({ id, title }) => ({ id, title })),
+      now: Date.now(),
+    };
   },
   component: BookingsPage,
 });

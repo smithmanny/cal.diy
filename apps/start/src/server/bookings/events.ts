@@ -3,6 +3,7 @@ import type { BookingField } from "~/lib/booking-fields";
 
 /** What listeners (webhooks, emails, calendar sync) need to know about a booking. */
 export type BookingSnapshot = {
+  id: number;
   uid: string;
   title: string;
   description: string | null;
@@ -53,7 +54,8 @@ export type BookingEventType =
   | "BOOKING_REQUESTED"
   | "BOOKING_RESCHEDULED"
   | "BOOKING_CANCELLED"
-  | "BOOKING_REJECTED";
+  | "BOOKING_REJECTED"
+  | "BOOKING_NO_SHOW_UPDATED";
 
 export type BookingEvent = {
   type: BookingEventType;
@@ -66,6 +68,8 @@ export type BookingEvent = {
   seriesIndex?: number;
   /** Set when one booker took, moved or gave up a seat; only they (and the host) are emailed. */
   seat?: { referenceUid: string; attendeeEmail: string };
+  /** For BOOKING_NO_SHOW_UPDATED: the attendees whose flag changed, and Cal's message for it. */
+  noShow?: { message: string; attendees: { email: string; noShow: boolean }[] };
 };
 
 /** Side effects run after the booking is committed; a failing listener never fails the booking. */

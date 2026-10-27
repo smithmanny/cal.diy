@@ -13,6 +13,7 @@ import {
 } from "./templates";
 
 const booking: BookingSnapshot = {
+  id: 1,
   uid: "uid-1",
   title: "Intro between Hana and Greta",
   description: null,

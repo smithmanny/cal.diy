@@ -79,6 +79,14 @@ export function buildBookingPayload(booking: BookingSnapshot, extra: Record<stri
 }
 
 export function payloadForEvent(event: BookingEvent) {
+  // Cal's no-show payload is just the change, not the booking.
+  if (event.type === "BOOKING_NO_SHOW_UPDATED")
+    return {
+      message: event.noShow?.message ?? "",
+      attendees: event.noShow?.attendees ?? [],
+      bookingUid: event.booking.uid,
+      bookingId: event.booking.id,
+    };
   // Cal's seat payloads name the seat that changed.
   const seat = event.seat ? { attendeeSeatId: event.seat.referenceUid } : {};
   if (event.type !== "BOOKING_RESCHEDULED" || !event.rescheduledFrom)

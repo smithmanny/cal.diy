@@ -4798,5 +4798,10 @@
   "option_label": "Option",
   "invalid_event_length": "This event can't be booked for that length of time",
   "bookerlayout_override": "Use a different layout for this event",
+  "no_show": "No-show",
+  "no_show_before_start": "You can only mark no-shows once the booking has started",
+  "all_event_types": "All event types",
+  "start_date": "Start date",
+  "end_date": "End date",
   "ADD_NEW_STRINGS_ABOVE_THIS_LINE_TO_PREVENT_MERGE_CONFLICTS": "↑↑↑↑↑↑↑↑↑↑↑↑↑ Add your new strings above here ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑"
 }

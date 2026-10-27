@@ -46,7 +46,12 @@ import { isValidTimeZone } from "../schedules/scheduleMapper";
 import type { TravelScheduleRepository } from "../users/TravelScheduleRepository";
 import type { UserRepository } from "../users/UserRepository";
 import type { BookerVerificationService } from "../verification/BookerVerificationService";
-import type { BookingRepository, HostBookingFilter, NewBooking } from "./BookingRepository";
+import type {
+  BookingRepository,
+  HostBookingFilter,
+  HostBookingSearch,
+  NewBooking,
+} from "./BookingRepository";
 import { dynamicEventType, isDynamicGroup, parseUsernameList } from "./dynamicGroup";
 import type { BookingEvent, BookingListener, BookingSnapshot } from "./events";
 import type {
@@ -843,13 +848,14 @@ export class BookingService {
     }
   }
 
-  async listForHost(hostId: number, filter: HostBookingFilter, limit: number) {
+  async listForHost(hostId: number, filter: HostBookingFilter, limit: number, search?: HostBookingSearch) {
     const profile = await this.deps.userRepo.findProfile(hostId);
     if (!profile) throw new AppError("user_not_found", 404);
     const rows = await this.deps.bookingRepo.findManyForHost({
       userId: hostId,
       email: profile.email,
       filter,
+      search,
       now: this.deps.now?.() ?? new Date(),
       limit,
     });
@@ -909,6 +915,7 @@ export class BookingService {
     const found = await this.deps.bookingRepo.findByUid(uid);
     if (!found?.host) return null;
     return {
+      id: found.id,
       uid: found.uid,
       title: found.title,
       description: found.description,
@@ -966,7 +973,8 @@ export class BookingService {
     return details && { freq: details.freq, interval: details.interval, count: details.count };
   }
 
-  private emit(event: BookingEvent) {
+  /** Hands the event to the listeners in the background; also used by BookingActionsService. */
+  emit(event: BookingEvent) {
     const listeners = this.deps.listeners ?? [];
     if (!listeners.length) return;
     // In order, not in parallel: the calendar listener fills in the Meet link that webhooks and
