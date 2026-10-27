@@ -1,5 +1,5 @@
 import "@tanstack/react-start/server-only";
-import { encryptionKey } from "../crypto/encryptionKey";
+import { encryptionKey } from "../apps/config";
 import { getDb } from "../db";
 import { OAuthRepository } from "./OAuthRepository";
 import { OAuthService } from "./OAuthService";

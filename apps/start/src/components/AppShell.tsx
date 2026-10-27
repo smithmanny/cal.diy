@@ -1,6 +1,7 @@
 import { Button } from "@coss/ui/components/button";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
+  BlocksIcon,
   CalendarDaysIcon,
   ClockIcon,
   LinkIcon,
@@ -23,6 +24,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/event-types", labelKey: "event_types_page_title", icon: LinkIcon },
   { to: "/bookings/upcoming", labelKey: "bookings", icon: CalendarDaysIcon },
   { to: "/availability", labelKey: "availability", icon: ClockIcon },
+  { to: "/apps", labelKey: "apps", icon: BlocksIcon },
   { to: "/settings/developer/webhooks", labelKey: "webhooks", icon: WebhookIcon },
   { to: "/settings/my-account/profile", labelKey: "settings", icon: SettingsIcon },
 ];
@@ -88,6 +90,7 @@ export const APP_SHELL_MESSAGE_KEYS = [
   "event_types_page_title",
   "bookings",
   "availability",
+  "apps",
   "webhooks",
   "settings",
   "sign_out",

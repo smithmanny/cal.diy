@@ -21,7 +21,9 @@ import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthResetPasswordRouteImport } from './routes/auth/reset-password'
 import { Route as AuthSignupRouteImport } from './routes/auth/signup'
 import { Route as BookingUidRouteImport } from './routes/booking/$uid'
+import { Route as VideoUidRouteImport } from './routes/video/$uid'
 import { Route as UsernameSlugEmbedRouteImport } from './routes/$username/$slug_.embed'
+import { Route as AuthedAppsIndexRouteImport } from './routes/_authed/apps/index'
 import { Route as AuthedAvailabilityIndexRouteImport } from './routes/_authed/availability/index'
 import { Route as AuthedAvailabilityScheduleIdRouteImport } from './routes/_authed/availability/$scheduleId'
 import { Route as AuthedBookingsStatusRouteImport } from './routes/_authed/bookings/$status'
@@ -36,6 +38,7 @@ import { Route as AuthedSettingsAdminOauthRouteImport } from './routes/_authed/s
 import { Route as AuthedSettingsDeveloperApiKeysRouteImport } from './routes/_authed/settings/developer/api-keys'
 import { Route as AuthedSettingsMyAccountAppearanceRouteImport } from './routes/_authed/settings/my-account/appearance'
 import { Route as AuthedSettingsMyAccountCalendarsRouteImport } from './routes/_authed/settings/my-account/calendars'
+import { Route as AuthedSettingsMyAccountConferencingRouteImport } from './routes/_authed/settings/my-account/conferencing'
 import { Route as AuthedSettingsMyAccountGeneralRouteImport } from './routes/_authed/settings/my-account/general'
 import { Route as AuthedSettingsMyAccountOutOfOfficeRouteImport } from './routes/_authed/settings/my-account/out-of-office'
 import { Route as AuthedSettingsMyAccountProfileRouteImport } from './routes/_authed/settings/my-account/profile'
@@ -44,8 +47,8 @@ import { Route as AuthedSettingsSecurityTwoFactorAuthRouteImport } from './route
 import { Route as ApiAuthOauthMeRouteImport } from './routes/api/auth/oauth/me'
 import { Route as ApiAuthOauthRefreshTokenRouteImport } from './routes/api/auth/oauth/refreshToken'
 import { Route as ApiAuthOauthTokenRouteImport } from './routes/api/auth/oauth/token'
-import { Route as ApiIntegrationsGooglecalendarAddRouteImport } from './routes/api/integrations/googlecalendar/add'
-import { Route as ApiIntegrationsGooglecalendarCallbackRouteImport } from './routes/api/integrations/googlecalendar/callback'
+import { Route as ApiIntegrationsAppAddRouteImport } from './routes/api/integrations/$app/add'
+import { Route as ApiIntegrationsAppCallbackRouteImport } from './routes/api/integrations/$app/callback'
 import { Route as ApiV2BookingsIndexRouteImport } from './routes/api/v2/bookings/index'
 import { Route as ApiV2EventTypesIndexRouteImport } from './routes/api/v2/event-types/index'
 import { Route as ApiV2EventTypesEventTypeIdRouteImport } from './routes/api/v2/event-types/$eventTypeId'
@@ -128,10 +131,20 @@ const BookingUidRoute = BookingUidRouteImport.update({
   path: '/booking/$uid',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VideoUidRoute = VideoUidRouteImport.update({
+  id: '/video/$uid',
+  path: '/video/$uid',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const UsernameSlugEmbedRoute = UsernameSlugEmbedRouteImport.update({
   id: '/$username/$slug_/embed',
   path: '/$username/$slug/embed',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthedAppsIndexRoute = AuthedAppsIndexRouteImport.update({
+  id: '/apps/',
+  path: '/apps/',
+  getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedAvailabilityIndexRoute = AuthedAvailabilityIndexRouteImport.update({
   id: '/availability/',
@@ -209,6 +222,12 @@ const AuthedSettingsMyAccountCalendarsRoute =
     path: '/my-account/calendars',
     getParentRoute: () => AuthedSettingsRoute,
   } as any)
+const AuthedSettingsMyAccountConferencingRoute =
+  AuthedSettingsMyAccountConferencingRouteImport.update({
+    id: '/my-account/conferencing',
+    path: '/my-account/conferencing',
+    getParentRoute: () => AuthedSettingsRoute,
+  } as any)
 const AuthedSettingsMyAccountGeneralRoute =
   AuthedSettingsMyAccountGeneralRouteImport.update({
     id: '/my-account/general',
@@ -255,16 +274,15 @@ const ApiAuthOauthTokenRoute = ApiAuthOauthTokenRouteImport.update({
   path: '/api/auth/oauth/token',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiIntegrationsGooglecalendarAddRoute =
-  ApiIntegrationsGooglecalendarAddRouteImport.update({
-    id: '/api/integrations/googlecalendar/add',
-    path: '/api/integrations/googlecalendar/add',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiIntegrationsGooglecalendarCallbackRoute =
-  ApiIntegrationsGooglecalendarCallbackRouteImport.update({
-    id: '/api/integrations/googlecalendar/callback',
-    path: '/api/integrations/googlecalendar/callback',
+const ApiIntegrationsAppAddRoute = ApiIntegrationsAppAddRouteImport.update({
+  id: '/api/integrations/$app/add',
+  path: '/api/integrations/$app/add',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiIntegrationsAppCallbackRoute =
+  ApiIntegrationsAppCallbackRouteImport.update({
+    id: '/api/integrations/$app/callback',
+    path: '/api/integrations/$app/callback',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiV2BookingsIndexRoute = ApiV2BookingsIndexRouteImport.update({
@@ -403,6 +421,7 @@ export interface FileRoutesByFullPath {
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
   '/booking/$uid': typeof BookingUidRoute
+  '/video/$uid': typeof VideoUidRoute
   '/$username/': typeof UsernameIndexRoute
   '/$username/$slug/embed': typeof UsernameSlugEmbedRoute
   '/availability/$scheduleId': typeof AuthedAvailabilityScheduleIdRoute
@@ -412,6 +431,7 @@ export interface FileRoutesByFullPath {
   '/api/v2/me': typeof ApiV2MeRoute
   '/auth/oauth2/authorize': typeof AuthOauth2AuthorizeRoute
   '/d/$link/$slug': typeof DLinkSlugRoute
+  '/apps/': typeof AuthedAppsIndexRoute
   '/availability/': typeof AuthedAvailabilityIndexRoute
   '/event-types/': typeof AuthedEventTypesIndexRoute
   '/settings/': typeof AuthedSettingsIndexRoute
@@ -419,6 +439,7 @@ export interface FileRoutesByFullPath {
   '/settings/developer/api-keys': typeof AuthedSettingsDeveloperApiKeysRoute
   '/settings/my-account/appearance': typeof AuthedSettingsMyAccountAppearanceRoute
   '/settings/my-account/calendars': typeof AuthedSettingsMyAccountCalendarsRoute
+  '/settings/my-account/conferencing': typeof AuthedSettingsMyAccountConferencingRoute
   '/settings/my-account/general': typeof AuthedSettingsMyAccountGeneralRoute
   '/settings/my-account/out-of-office': typeof AuthedSettingsMyAccountOutOfOfficeRoute
   '/settings/my-account/profile': typeof AuthedSettingsMyAccountProfileRoute
@@ -427,8 +448,8 @@ export interface FileRoutesByFullPath {
   '/api/auth/oauth/me': typeof ApiAuthOauthMeRoute
   '/api/auth/oauth/refreshToken': typeof ApiAuthOauthRefreshTokenRoute
   '/api/auth/oauth/token': typeof ApiAuthOauthTokenRoute
-  '/api/integrations/googlecalendar/add': typeof ApiIntegrationsGooglecalendarAddRoute
-  '/api/integrations/googlecalendar/callback': typeof ApiIntegrationsGooglecalendarCallbackRoute
+  '/api/integrations/$app/add': typeof ApiIntegrationsAppAddRoute
+  '/api/integrations/$app/callback': typeof ApiIntegrationsAppCallbackRoute
   '/api/v2/event-types/$eventTypeId': typeof ApiV2EventTypesEventTypeIdRoute
   '/api/v2/schedules/$scheduleId': typeof ApiV2SchedulesScheduleIdRoute
   '/api/v2/schedules/default': typeof ApiV2SchedulesDefaultRoute
@@ -462,6 +483,7 @@ export interface FileRoutesByTo {
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
   '/booking/$uid': typeof BookingUidRoute
+  '/video/$uid': typeof VideoUidRoute
   '/$username': typeof UsernameIndexRoute
   '/$username/$slug/embed': typeof UsernameSlugEmbedRoute
   '/availability/$scheduleId': typeof AuthedAvailabilityScheduleIdRoute
@@ -471,6 +493,7 @@ export interface FileRoutesByTo {
   '/api/v2/me': typeof ApiV2MeRoute
   '/auth/oauth2/authorize': typeof AuthOauth2AuthorizeRoute
   '/d/$link/$slug': typeof DLinkSlugRoute
+  '/apps': typeof AuthedAppsIndexRoute
   '/availability': typeof AuthedAvailabilityIndexRoute
   '/event-types': typeof AuthedEventTypesIndexRoute
   '/settings': typeof AuthedSettingsIndexRoute
@@ -478,6 +501,7 @@ export interface FileRoutesByTo {
   '/settings/developer/api-keys': typeof AuthedSettingsDeveloperApiKeysRoute
   '/settings/my-account/appearance': typeof AuthedSettingsMyAccountAppearanceRoute
   '/settings/my-account/calendars': typeof AuthedSettingsMyAccountCalendarsRoute
+  '/settings/my-account/conferencing': typeof AuthedSettingsMyAccountConferencingRoute
   '/settings/my-account/general': typeof AuthedSettingsMyAccountGeneralRoute
   '/settings/my-account/out-of-office': typeof AuthedSettingsMyAccountOutOfOfficeRoute
   '/settings/my-account/profile': typeof AuthedSettingsMyAccountProfileRoute
@@ -486,8 +510,8 @@ export interface FileRoutesByTo {
   '/api/auth/oauth/me': typeof ApiAuthOauthMeRoute
   '/api/auth/oauth/refreshToken': typeof ApiAuthOauthRefreshTokenRoute
   '/api/auth/oauth/token': typeof ApiAuthOauthTokenRoute
-  '/api/integrations/googlecalendar/add': typeof ApiIntegrationsGooglecalendarAddRoute
-  '/api/integrations/googlecalendar/callback': typeof ApiIntegrationsGooglecalendarCallbackRoute
+  '/api/integrations/$app/add': typeof ApiIntegrationsAppAddRoute
+  '/api/integrations/$app/callback': typeof ApiIntegrationsAppCallbackRoute
   '/api/v2/event-types/$eventTypeId': typeof ApiV2EventTypesEventTypeIdRoute
   '/api/v2/schedules/$scheduleId': typeof ApiV2SchedulesScheduleIdRoute
   '/api/v2/schedules/default': typeof ApiV2SchedulesDefaultRoute
@@ -524,6 +548,7 @@ export interface FileRoutesById {
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
   '/booking/$uid': typeof BookingUidRoute
+  '/video/$uid': typeof VideoUidRoute
   '/$username/': typeof UsernameIndexRoute
   '/$username/$slug_/embed': typeof UsernameSlugEmbedRoute
   '/_authed/availability/$scheduleId': typeof AuthedAvailabilityScheduleIdRoute
@@ -533,6 +558,7 @@ export interface FileRoutesById {
   '/api/v2/me': typeof ApiV2MeRoute
   '/auth/oauth2/authorize': typeof AuthOauth2AuthorizeRoute
   '/d/$link/$slug': typeof DLinkSlugRoute
+  '/_authed/apps/': typeof AuthedAppsIndexRoute
   '/_authed/availability/': typeof AuthedAvailabilityIndexRoute
   '/_authed/event-types/': typeof AuthedEventTypesIndexRoute
   '/_authed/settings/': typeof AuthedSettingsIndexRoute
@@ -540,6 +566,7 @@ export interface FileRoutesById {
   '/_authed/settings/developer/api-keys': typeof AuthedSettingsDeveloperApiKeysRoute
   '/_authed/settings/my-account/appearance': typeof AuthedSettingsMyAccountAppearanceRoute
   '/_authed/settings/my-account/calendars': typeof AuthedSettingsMyAccountCalendarsRoute
+  '/_authed/settings/my-account/conferencing': typeof AuthedSettingsMyAccountConferencingRoute
   '/_authed/settings/my-account/general': typeof AuthedSettingsMyAccountGeneralRoute
   '/_authed/settings/my-account/out-of-office': typeof AuthedSettingsMyAccountOutOfOfficeRoute
   '/_authed/settings/my-account/profile': typeof AuthedSettingsMyAccountProfileRoute
@@ -548,8 +575,8 @@ export interface FileRoutesById {
   '/api/auth/oauth/me': typeof ApiAuthOauthMeRoute
   '/api/auth/oauth/refreshToken': typeof ApiAuthOauthRefreshTokenRoute
   '/api/auth/oauth/token': typeof ApiAuthOauthTokenRoute
-  '/api/integrations/googlecalendar/add': typeof ApiIntegrationsGooglecalendarAddRoute
-  '/api/integrations/googlecalendar/callback': typeof ApiIntegrationsGooglecalendarCallbackRoute
+  '/api/integrations/$app/add': typeof ApiIntegrationsAppAddRoute
+  '/api/integrations/$app/callback': typeof ApiIntegrationsAppCallbackRoute
   '/api/v2/event-types/$eventTypeId': typeof ApiV2EventTypesEventTypeIdRoute
   '/api/v2/schedules/$scheduleId': typeof ApiV2SchedulesScheduleIdRoute
   '/api/v2/schedules/default': typeof ApiV2SchedulesDefaultRoute
@@ -586,6 +613,7 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/auth/signup'
     | '/booking/$uid'
+    | '/video/$uid'
     | '/$username/'
     | '/$username/$slug/embed'
     | '/availability/$scheduleId'
@@ -595,6 +623,7 @@ export interface FileRouteTypes {
     | '/api/v2/me'
     | '/auth/oauth2/authorize'
     | '/d/$link/$slug'
+    | '/apps/'
     | '/availability/'
     | '/event-types/'
     | '/settings/'
@@ -602,6 +631,7 @@ export interface FileRouteTypes {
     | '/settings/developer/api-keys'
     | '/settings/my-account/appearance'
     | '/settings/my-account/calendars'
+    | '/settings/my-account/conferencing'
     | '/settings/my-account/general'
     | '/settings/my-account/out-of-office'
     | '/settings/my-account/profile'
@@ -610,8 +640,8 @@ export interface FileRouteTypes {
     | '/api/auth/oauth/me'
     | '/api/auth/oauth/refreshToken'
     | '/api/auth/oauth/token'
-    | '/api/integrations/googlecalendar/add'
-    | '/api/integrations/googlecalendar/callback'
+    | '/api/integrations/$app/add'
+    | '/api/integrations/$app/callback'
     | '/api/v2/event-types/$eventTypeId'
     | '/api/v2/schedules/$scheduleId'
     | '/api/v2/schedules/default'
@@ -645,6 +675,7 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/auth/signup'
     | '/booking/$uid'
+    | '/video/$uid'
     | '/$username'
     | '/$username/$slug/embed'
     | '/availability/$scheduleId'
@@ -654,6 +685,7 @@ export interface FileRouteTypes {
     | '/api/v2/me'
     | '/auth/oauth2/authorize'
     | '/d/$link/$slug'
+    | '/apps'
     | '/availability'
     | '/event-types'
     | '/settings'
@@ -661,6 +693,7 @@ export interface FileRouteTypes {
     | '/settings/developer/api-keys'
     | '/settings/my-account/appearance'
     | '/settings/my-account/calendars'
+    | '/settings/my-account/conferencing'
     | '/settings/my-account/general'
     | '/settings/my-account/out-of-office'
     | '/settings/my-account/profile'
@@ -669,8 +702,8 @@ export interface FileRouteTypes {
     | '/api/auth/oauth/me'
     | '/api/auth/oauth/refreshToken'
     | '/api/auth/oauth/token'
-    | '/api/integrations/googlecalendar/add'
-    | '/api/integrations/googlecalendar/callback'
+    | '/api/integrations/$app/add'
+    | '/api/integrations/$app/callback'
     | '/api/v2/event-types/$eventTypeId'
     | '/api/v2/schedules/$scheduleId'
     | '/api/v2/schedules/default'
@@ -706,6 +739,7 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/auth/signup'
     | '/booking/$uid'
+    | '/video/$uid'
     | '/$username/'
     | '/$username/$slug_/embed'
     | '/_authed/availability/$scheduleId'
@@ -715,6 +749,7 @@ export interface FileRouteTypes {
     | '/api/v2/me'
     | '/auth/oauth2/authorize'
     | '/d/$link/$slug'
+    | '/_authed/apps/'
     | '/_authed/availability/'
     | '/_authed/event-types/'
     | '/_authed/settings/'
@@ -722,6 +757,7 @@ export interface FileRouteTypes {
     | '/_authed/settings/developer/api-keys'
     | '/_authed/settings/my-account/appearance'
     | '/_authed/settings/my-account/calendars'
+    | '/_authed/settings/my-account/conferencing'
     | '/_authed/settings/my-account/general'
     | '/_authed/settings/my-account/out-of-office'
     | '/_authed/settings/my-account/profile'
@@ -730,8 +766,8 @@ export interface FileRouteTypes {
     | '/api/auth/oauth/me'
     | '/api/auth/oauth/refreshToken'
     | '/api/auth/oauth/token'
-    | '/api/integrations/googlecalendar/add'
-    | '/api/integrations/googlecalendar/callback'
+    | '/api/integrations/$app/add'
+    | '/api/integrations/$app/callback'
     | '/api/v2/event-types/$eventTypeId'
     | '/api/v2/schedules/$scheduleId'
     | '/api/v2/schedules/default'
@@ -767,6 +803,7 @@ export interface RootRouteChildren {
   AuthResetPasswordRoute: typeof AuthResetPasswordRoute
   AuthSignupRoute: typeof AuthSignupRoute
   BookingUidRoute: typeof BookingUidRoute
+  VideoUidRoute: typeof VideoUidRoute
   UsernameIndexRoute: typeof UsernameIndexRoute
   UsernameSlugEmbedRoute: typeof UsernameSlugEmbedRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -776,8 +813,8 @@ export interface RootRouteChildren {
   ApiAuthOauthMeRoute: typeof ApiAuthOauthMeRoute
   ApiAuthOauthRefreshTokenRoute: typeof ApiAuthOauthRefreshTokenRoute
   ApiAuthOauthTokenRoute: typeof ApiAuthOauthTokenRoute
-  ApiIntegrationsGooglecalendarAddRoute: typeof ApiIntegrationsGooglecalendarAddRoute
-  ApiIntegrationsGooglecalendarCallbackRoute: typeof ApiIntegrationsGooglecalendarCallbackRoute
+  ApiIntegrationsAppAddRoute: typeof ApiIntegrationsAppAddRoute
+  ApiIntegrationsAppCallbackRoute: typeof ApiIntegrationsAppCallbackRoute
   ApiV2EventTypesEventTypeIdRoute: typeof ApiV2EventTypesEventTypeIdRoute
   ApiV2SchedulesScheduleIdRoute: typeof ApiV2SchedulesScheduleIdRoute
   ApiV2SchedulesDefaultRoute: typeof ApiV2SchedulesDefaultRoute
@@ -884,12 +921,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BookingUidRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/video/$uid': {
+      id: '/video/$uid'
+      path: '/video/$uid'
+      fullPath: '/video/$uid'
+      preLoaderRoute: typeof VideoUidRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/$username/$slug_/embed': {
       id: '/$username/$slug_/embed'
       path: '/$username/$slug/embed'
       fullPath: '/$username/$slug/embed'
       preLoaderRoute: typeof UsernameSlugEmbedRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authed/apps/': {
+      id: '/_authed/apps/'
+      path: '/apps'
+      fullPath: '/apps/'
+      preLoaderRoute: typeof AuthedAppsIndexRouteImport
+      parentRoute: typeof AuthedRoute
     }
     '/_authed/availability/': {
       id: '/_authed/availability/'
@@ -989,6 +1040,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedSettingsMyAccountCalendarsRouteImport
       parentRoute: typeof AuthedSettingsRoute
     }
+    '/_authed/settings/my-account/conferencing': {
+      id: '/_authed/settings/my-account/conferencing'
+      path: '/my-account/conferencing'
+      fullPath: '/settings/my-account/conferencing'
+      preLoaderRoute: typeof AuthedSettingsMyAccountConferencingRouteImport
+      parentRoute: typeof AuthedSettingsRoute
+    }
     '/_authed/settings/my-account/general': {
       id: '/_authed/settings/my-account/general'
       path: '/my-account/general'
@@ -1045,18 +1103,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthOauthTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/integrations/googlecalendar/add': {
-      id: '/api/integrations/googlecalendar/add'
-      path: '/api/integrations/googlecalendar/add'
-      fullPath: '/api/integrations/googlecalendar/add'
-      preLoaderRoute: typeof ApiIntegrationsGooglecalendarAddRouteImport
+    '/api/integrations/$app/add': {
+      id: '/api/integrations/$app/add'
+      path: '/api/integrations/$app/add'
+      fullPath: '/api/integrations/$app/add'
+      preLoaderRoute: typeof ApiIntegrationsAppAddRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/integrations/googlecalendar/callback': {
-      id: '/api/integrations/googlecalendar/callback'
-      path: '/api/integrations/googlecalendar/callback'
-      fullPath: '/api/integrations/googlecalendar/callback'
-      preLoaderRoute: typeof ApiIntegrationsGooglecalendarCallbackRouteImport
+    '/api/integrations/$app/callback': {
+      id: '/api/integrations/$app/callback'
+      path: '/api/integrations/$app/callback'
+      fullPath: '/api/integrations/$app/callback'
+      preLoaderRoute: typeof ApiIntegrationsAppCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/v2/bookings/': {
@@ -1222,6 +1280,7 @@ interface AuthedSettingsRouteChildren {
   AuthedSettingsDeveloperApiKeysRoute: typeof AuthedSettingsDeveloperApiKeysRoute
   AuthedSettingsMyAccountAppearanceRoute: typeof AuthedSettingsMyAccountAppearanceRoute
   AuthedSettingsMyAccountCalendarsRoute: typeof AuthedSettingsMyAccountCalendarsRoute
+  AuthedSettingsMyAccountConferencingRoute: typeof AuthedSettingsMyAccountConferencingRoute
   AuthedSettingsMyAccountGeneralRoute: typeof AuthedSettingsMyAccountGeneralRoute
   AuthedSettingsMyAccountOutOfOfficeRoute: typeof AuthedSettingsMyAccountOutOfOfficeRoute
   AuthedSettingsMyAccountProfileRoute: typeof AuthedSettingsMyAccountProfileRoute
@@ -1240,6 +1299,8 @@ const AuthedSettingsRouteChildren: AuthedSettingsRouteChildren = {
   AuthedSettingsMyAccountAppearanceRoute:
     AuthedSettingsMyAccountAppearanceRoute,
   AuthedSettingsMyAccountCalendarsRoute: AuthedSettingsMyAccountCalendarsRoute,
+  AuthedSettingsMyAccountConferencingRoute:
+    AuthedSettingsMyAccountConferencingRoute,
   AuthedSettingsMyAccountGeneralRoute: AuthedSettingsMyAccountGeneralRoute,
   AuthedSettingsMyAccountOutOfOfficeRoute:
     AuthedSettingsMyAccountOutOfOfficeRoute,
@@ -1264,6 +1325,7 @@ interface AuthedRouteChildren {
   AuthedAvailabilityScheduleIdRoute: typeof AuthedAvailabilityScheduleIdRoute
   AuthedBookingsStatusRoute: typeof AuthedBookingsStatusRoute
   AuthedEventTypesEventTypeIdRoute: typeof AuthedEventTypesEventTypeIdRoute
+  AuthedAppsIndexRoute: typeof AuthedAppsIndexRoute
   AuthedAvailabilityIndexRoute: typeof AuthedAvailabilityIndexRoute
   AuthedEventTypesIndexRoute: typeof AuthedEventTypesIndexRoute
 }
@@ -1273,6 +1335,7 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedAvailabilityScheduleIdRoute: AuthedAvailabilityScheduleIdRoute,
   AuthedBookingsStatusRoute: AuthedBookingsStatusRoute,
   AuthedEventTypesEventTypeIdRoute: AuthedEventTypesEventTypeIdRoute,
+  AuthedAppsIndexRoute: AuthedAppsIndexRoute,
   AuthedAvailabilityIndexRoute: AuthedAvailabilityIndexRoute,
   AuthedEventTypesIndexRoute: AuthedEventTypesIndexRoute,
 }
@@ -1291,6 +1354,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthResetPasswordRoute: AuthResetPasswordRoute,
   AuthSignupRoute: AuthSignupRoute,
   BookingUidRoute: BookingUidRoute,
+  VideoUidRoute: VideoUidRoute,
   UsernameIndexRoute: UsernameIndexRoute,
   UsernameSlugEmbedRoute: UsernameSlugEmbedRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
@@ -1300,9 +1364,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthOauthMeRoute: ApiAuthOauthMeRoute,
   ApiAuthOauthRefreshTokenRoute: ApiAuthOauthRefreshTokenRoute,
   ApiAuthOauthTokenRoute: ApiAuthOauthTokenRoute,
-  ApiIntegrationsGooglecalendarAddRoute: ApiIntegrationsGooglecalendarAddRoute,
-  ApiIntegrationsGooglecalendarCallbackRoute:
-    ApiIntegrationsGooglecalendarCallbackRoute,
+  ApiIntegrationsAppAddRoute: ApiIntegrationsAppAddRoute,
+  ApiIntegrationsAppCallbackRoute: ApiIntegrationsAppCallbackRoute,
   ApiV2EventTypesEventTypeIdRoute: ApiV2EventTypesEventTypeIdRoute,
   ApiV2SchedulesScheduleIdRoute: ApiV2SchedulesScheduleIdRoute,
   ApiV2SchedulesDefaultRoute: ApiV2SchedulesDefaultRoute,

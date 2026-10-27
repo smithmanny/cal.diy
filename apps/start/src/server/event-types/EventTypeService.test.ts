@@ -367,7 +367,9 @@ describe("EventTypeService", () => {
     });
     await db
       .update(eventType)
-      .set({ locations: [{ type: "integrations:zoom" }, { type: "link", link: "https://example.com/room" }] })
+      .set({
+        locations: [{ type: "integrations:webex_video" }, { type: "link", link: "https://example.com/room" }],
+      })
       .where(eq(eventType.id, id));
     expect((await service.get(ownerId, id)).locations).toEqual([
       { type: "link", link: "https://example.com/room" },

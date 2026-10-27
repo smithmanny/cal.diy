@@ -3,6 +3,8 @@ import { booking, bookingReference, credential, eventType, user } from "@calcom/
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createTestDb } from "../../test/testDb";
+import { CredentialRepository } from "../apps/CredentialRepository";
+import { CredentialVault } from "../apps/CredentialVault";
 import { BookingRepository } from "../bookings/BookingRepository";
 import { BookingService } from "../bookings/BookingService";
 import { EventTypeRepository } from "../event-types/EventTypeRepository";
@@ -17,6 +19,7 @@ import { UserRepository } from "../users/UserRepository";
 import { CalendarRepository } from "./CalendarRepository";
 import { CalendarService } from "./CalendarService";
 import { createFakeGoogle, FAKE_ENDPOINTS, type FakeGoogle } from "./google/fakeGoogle";
+import { googleCalendarProvider } from "./google/provider";
 
 const KEY = "0123456789abcdef0123456789abcdef";
 let db: Database;
@@ -25,16 +28,16 @@ let calendars: CalendarService;
 let hostId: number;
 
 function makeCalendarService(fake: FakeGoogle) {
-  return new CalendarService(new CalendarRepository(db), {
-    oauth: {
-      clientId: "c",
-      clientSecret: "s",
-      redirectUri: "https://cal.test/cb",
-      endpoints: FAKE_ENDPOINTS,
-    },
-    encryptionKey: KEY,
+  const oauth = {
+    clientId: "c",
+    clientSecret: "s",
+    redirectUri: "https://cal.test/cb",
+    endpoints: FAKE_ENDPOINTS,
+  };
+  return new CalendarService(new CalendarRepository(db), new CredentialRepository(db), {
+    providers: [googleCalendarProvider(oauth, fake.fetch)],
+    vault: new CredentialVault(KEY),
     publicUrl: "https://cal.test",
-    fetchImpl: fake.fetch,
   });
 }
 
@@ -50,7 +53,7 @@ beforeEach(async () => {
 
 describe("CalendarService", () => {
   it("connects with encrypted tokens, checking and writing to the primary calendar", async () => {
-    await calendars.connect(hostId, "auth-code");
+    await calendars.connectOAuth(hostId, "google_calendar", "auth-code");
 
     const [row] = await db
       .select({ key: credential.key, encryptedKey: credential.encryptedKey, type: credential.type })
@@ -69,7 +72,7 @@ describe("CalendarService", () => {
   it("refreshes expired tokens and stores the new ones", async () => {
     const expiring = createFakeGoogle({ expiresIn: 30 });
     const service = makeCalendarService(expiring);
-    await service.connect(hostId, "code");
+    await service.connectOAuth(hostId, "google_calendar", "code");
     const before = (await db.select({ encryptedKey: credential.encryptedKey }).from(credential))[0]
       .encryptedKey;
     await service.listConnections(hostId);
@@ -80,7 +83,7 @@ describe("CalendarService", () => {
   });
 
   it("returns busy time only from selected calendars and ignores a broken connection", async () => {
-    await calendars.connect(hostId, "code");
+    await calendars.connectOAuth(hostId, "google_calendar", "code");
     google.busy = [{ start: "2030-01-07T10:00:00Z", end: "2030-01-07T11:00:00Z" }];
     const busy = await calendars.busyTimes(
       hostId,
@@ -98,7 +101,7 @@ describe("CalendarService", () => {
   });
 
   it("enforces ownership on settings changes", async () => {
-    await calendars.connect(hostId, "code");
+    await calendars.connectOAuth(hostId, "google_calendar", "code");
     const [{ id: credentialId }] = await db.select({ id: credential.id }).from(credential);
     await expect(calendars.setSelected(hostId + 1, credentialId, "team@group", true)).rejects.toMatchObject({
       code: "not_found",
@@ -138,7 +141,7 @@ describe("Google Calendar in the booking flow", () => {
       minimumBookingNotice: 0,
       locations: [{ type: "integrations:google:meet" }],
     });
-    await calendars.connect(hostId, "code");
+    await calendars.connectOAuth(hostId, "google_calendar", "code");
     bookings = new BookingService({
       userRepo,
       eventTypeRepo: new EventTypeRepository(db),

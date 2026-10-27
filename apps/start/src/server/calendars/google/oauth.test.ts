@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { signState, verifyState } from "../../apps/oauthState";
 import { FAKE_ENDPOINTS } from "./fakeGoogle";
-import { buildAuthorizeUrl, signState, verifyState } from "./oauth";
+import { buildAuthorizeUrl } from "./oauth";
 
 const config = {
   clientId: "client",

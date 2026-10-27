@@ -1,9 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { APPS, appLogoUrl } from "~/lib/apps";
 import { AppError } from "../errors";
 import { authMiddleware } from "../middleware";
 // Only referenced inside handlers, so this server-only module stays out of the client bundle.
-import { getCalendarService, isGoogleCalendarEnabled } from "./container";
+import { getCalendarService } from "./container";
 
 const calendarSchema = z.object({
   credentialId: z.number().int().positive(),
@@ -21,7 +22,20 @@ export const getCalendarSettings = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const service = await getCalendarService();
     return {
-      enabled: isGoogleCalendarEnabled(),
+      enabled: service !== null,
+      // Calendar apps this instance can connect, in the registry's order.
+      apps: service
+        ? APPS.filter((app) => app.category === "calendar" && service.hasProvider(app.credentialType)).map(
+            (app) => ({
+              slug: app.slug,
+              dirName: app.dirName,
+              name: app.name,
+              logoUrl: appLogoUrl(app),
+              credentialType: app.credentialType,
+              install: app.install,
+            })
+          )
+        : [],
       connections: service ? await service.listConnections(context.userId) : [],
     };
   });
