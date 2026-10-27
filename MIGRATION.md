@@ -65,9 +65,9 @@ trusted client-IP header) sits behind the `#runtime` alias in `apps/start/src/se
 - [x] CSRF protection on server functions (`createCsrfMiddleware`); errors that aren't `AppError`s
       reach the client as `something_went_wrong`
 - [ ] Email verification, password reset, 2FA (Better Auth `twoFactor`), SAML/OIDC SSO
-- [ ] Data import from an existing Postgres install. Passwords are bcrypt hashes in `UserPassword`;
-      the import would move them to `Account.password` and `createAuth` would need a
-      `password.verify` that also accepts `$2…` hashes
+- [x] Data import from an existing Cal Postgres install (`import:postgres`, see
+      [Migrating from an existing Cal install](#migrating-from-an-existing-cal-install)). Sign-in
+      accepts the imported bcrypt hashes and upgrades them to scrypt
 
 ### Phase 3: core booking ✅
 - [x] Repositories on Drizzle: User, EventType, Schedule/Availability, Booking/Attendee, Credential,
@@ -178,6 +178,56 @@ docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 -t cal-diy .
 
 The SQLite database lives at `/data/cal.db` in the `cal-data` volume. Set `RUN_MIGRATIONS=false`
 to manage migrations yourself.
+
+## Migrating from an existing Cal install
+
+`import:postgres` copies an existing Cal database into the new schema. It reads Postgres with the
+`psql` client (no driver to install) and either writes a SQLite/libSQL database directly or
+produces a SQL file for D1. Run it from a checkout of this repo; the old install can stay up and is
+only read.
+
+```bash
+export BETTER_AUTH_SECRET=…        # the secret the new app will run with
+export CALENDSO_ENCRYPTION_KEY=…   # the old install's key (keep it for the new app too)
+
+# Docker / Node: writes and migrates a new SQLite file, then copy it into the `cal-data` volume
+# as /data/cal.db
+yarn workspace @calcom/start import:postgres --from "postgresql://user:pass@host:5432/calendso" \
+  --to file:./data/cal.db
+
+# Cloudflare: apply the migrations to the D1 database first, then load the generated SQL
+yarn workspace @calcom/db db:migrate:d1:remote
+yarn workspace @calcom/start import:postgres --from "postgresql://…" --sql import.sql
+npx wrangler d1 execute cal-diy --remote --file import.sql
+```
+
+What comes across, with ids unchanged:
+
+- Users, schedules and availability, event types (with hosts and private links), bookings with
+  attendees, seats and calendar references, credentials (still encrypted with
+  `CALENDSO_ENCRYPTION_KEY`), selected and destination calendars, webhooks, travel schedules,
+  out-of-office entries, holiday settings, secondary emails, and the `App` rows with their keys.
+- **Passwords**: `UserPassword` bcrypt hashes become Better Auth credential accounts. Sign-in
+  checks them with a pure-JS bcrypt (it runs on Workers too) and replaces each with an scrypt
+  hash the first time it matches.
+- **Google sign-in**: NextAuth `Account` rows become Better Auth accounts. Google users without
+  one are linked by email on their next Google sign-in.
+- **API keys**: personal keys keep working. Cal stored SHA-256 of the key as hex and Better Auth
+  stores the same digest as base64url, so the import converts it.
+- **2FA** stays on for everyone who had it, with their unused backup codes (re-encrypted with
+  `BETTER_AUTH_SECRET`). The authenticator secret can't come along: Cal keyed TOTP with the
+  base32-decoded secret, Better Auth with the secret's text. Those users sign in with a backup code
+  and then set up their authenticator app again. The import lists anyone with no codes left; to
+  let them in, delete their `TwoFactor` row and set `users.twoFactorEnabled` to 0.
+
+What doesn't:
+
+- Sessions: everyone signs in again.
+- Teams and organizations, and everything they own (team event types, team webhooks, credentials
+  and API keys), until they land in the new app. References to them are cleared: an organization
+  member becomes a regular user, a booking of a team event type keeps its host and attendees, and
+  a managed event type's per-user copies become ordinary event types.
+- Tables the new app has no feature for yet (workflows, routing forms, insights, payments, …).
 
 ## Changing the schema
 
