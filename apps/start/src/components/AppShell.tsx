@@ -1,6 +1,14 @@
 import { Button } from "@coss/ui/components/button";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { CalendarDaysIcon, ClockIcon, LinkIcon, LogOutIcon, SettingsIcon, WebhookIcon } from "lucide-react";
+import {
+  CalendarDaysIcon,
+  ClockIcon,
+  LinkIcon,
+  LogOutIcon,
+  SettingsIcon,
+  ShieldIcon,
+  WebhookIcon,
+} from "lucide-react";
 import { type ComponentType, type ReactNode, useState } from "react";
 import { authClient } from "~/lib/auth-client";
 import { HourCycleProvider } from "~/lib/hour-cycle";
@@ -18,6 +26,8 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/settings/developer/webhooks", labelKey: "webhooks", icon: WebhookIcon },
   { to: "/settings/my-account/profile", labelKey: "settings", icon: SettingsIcon },
 ];
+
+const ADMIN_NAV_ITEM: NavItem = { to: "/settings/admin/users", labelKey: "admin", icon: ShieldIcon };
 
 const navLinkClass =
   "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-medium transition-colors hover:bg-accent hover:text-foreground";
@@ -50,7 +60,31 @@ function VerifyEmailBanner({ email }: { email: string }) {
   );
 }
 
+/** While an admin acts as someone else, every page says so and offers the way back. */
+function ImpersonationBanner({ user }: { user: SessionUser }) {
+  const t = useT();
+  async function stop() {
+    await authClient.admin.stopImpersonating();
+    window.location.assign("/settings/admin/users");
+  }
+  return (
+    <div
+      role="status"
+      className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-info/32 bg-info/8 px-4 py-3 text-sm">
+      <span>{t("impersonating_as", { user: user.username ?? user.email })}</span>
+      <HydratedFieldset>
+        <Button size="sm" variant="outline" onClick={stop}>
+          {t("stop_impersonating")}
+        </Button>
+      </HydratedFieldset>
+    </div>
+  );
+}
+
 export const APP_SHELL_MESSAGE_KEYS = [
+  "admin",
+  "impersonating_as",
+  "stop_impersonating",
   "event_types_page_title",
   "bookings",
   "availability",
@@ -73,7 +107,7 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
 
   const nav = (
     <nav className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible">
-      {NAV_ITEMS.map(({ to, labelKey, icon: Icon }) => (
+      {(user.isAdmin ? [...NAV_ITEMS, ADMIN_NAV_ITEM] : NAV_ITEMS).map(({ to, labelKey, icon: Icon }) => (
         <Link
           key={to}
           to={to}
@@ -120,6 +154,7 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
         </div>
       </aside>
       <main className="mx-auto w-full max-w-5xl flex-1 p-4 md:p-8">
+        {user.impersonatedBy !== null && <ImpersonationBanner user={user} />}
         {user.needsEmailVerification && <VerifyEmailBanner email={user.email} />}
         <HourCycleProvider hour12={user.hour12}>{children}</HourCycleProvider>
       </main>
