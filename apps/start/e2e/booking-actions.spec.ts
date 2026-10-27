@@ -63,7 +63,7 @@ test("hosts move a booking, add guests and ask the attendee to pick a new time",
 
   await edit("Edit location");
   await page.getByRole("combobox", { name: "New location" }).selectOption({ label: "Link meeting" });
-  await page.getByRole("textbox", { name: "Link meeting" }).fill("https://meet.example/room");
+  await page.getByRole("textbox", { name: "Meeting URL" }).fill("https://meet.example/room");
   await page.getByRole("button", { name: "Update location" }).click();
   await expect(row).toContainText("https://meet.example/room");
   await linkFromLatestEmail(request, ada, /^Location Changed/);

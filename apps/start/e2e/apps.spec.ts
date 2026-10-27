@@ -90,6 +90,21 @@ test("a static-link app puts the host's room on the booking", async ({ page, bro
   const guest = await (await newClientContext(browser)).newPage();
   await bookFirstSlot(guest, username, "30min");
   await expect(guest.getByRole("link", { name: /whereby\.com\/hana-room/ })).toBeVisible();
+
+  // The host can move the booking to another room of an installed app.
+  await page.goto("/bookings/upcoming");
+  const row = page.locator("main ul > li");
+  await row.getByRole("button", { name: "Edit" }).click();
+  await page.getByRole("menuitem", { name: "Edit location" }).click();
+  const newLocation = page.getByRole("combobox", { name: "New location" });
+  await expect(newLocation.locator("option", { hasText: "Whereby" })).toHaveCount(1);
+  await newLocation.selectOption({ label: "Whereby" });
+  await page.getByRole("textbox", { name: "Meeting URL" }).fill("https://example.com/not-whereby");
+  await page.getByRole("button", { name: "Update location" }).click();
+  await expect(page.getByRole("dialog").getByRole("alert")).toBeVisible();
+  await page.getByRole("textbox", { name: "Meeting URL" }).fill("https://whereby.com/other-room");
+  await page.getByRole("button", { name: "Update location" }).click();
+  await expect(row).toContainText("https://whereby.com/other-room");
 });
 
 test("Cal Video can be the default conferencing app", async ({ page }) => {
