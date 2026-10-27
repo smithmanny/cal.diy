@@ -25,6 +25,7 @@ import { EventTypeService } from "../event-types/EventTypeService";
 import { ScheduleRepository } from "../schedules/ScheduleRepository";
 import { ScheduleService } from "../schedules/ScheduleService";
 import { UserRepository } from "../users/UserRepository";
+import { createPasswordVerifier } from "./legacyPassword";
 import { findAvailableUsername, normalizeUsername, usernameFromEmail } from "./username";
 
 const DEFAULT_TIME_ZONE = "Europe/London";
@@ -134,6 +135,9 @@ export function createAuth({
       autoSignIn: true,
       minPasswordLength: MIN_PASSWORD_LENGTH,
       revokeSessionsOnPasswordReset: true,
+      password: {
+        verify: createPasswordVerifier((oldHash, newHash) => users.replacePasswordHash(oldHash, newHash)),
+      },
       sendResetPassword: sendAuthEmail
         ? async ({ user: target, url }) => {
             await sendAuthEmail("reset_password", authEmailRecipient(target), url);
