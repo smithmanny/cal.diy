@@ -163,6 +163,7 @@ export class CalendarService {
         displayName: attendee.name || undefined,
       })),
       meetRequestId: wantsMeet ? booking.uid : undefined,
+      private: Boolean(booking.eventType?.hideCalendarEventDetails),
     });
     await this.repo.addReference({
       bookingUid: booking.uid,
@@ -198,7 +199,10 @@ export class CalendarService {
   }
 
   private description(booking: BookingSnapshot): string {
-    const notes = typeof booking.responses.notes === "string" ? `\n\n${booking.responses.notes}` : "";
+    const notes =
+      typeof booking.responses.notes === "string" && !booking.eventType?.hideCalendarNotes
+        ? `\n\n${booking.responses.notes}`
+        : "";
     return `${booking.eventType?.title ?? booking.title}${notes}\n\n${this.config.publicUrl}/booking/${booking.uid}`;
   }
 

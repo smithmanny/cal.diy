@@ -4,6 +4,7 @@ import { createFileRoute, Link, notFound, useRouter } from "@tanstack/react-rout
 import { useState } from "react";
 import { PageHeader } from "~/components/AppShell";
 import { FormError } from "~/components/AuthCard";
+import { EventColorBar } from "~/components/EventColorBar";
 import { HydratedFieldset } from "~/components/HydratedFieldset";
 import { formatLongDate, formatTime } from "~/lib/date-utils";
 import { errorMessageKey } from "~/lib/errors";
@@ -99,6 +100,7 @@ function BookingsPage() {
         <ul className="divide-y overflow-hidden rounded-xl border">
           {bookings.map((booking) => (
             <li key={booking.uid} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start">
+              <EventColorBar color={booking.eventTypeColor} />
               <div className="w-48 shrink-0 text-sm">
                 <div className="font-medium">{formatLongDate(booking.startTime, user.timeZone, locale)}</div>
                 <div className="text-muted-foreground">
@@ -116,7 +118,11 @@ function BookingsPage() {
                   {booking.title}
                 </Link>
                 <span className="text-muted-foreground text-sm">
-                  {booking.attendees.map((attendee) => `${attendee.name} <${attendee.email}>`).join(", ")}
+                  {booking.attendees
+                    .map((attendee) =>
+                      attendee.name ? `${attendee.name} <${attendee.email}>` : attendee.email
+                    )
+                    .join(", ")}
                 </span>
                 {booking.location && (
                   <span className="truncate text-muted-foreground text-xs">

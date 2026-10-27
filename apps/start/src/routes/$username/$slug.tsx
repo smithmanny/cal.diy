@@ -76,12 +76,16 @@ function useStoredHour12(): [boolean | undefined, (hour12: boolean) => void] {
 }
 
 function BookerPage() {
-  const { event, rescheduleUid } = Route.useLoaderData();
-  const { locale } = Route.useRouteContext();
+  const { event, locale, rescheduleUid } = Route.useLoaderData();
   const { username, slug } = Route.useParams();
   const t = useT();
   const navigate = useNavigate();
-  const slots = useMonthSlots({ username, slug, rescheduleUid });
+  const slots = useMonthSlots({
+    username,
+    slug,
+    rescheduleUid,
+    lockedTimeZone: event.eventType.lockedTimeZone,
+  });
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [hour12, setHour12] = useStoredHour12();
 
@@ -109,7 +113,9 @@ function BookerPage() {
         theme={event.host.appearance.theme}
         brandColor={event.host.appearance.brandColor}
         darkBrandColor={event.host.appearance.darkBrandColor}>
-        <main className="flex min-h-screen flex-col items-center justify-center bg-muted/40 px-4 py-8">
+        <main
+          lang={locale}
+          className="flex min-h-screen flex-col items-center justify-center bg-muted/40 px-4 py-8">
           <HydratedFieldset className="grid w-full max-w-5xl overflow-hidden rounded-xl border bg-background md:grid-cols-[18rem_1fr]">
             <BookerSidebar
               event={event}
@@ -162,13 +168,13 @@ export const Route = createFileRoute("/$username/$slug")({
   }),
   loaderDeps: ({ search }) => ({ rescheduleUid: search.rescheduleUid }),
   loader: async ({ context, params, deps }) => {
-    const [messages, event] = await Promise.all([
-      loadMessages(context, MESSAGE_KEYS),
-      getPublicEvent({ data: params }).catch(() => {
-        throw notFound();
-      }),
-    ]);
-    return { messages, event, rescheduleUid: deps.rescheduleUid };
+    const event = await getPublicEvent({ data: params }).catch(() => {
+      throw notFound();
+    });
+    // A host can pin the booking page's language; otherwise it follows the visitor.
+    const locale = event.eventType.interfaceLanguage ?? context.locale;
+    const messages = await loadMessages({ locale }, MESSAGE_KEYS);
+    return { messages, event, locale, rescheduleUid: deps.rescheduleUid };
   },
   head: ({ loaderData }) => ({
     meta: [

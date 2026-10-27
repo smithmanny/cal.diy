@@ -45,7 +45,11 @@ export function BookerSidebar({
             <GlobeIcon className="size-4" />
             {t("timezone")}
           </span>
-          <TimeZoneSelect value={timeZone} onChange={onTimeZoneChange} />
+          {eventType.lockedTimeZone ? (
+            <span>{timeZone}</span>
+          ) : (
+            <TimeZoneSelect value={timeZone} onChange={onTimeZoneChange} />
+          )}
         </label>
       )}
     </aside>

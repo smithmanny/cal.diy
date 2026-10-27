@@ -13,6 +13,8 @@ export type GoogleEventInput = {
   attendees: { email: string; displayName?: string }[];
   /** Asks Google to attach a Meet conference; `requestId` makes the request idempotent. */
   meetRequestId?: string;
+  /** Hides the details from people the calendar is shared with (Cal's hideCalendarEventDetails). */
+  private?: boolean;
 };
 
 export type CreatedGoogleEvent = { id: string; meetUrl: string | null; iCalUID: string | null };
@@ -61,6 +63,7 @@ export class GoogleCalendarClient {
       location: event.location ?? undefined,
       attendees: event.attendees,
       reminders: { useDefault: true },
+      ...(event.private && { visibility: "private" }),
       ...(event.meetRequestId && {
         conferenceData: {
           createRequest: { requestId: event.meetRequestId, conferenceSolutionKey: { type: "hangoutsMeet" } },

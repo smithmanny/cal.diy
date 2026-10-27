@@ -171,6 +171,35 @@ describe("EmailService", () => {
     });
   });
 
+  it("hides the organizer's address from attendees when the event type says so", async () => {
+    const sent: EmailMessage[] = [];
+    const hidden = {
+      ...booking,
+      eventType: { ...booking.eventType, id: 1, hideOrganizerEmail: true },
+    } as BookingSnapshot;
+    await service(async (m) => void sent.push(m)).onBookingEvent({
+      type: "BOOKING_CREATED",
+      booking: hidden,
+    });
+    expect(sent[0]).toMatchObject({ to: "greta@example.com", replyTo: undefined });
+    const ics = String(sent[0].attachments?.[0]?.content);
+    expect(ics).toContain("mailto:no-reply@cal.test");
+    expect(ics).not.toContain("hana@example.com");
+  });
+
+  it("leaves confirmations to workflows when standard confirmation emails are off", async () => {
+    const sent: EmailMessage[] = [];
+    const quiet = {
+      ...booking,
+      eventType: { ...booking.eventType, id: 1, disableConfirmationEmails: { host: false, attendee: true } },
+    } as BookingSnapshot;
+    const emails = service(async (m) => void sent.push(m));
+    await emails.onBookingEvent({ type: "BOOKING_CREATED", booking: quiet });
+    expect(sent.map((m) => m.to)).toEqual(["hana@example.com"]);
+    await emails.onBookingEvent({ type: "BOOKING_CANCELLED", booking: quiet });
+    expect(sent.map((m) => m.to)).toContain("greta@example.com");
+  });
+
   it("only tells the attendee about a rejection, and sends cancellations as CANCEL", async () => {
     const sent: EmailMessage[] = [];
     const svc = service(async (m) => void sent.push(m));

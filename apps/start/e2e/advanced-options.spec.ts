@@ -39,3 +39,26 @@ test("custom event names, no cancelling, and a redirect after booking", async ({
   await expect(guest.getByRole("link", { name: "Reschedule" })).toBeVisible();
   await expect(guest.getByRole("button", { name: "Cancel" })).toHaveCount(0);
 });
+
+test("a locked time zone and a fixed booking page language", async ({ page, browser }) => {
+  const { username } = await signUp(page);
+  await page.goto("/event-types");
+  await page.getByRole("link", { name: "30 min meeting" }).first().click();
+  await page
+    .locator("label")
+    .filter({ hasText: "Lock timezone on booking page" })
+    .getByRole("switch")
+    .click();
+  await page.getByRole("combobox", { name: /^Timezone/ }).selectOption("Asia/Tokyo");
+  await page.getByLabel("Interface language").selectOption("de");
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByRole("status")).toHaveText("Saved");
+
+  const guest = await (
+    await newClientContext(browser, { timezoneId: "America/New_York", locale: "en-US" })
+  ).newPage();
+  await guest.goto(`/${username}/30min`);
+  await expect(guest.getByText("Asia/Tokyo")).toBeVisible();
+  await expect(guest.getByRole("combobox")).toHaveCount(0);
+  await expect(guest.getByRole("button", { name: "Nächsten Monat anzeigen" })).toBeVisible();
+});

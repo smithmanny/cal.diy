@@ -199,4 +199,23 @@ describe("Google Calendar in the booking flow", () => {
       true
     );
   });
+
+  it("keeps notes out of the event and makes it private when the event type asks", async () => {
+    await db
+      .update(eventType)
+      .set({ hideCalendarNotes: true, hideCalendarEventDetails: true })
+      .where(eq(eventType.slug, "intro"));
+    await bookings.create({
+      username: "host",
+      slug: "intro",
+      start: "2030-01-07T12:00:00.000Z",
+      timeZone: "UTC",
+      locale: "en",
+      responses: { name: "Greta", email: "greta@example.com", notes: "Secret agenda" },
+    });
+    await Promise.all(pending);
+    const [event] = [...google.events.values()];
+    expect(event.body).toMatchObject({ visibility: "private" });
+    expect(JSON.stringify(event.body)).not.toContain("Secret agenda");
+  });
 });

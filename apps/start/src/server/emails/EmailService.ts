@@ -50,6 +50,11 @@ const PLANS: Partial<Record<BookingEvent["type"], Plan>> = {
   BOOKING_REJECTED: { attendee: "attendee_rejected", method: "CANCEL", sequence: 1 },
 };
 
+/** The bare address of a sender like "Cal.diy <cal@example.com>". */
+function senderAddress(from: string): string {
+  return from.match(/<([^>]+)>/)?.[1] ?? from;
+}
+
 /** Cal's booking emails: a confirmation/update for each attendee and the organizer, with an .ics. */
 export class EmailService {
   constructor(private readonly deps: Deps) {}
@@ -59,10 +64,19 @@ export class EmailService {
     if (!plan) return;
     const booking = event.booking;
     const manageUrl = `${this.deps.publicUrl}/booking/${booking.uid}`;
-    const ics = buildIcs(booking, { method: plan.method, sequence: plan.sequence, manageUrl });
+    const hideOrganizerEmail = Boolean(booking.eventType?.hideOrganizerEmail);
+    const ics = buildIcs(booking, {
+      method: plan.method,
+      sequence: plan.sequence,
+      manageUrl,
+      organizerEmail: hideOrganizerEmail ? senderAddress(this.deps.from) : undefined,
+    });
     const sends: Promise<void>[] = [];
+    // Like Cal, turning off standard emails only drops the confirmation; updates still go out.
+    const isConfirmation = event.type === "BOOKING_CREATED" || event.type === "BOOKING_REQUESTED";
+    const disabled = isConfirmation ? booking.eventType?.disableConfirmationEmails : undefined;
 
-    if (plan.attendee) {
+    if (plan.attendee && !disabled?.attendee) {
       for (const attendee of booking.attendees) {
         sends.push(
           this.sendOne(
@@ -71,12 +85,12 @@ export class EmailService {
             { email: attendee.email, timeZone: attendee.timeZone, locale: attendee.locale ?? "en" },
             manageUrl,
             ics,
-            booking.organizer.email
+            hideOrganizerEmail ? undefined : booking.organizer.email
           )
         );
       }
     }
-    if (plan.organizer) {
+    if (plan.organizer && !disabled?.host) {
       const organizerUrl =
         plan.organizer === "organizer_requested" ? `${this.deps.publicUrl}/bookings/unconfirmed` : manageUrl;
       const { email, timeZone, locale } = booking.organizer;

@@ -1,10 +1,13 @@
 import { isIntervalLimitOrderValid } from "@calcom/scheduling/limits";
 import { z } from "zod";
 import { bookingFieldInputSchema } from "~/lib/booking-fields";
+import { SUPPORTED_LOCALES } from "~/lib/locales";
 
 const limitValue = z.number().int().min(1).max(100_000).optional();
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+const hexColor = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 
 // Stored in EventType.locations using Cal's existing location shapes, so data stays portable.
 export const eventLocationSchema = z.discriminatedUnion("type", [
@@ -69,6 +72,20 @@ export const eventTypeFields = z.object({
     .nullable(),
   forwardParamsSuccessRedirect: z.boolean(),
   eventName: z.string().trim().max(1000).nullable(),
+  hideCalendarNotes: z.boolean(),
+  hideCalendarEventDetails: z.boolean(),
+  hideOrganizerEmail: z.boolean(),
+  lockTimeZoneToggleOnBookingPage: z.boolean(),
+  lockedTimeZone: z.string().max(100).nullable(),
+  /** Cal's eventTypeColor, shown next to the event and its bookings. */
+  eventTypeColor: z.object({ lightEventTypeColor: hexColor, darkEventTypeColor: hexColor }).nullable(),
+  /** The booking page's language; null follows the visitor's browser. */
+  interfaceLanguage: z
+    .string()
+    .refine((locale) => SUPPORTED_LOCALES.includes(locale))
+    .nullable(),
+  /** Cal's metadata.disableStandardEmails.confirmation: leave confirmations to workflows. */
+  disableConfirmationEmails: z.object({ host: z.boolean(), attendee: z.boolean() }),
   bookingFields: z.array(bookingFieldInputSchema).max(50),
 });
 
@@ -100,5 +117,5 @@ export type EventTypeDto = EventTypeInput & { id: number };
 
 export type EventTypeSummaryDto = Pick<
   EventTypeDto,
-  "id" | "title" | "slug" | "length" | "hidden" | "description"
+  "id" | "title" | "slug" | "length" | "hidden" | "description" | "eventTypeColor"
 >;

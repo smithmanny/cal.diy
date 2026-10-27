@@ -12,7 +12,15 @@ import {
 import { AppError } from "../errors";
 import type { ScheduleRepository } from "../schedules/ScheduleRepository";
 import type { EventTypeRepository, EventTypeRow } from "./EventTypeRepository";
-import { mergeMetadata, parseConfirmationThreshold, parseIntervalLimit, toPeriodType } from "./fields";
+import {
+  mergeMetadata,
+  parseConfirmationThreshold,
+  parseDisabledConfirmationEmails,
+  parseEventTypeColor,
+  parseIntervalLimit,
+  parseMetadata,
+  toPeriodType,
+} from "./fields";
 import {
   type EventLocation,
   type EventTypeDto,
@@ -72,10 +80,27 @@ function toDto(row: EventTypeRow): EventTypeDto {
     successRedirectUrl: row.successRedirectUrl,
     forwardParamsSuccessRedirect: row.forwardParamsSuccessRedirect ?? true,
     eventName: row.eventName,
+    hideCalendarNotes: row.hideCalendarNotes,
+    hideCalendarEventDetails: row.hideCalendarEventDetails,
+    hideOrganizerEmail: row.hideOrganizerEmail,
+    lockTimeZoneToggleOnBookingPage: row.lockTimeZoneToggleOnBookingPage,
+    lockedTimeZone: row.lockedTimeZone,
+    eventTypeColor: parseEventTypeColor(row.eventTypeColor),
+    interfaceLanguage: row.interfaceLanguage || null,
+    disableConfirmationEmails: parseDisabledConfirmationEmails(row.metadata),
     bookingFields: withSystemFields(parseBookingFields(row.bookingFields), {
       disableGuests: row.disableGuests,
     }).map(toBookingFieldInput),
   };
+}
+
+/** Updates disableStandardEmails.confirmation, keeping Cal's other switches (e.g. `all`). */
+function disableStandardEmails(metadata: unknown, confirmation: EventTypeInput["disableConfirmationEmails"]) {
+  const current = parseMetadata(metadata).disableStandardEmails;
+  const rest = current && typeof current === "object" && !Array.isArray(current) ? { ...current } : {};
+  delete rest.confirmation;
+  const next = confirmation.host || confirmation.attendee ? { ...rest, confirmation } : rest;
+  return Object.keys(next).length ? next : null;
 }
 
 function applyBookingFields(row: EventTypeRow, input: EventTypeInput): JsonValue {
@@ -94,8 +119,9 @@ function applyBookingFields(row: EventTypeRow, input: EventTypeInput): JsonValue
 export class EventTypeService {
   constructor(private readonly deps: Deps) {}
 
-  list(userId: number): Promise<EventTypeSummaryDto[]> {
-    return this.deps.eventTypeRepo.findManyByUserId(userId);
+  async list(userId: number): Promise<EventTypeSummaryDto[]> {
+    const rows = await this.deps.eventTypeRepo.findManyByUserId(userId);
+    return rows.map((row) => ({ ...row, eventTypeColor: parseEventTypeColor(row.eventTypeColor) }));
   }
 
   async get(userId: number, id: number): Promise<EventTypeDto> {
@@ -169,7 +195,15 @@ export class EventTypeService {
         requiresConfirmationThreshold: input.requiresConfirmation
           ? input.requiresConfirmationThreshold
           : null,
+        disableStandardEmails: disableStandardEmails(row.metadata, input.disableConfirmationEmails),
       }),
+      hideCalendarNotes: input.hideCalendarNotes,
+      hideCalendarEventDetails: input.hideCalendarEventDetails,
+      hideOrganizerEmail: input.hideOrganizerEmail,
+      lockTimeZoneToggleOnBookingPage: input.lockTimeZoneToggleOnBookingPage,
+      lockedTimeZone: input.lockTimeZoneToggleOnBookingPage ? input.lockedTimeZone : null,
+      eventTypeColor: input.eventTypeColor,
+      interfaceLanguage: input.interfaceLanguage,
       disableCancelling: input.disableCancelling,
       disableRescheduling: input.disableRescheduling,
       minimumRescheduleNotice: input.minimumRescheduleNotice,

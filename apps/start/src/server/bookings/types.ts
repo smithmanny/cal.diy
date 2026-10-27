@@ -67,6 +67,10 @@ export type PublicEventDto = {
     requiresConfirmation: boolean;
     locations: PublicEventLocation[];
     bookingFields: BookingField[];
+    /** Bookers see times in this zone and can't change it. */
+    lockedTimeZone: string | null;
+    /** The page's language, if the host chose one over the visitor's. */
+    interfaceLanguage: string | null;
   };
 };
 
@@ -84,7 +88,13 @@ export type BookingDetailsDto = {
   canCancel: boolean;
   canReschedule: boolean;
   answers: BookingAnswerDto[];
-  host: { name: string | null; email: string; username: string | null; appearance: AppearanceDto } | null;
+  /** `email` is null when the event type hides it from attendees. */
+  host: {
+    name: string | null;
+    email: string | null;
+    username: string | null;
+    appearance: AppearanceDto;
+  } | null;
   eventType: { title: string; slug: string; length: number } | null;
   attendees: { name: string; email: string; timeZone: string }[];
 };

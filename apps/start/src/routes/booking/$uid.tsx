@@ -92,6 +92,7 @@ function BookingPage() {
   const { headingKey, Icon } = statusPresentation(booking.status, booking.rescheduled);
   const heading = t(headingKey);
 
+  const hostName = booking.host?.name ?? booking.host?.email ?? booking.host?.username ?? "";
   const rows: [string, string | null][] = [
     [t("what"), booking.title],
     [
@@ -101,7 +102,7 @@ function BookingPage() {
     [
       t("who"),
       [
-        booking.host ? `${booking.host.name ?? booking.host.email} (${t("host")})` : null,
+        booking.host ? `${hostName} (${t("host")})` : null,
         ...booking.attendees.map((attendee) =>
           attendee.name ? `${attendee.name} <${attendee.email}>` : attendee.email
         ),
@@ -130,7 +131,7 @@ function BookingPage() {
             {isPending && booking.host && (
               <p className="text-muted-foreground text-sm">
                 {t("user_needs_to_confirm_or_reject_booking", {
-                  user: booking.host.name ?? booking.host.email,
+                  user: hostName,
                 })}
               </p>
             )}

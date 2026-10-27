@@ -128,6 +128,19 @@ describe("BookingService", () => {
     expect(profile.eventTypes.map((e) => e.slug).sort()).toEqual(["approval", "intro"]);
   });
 
+  it("shows bookers the locked time zone and language, and can hide the host's address", async () => {
+    await db
+      .update(eventType)
+      .set({ lockTimeZoneToggleOnBookingPage: true, interfaceLanguage: "fr", hideOrganizerEmail: true })
+      .where(eq(eventType.slug, "intro"));
+    expect((await service.getPublicEvent("host", "intro")).eventType).toMatchObject({
+      lockedTimeZone: "UTC",
+      interfaceLanguage: "fr",
+    });
+    const { uid } = await book(at("10:00"));
+    expect((await service.getBooking(uid)).host).toMatchObject({ name: "Hana Host", email: null });
+  });
+
   it("hides links and phone numbers from the public event details", async () => {
     const { eventType: details } = await service.getPublicEvent("host", "intro");
     expect(details.locations).toEqual([{ type: "phone" }, { type: "link" }]);

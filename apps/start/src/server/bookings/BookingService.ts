@@ -25,7 +25,13 @@ import { weekStartIndex } from "~/lib/time-format";
 import { pickMessages } from "../catalog";
 import { AppError } from "../errors";
 import type { EventTypeRepository } from "../event-types/EventTypeRepository";
-import { parseConfirmationThreshold, parseIntervalLimit, toPeriodType } from "../event-types/fields";
+import {
+  parseConfirmationThreshold,
+  parseDisabledConfirmationEmails,
+  parseEventTypeColor,
+  parseIntervalLimit,
+  toPeriodType,
+} from "../event-types/fields";
 import { type EventLocation, eventLocationSchema } from "../event-types/types";
 import type { HolidayService } from "../holidays/HolidayService";
 import type { OutOfOfficeRepository } from "../out-of-office/OutOfOfficeRepository";
@@ -203,6 +209,11 @@ export class BookingService {
             : { type: location.type }
         ),
         bookingFields: bookingFieldsOf(eventType),
+        // Cal falls back to the host's zone when the event locks one without naming it.
+        lockedTimeZone: eventType.lockTimeZoneToggleOnBookingPage
+          ? eventType.lockedTimeZone || host.timeZone
+          : null,
+        interfaceLanguage: eventType.interfaceLanguage || null,
       },
     };
   }
@@ -403,7 +414,7 @@ export class BookingService {
       host: found.host
         ? {
             name: found.host.name,
-            email: found.host.email,
+            email: found.eventType?.hideOrganizerEmail ? null : found.host.email,
             username: found.host.username,
             appearance: toAppearance(found.host),
           }
@@ -443,13 +454,18 @@ export class BookingService {
     if (snapshot) this.emit({ type: "BOOKING_CANCELLED", booking: snapshot });
   }
 
-  listForHost(hostId: number, filter: "upcoming" | "past" | "cancelled" | "unconfirmed", limit: number) {
-    return this.deps.bookingRepo.findManyForHost({
+  async listForHost(
+    hostId: number,
+    filter: "upcoming" | "past" | "cancelled" | "unconfirmed",
+    limit: number
+  ) {
+    const rows = await this.deps.bookingRepo.findManyForHost({
       userId: hostId,
       filter,
       now: this.deps.now?.() ?? new Date(),
       limit,
     });
+    return rows.map((row) => ({ ...row, eventTypeColor: parseEventTypeColor(row.eventTypeColor) }));
   }
 
   async cancelAsHost(hostId: number, uid: string, reason: string | null): Promise<void> {
@@ -491,6 +507,10 @@ export class BookingService {
             title: found.eventType.title,
             slug: found.eventType.slug,
             length: found.eventType.length,
+            hideCalendarNotes: found.eventType.hideCalendarNotes,
+            hideCalendarEventDetails: found.eventType.hideCalendarEventDetails,
+            hideOrganizerEmail: found.eventType.hideOrganizerEmail,
+            disableConfirmationEmails: parseDisabledConfirmationEmails(found.eventType.metadata),
           }
         : null,
       bookingFields: found.eventType ? bookingFieldsOf(found.eventType) : null,

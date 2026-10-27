@@ -10,19 +10,25 @@ export type MonthCursor = { year: number; month: number };
  * Loads one month of slots in the visitor's time zone. The zone is only known in the browser,
  * so nothing loads until after hydration (rendering slots on the server would mismatch).
  */
-export function useMonthSlots(query: { username: string; slug: string; rescheduleUid?: string }) {
-  const { username, slug, rescheduleUid } = query;
+export function useMonthSlots(query: {
+  username: string;
+  slug: string;
+  rescheduleUid?: string;
+  /** The event's locked zone, used instead of the browser's. */
+  lockedTimeZone?: string | null;
+}) {
+  const { username, slug, rescheduleUid, lockedTimeZone } = query;
   const [timeZone, setTimeZone] = useState<string | null>(null);
   const [cursor, setCursor] = useState<MonthCursor | null>(null);
   const [result, setResult] = useState<SlotsDto | null>(null);
   const [errorKey, setErrorKey] = useState<string | null>(null);
 
   useEffect(() => {
-    const zone = browserTimeZone();
+    const zone = lockedTimeZone || browserTimeZone();
     const [year, month] = dateKeyInTimeZone(new Date(), zone).split("-").map(Number);
     setTimeZone(zone);
     setCursor({ year, month });
-  }, []);
+  }, [lockedTimeZone]);
 
   useEffect(() => {
     if (!timeZone || !cursor) return;

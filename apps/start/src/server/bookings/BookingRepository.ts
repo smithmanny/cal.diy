@@ -273,6 +273,10 @@ export class BookingRepository {
               disableCancelling: eventType.disableCancelling,
               disableRescheduling: eventType.disableRescheduling,
               minimumRescheduleNotice: eventType.minimumRescheduleNotice,
+              hideCalendarNotes: eventType.hideCalendarNotes,
+              hideCalendarEventDetails: eventType.hideCalendarEventDetails,
+              hideOrganizerEmail: eventType.hideOrganizerEmail,
+              metadata: eventType.metadata,
             })
             .from(eventType)
             .where(eq(eventType.id, found.eventTypeId))
@@ -342,6 +346,7 @@ export class BookingRepository {
         status: booking.status,
         location: booking.location,
         eventTypeTitle: eventType.title,
+        eventTypeColor: eventType.eventTypeColor,
         id: booking.id,
       })
       .from(booking)

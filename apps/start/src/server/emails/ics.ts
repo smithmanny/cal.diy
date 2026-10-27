@@ -21,8 +21,15 @@ function fold(line: string): string {
 /** An iCalendar invite (or cancellation) for the booking, attached to emails like Cal does. */
 export function buildIcs(
   booking: BookingSnapshot,
-  options: { method: "REQUEST" | "CANCEL"; sequence: number; manageUrl: string }
+  options: {
+    method: "REQUEST" | "CANCEL";
+    sequence: number;
+    manageUrl: string;
+    /** Stands in for the host's address when the event type hides it. */
+    organizerEmail?: string;
+  }
 ): string {
+  const organizerEmail = options.organizerEmail ?? booking.organizer.email;
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
@@ -38,7 +45,7 @@ export function buildIcs(
     `SUMMARY:${escape(booking.title)}`,
     `DESCRIPTION:${escape(`${booking.eventType?.title ?? booking.title}\n${options.manageUrl}`)}`,
     ...(booking.location ? [`LOCATION:${escape(booking.location)}`] : []),
-    `ORGANIZER;CN=${escape(booking.organizer.name ?? booking.organizer.email)}:mailto:${booking.organizer.email}`,
+    `ORGANIZER;CN=${escape(booking.organizer.name ?? organizerEmail)}:mailto:${organizerEmail}`,
     ...booking.attendees.map(
       (attendee) =>
         `ATTENDEE;CN=${escape(attendee.name || attendee.email)};RSVP=TRUE:mailto:${attendee.email}`

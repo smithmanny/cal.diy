@@ -5,6 +5,8 @@ import { type EventTypeDto, eventTypeFields, intervalLimitSchema } from "./types
 type Metadata = { [key: string]: JsonValue };
 
 const thresholdSchema = eventTypeFields.shape.requiresConfirmationThreshold.unwrap();
+const colorSchema = eventTypeFields.shape.eventTypeColor.unwrap();
+const flag = (value: unknown) => value === true;
 
 // Readers for event type columns that hold enums or JSON written by Cal or older code.
 
@@ -36,4 +38,21 @@ export function mergeMetadata(value: unknown, changes: { [key: string]: JsonValu
 export function parseConfirmationThreshold(metadata: unknown): EventTypeDto["requiresConfirmationThreshold"] {
   const parsed = thresholdSchema.safeParse(parseMetadata(metadata).requiresConfirmationThreshold);
   return parsed.success ? parsed.data : null;
+}
+
+export function parseEventTypeColor(value: unknown): EventTypeDto["eventTypeColor"] {
+  const parsed = colorSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+}
+
+/** Cal's metadata.disableStandardEmails.confirmation, read leniently. */
+export function parseDisabledConfirmationEmails(
+  metadata: unknown
+): EventTypeDto["disableConfirmationEmails"] {
+  const disabled = parseMetadata(metadata).disableStandardEmails;
+  const confirmation =
+    disabled && typeof disabled === "object" && !Array.isArray(disabled) ? disabled.confirmation : null;
+  if (!confirmation || typeof confirmation !== "object" || Array.isArray(confirmation))
+    return { host: false, attendee: false };
+  return { host: flag(confirmation.host), attendee: flag(confirmation.attendee) };
 }

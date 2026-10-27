@@ -144,6 +144,60 @@ describe("EventTypeService", () => {
     expect((await service.get(ownerId, id)).requiresConfirmationWillBlockSlot).toBe(false);
   });
 
+  it("saves display and privacy options, keeping Cal's other email switches", async () => {
+    const { id } = await service.create(ownerId, {
+      title: "Intro",
+      slug: "intro",
+      description: null,
+      length: 30,
+    });
+    await db
+      .update(eventType)
+      .set({ metadata: { disableStandardEmails: { all: { host: true } } }, eventTypeColor: { bad: 1 } })
+      .where(eq(eventType.id, id));
+    const input = await baseInput(id);
+    expect(input).toMatchObject({ eventTypeColor: null, interfaceLanguage: null });
+    await service.update(ownerId, id, {
+      ...input,
+      hideOrganizerEmail: true,
+      lockTimeZoneToggleOnBookingPage: true,
+      lockedTimeZone: "Europe/Berlin",
+      eventTypeColor: { lightEventTypeColor: "#112233", darkEventTypeColor: "#ddeeff" },
+      interfaceLanguage: "de",
+      disableConfirmationEmails: { host: false, attendee: true },
+    });
+    expect(await service.get(ownerId, id)).toMatchObject({
+      hideOrganizerEmail: true,
+      lockedTimeZone: "Europe/Berlin",
+      eventTypeColor: { lightEventTypeColor: "#112233" },
+      interfaceLanguage: "de",
+      disableConfirmationEmails: { host: false, attendee: true },
+    });
+    const [row] = await db
+      .select({ metadata: eventType.metadata })
+      .from(eventType)
+      .where(eq(eventType.id, id));
+    expect(row.metadata).toEqual({
+      disableStandardEmails: { all: { host: true }, confirmation: { host: false, attendee: true } },
+    });
+    expect((await service.list(ownerId))[0].eventTypeColor).toEqual({
+      lightEventTypeColor: "#112233",
+      darkEventTypeColor: "#ddeeff",
+    });
+
+    await service.update(ownerId, id, {
+      ...(await baseInput(id)),
+      lockTimeZoneToggleOnBookingPage: false,
+      disableConfirmationEmails: { host: false, attendee: false },
+    });
+    expect((await service.get(ownerId, id)).lockedTimeZone).toBeNull();
+    const [after] = await db
+      .select({ metadata: eventType.metadata })
+      .from(eventType)
+      .where(eq(eventType.id, id));
+    expect(after.metadata).toEqual({ disableStandardEmails: { all: { host: true } } });
+  });
+
   it("rejects a URL the same user already uses, but allows it for other users", async () => {
     await service.create(ownerId, { title: "Intro", slug: "intro", description: null, length: 30 });
     await expect(

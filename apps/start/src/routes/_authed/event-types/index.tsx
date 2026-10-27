@@ -9,6 +9,7 @@ import { CopyIcon, ExternalLinkIcon, PlusIcon, TrashIcon } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { PageHeader } from "~/components/AppShell";
 import { FormError } from "~/components/AuthCard";
+import { EventColorBar } from "~/components/EventColorBar";
 import { HydratedFieldset } from "~/components/HydratedFieldset";
 import { errorMessageKey } from "~/lib/errors";
 import { useT } from "~/lib/i18n";
@@ -169,6 +170,7 @@ function EventTypesPage() {
             const url = `${prefix}${eventType.slug}`;
             return (
               <li key={eventType.id} className="flex flex-wrap items-center gap-4 p-4">
+                <EventColorBar color={eventType.eventTypeColor} />
                 <Link
                   to="/event-types/$eventTypeId"
                   params={{ eventTypeId: eventType.id }}

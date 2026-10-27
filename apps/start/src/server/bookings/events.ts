@@ -13,7 +13,20 @@ export type BookingSnapshot = {
   responses: Record<string, unknown>;
   cancellationReason: string | null;
   fromReschedule: string | null;
-  eventType: { id: number; title: string; slug: string; length: number } | null;
+  eventType: {
+    id: number;
+    title: string;
+    slug: string;
+    length: number;
+    /** Keep notes and answers out of calendar events. */
+    hideCalendarNotes?: boolean;
+    /** Calendar events are private on shared calendars. */
+    hideCalendarEventDetails?: boolean;
+    /** Attendees don't see the host's address (reply-to, invite organizer). */
+    hideOrganizerEmail?: boolean;
+    /** Confirmation emails workflows send instead (Cal's disableStandardEmails.confirmation). */
+    disableConfirmationEmails?: { host: boolean; attendee: boolean };
+  } | null;
   /** The event's questions, to label the answers; null once the event type is deleted. */
   bookingFields: BookingField[] | null;
   organizer: {

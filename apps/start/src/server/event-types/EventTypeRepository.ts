@@ -11,6 +11,7 @@ const summaryColumns = {
   length: eventType.length,
   hidden: eventType.hidden,
   description: eventType.description,
+  eventTypeColor: eventType.eventTypeColor,
 };
 
 const detailColumns = {
@@ -44,6 +45,13 @@ const detailColumns = {
   successRedirectUrl: eventType.successRedirectUrl,
   forwardParamsSuccessRedirect: eventType.forwardParamsSuccessRedirect,
   eventName: eventType.eventName,
+  hideCalendarNotes: eventType.hideCalendarNotes,
+  hideCalendarEventDetails: eventType.hideCalendarEventDetails,
+  hideOrganizerEmail: eventType.hideOrganizerEmail,
+  lockTimeZoneToggleOnBookingPage: eventType.lockTimeZoneToggleOnBookingPage,
+  lockedTimeZone: eventType.lockedTimeZone,
+  eventTypeColor: eventType.eventTypeColor,
+  interfaceLanguage: eventType.interfaceLanguage,
 };
 
 type WritableColumns = Partial<Omit<typeof eventType.$inferInsert, "id" | "userId" | "teamId">>;
