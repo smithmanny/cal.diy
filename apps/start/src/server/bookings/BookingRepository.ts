@@ -66,7 +66,7 @@ export type NewBooking = {
   uid: string;
   userId: number;
   userPrimaryEmail: string;
-  eventTypeId: number;
+  eventTypeId: number | null;
   title: string;
   description: string | null;
   startTime: Date;
@@ -547,11 +547,14 @@ export class BookingRepository {
   /** Bookings where the user is the host, newest-relevant first, for the bookings list. */
   async findManyForHost({
     userId,
+    email,
     filter,
     now,
     limit,
   }: {
     userId: number;
+    /** Bookings this user attends, like a group link's other members, are listed too. */
+    email: string;
     filter: HostBookingFilter;
     now: Date;
     limit: number;
@@ -583,11 +586,26 @@ export class BookingRepository {
         eventTypeColor: eventType.eventTypeColor,
         recurringEventId: booking.recurringEventId,
         recurringEvent: eventType.recurringEvent,
+        userId: booking.userId,
         id: booking.id,
       })
       .from(booking)
       .leftJoin(eventType, eq(eventType.id, booking.eventTypeId))
-      .where(and(eq(booking.userId, userId), conditions[filter]))
+      .where(
+        and(
+          or(
+            eq(booking.userId, userId),
+            inArray(
+              booking.id,
+              this.db
+                .select({ id: attendee.bookingId })
+                .from(attendee)
+                .where(eq(attendee.email, email.toLowerCase()))
+            )
+          ),
+          conditions[filter]
+        )
+      )
       .orderBy(order)
       .limit(limit);
     if (!rows.length) return [];

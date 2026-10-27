@@ -147,7 +147,7 @@ function BookingsPage() {
                 )}
               </div>
               <div className="flex shrink-0 gap-2">
-                {status === "unconfirmed" && (
+                {booking.isOrganizer && status === "unconfirmed" && (
                   <>
                     <Button
                       size="sm"
@@ -159,7 +159,7 @@ function BookingsPage() {
                     </Button>
                   </>
                 )}
-                {(status === "upcoming" || status === "recurring") && (
+                {booking.isOrganizer && (status === "upcoming" || status === "recurring") && (
                   <Button size="sm" variant="outline" onClick={() => cancel(booking.uid)}>
                     {t("cancel_event")}
                   </Button>

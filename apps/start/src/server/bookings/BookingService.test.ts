@@ -231,6 +231,84 @@ describe("BookingService", () => {
     ).rejects.toMatchObject({ code: "private_link_expired" });
   });
 
+  describe("dynamic group links", () => {
+    let otherId: number;
+    beforeEach(async () => {
+      [{ id: otherId }] = await db
+        .insert(user)
+        .values({ email: "olga@example.com", username: "olga", name: "Olga", timeZone: "UTC" })
+        .returning({ id: user.id });
+      await new ScheduleService({
+        scheduleRepo: new ScheduleRepository(db),
+        userRepo: new UserRepository(db),
+      }).create(otherId, {
+        name: "Work",
+        timeZone: "UTC",
+        weeklyHours: DEFAULT_WEEKLY_HOURS,
+        dateOverrides: [],
+      });
+    });
+
+    const groupQuery = {
+      username: "host+olga",
+      slug: "dynamic",
+      from: at("00:00"),
+      to: `${MONDAY}T23:59:00.000Z`,
+      timeZone: "UTC",
+    };
+
+    it("offers Cal's group meeting at times every member is free", async () => {
+      const profile = await service.getProfile("host+olga");
+      expect(profile.host.name).toBe("Hana Host, Olga");
+      expect(profile.eventTypes).toEqual([
+        { title: "Group meeting", slug: "dynamic", length: 30, description: null },
+      ]);
+      expect((await service.getPublicEvent("host+olga", "anything")).eventType).toMatchObject({
+        length: 30,
+        durations: [15, 30, 45, 60, 90],
+      });
+      await db.insert(booking).values({
+        uid: "olga-busy",
+        userId: otherId,
+        title: "Busy",
+        startTime: new Date(at("10:00")),
+        endTime: new Date(at("11:00")),
+        status: "ACCEPTED",
+      });
+      const { slots: shared } = await service.getAvailableSlots(groupQuery);
+      expect(shared).toContain(at("09:30"));
+      expect(shared).not.toContain(at("10:00"));
+      expect(shared).not.toContain(at("10:30"));
+    });
+
+    it("books the organizer with the other members as attendees, outside any event type", async () => {
+      const { uid } = await service.create({ ...input(at("09:30")), username: "host+olga", slug: "dynamic" });
+      const details = await service.getBooking(uid);
+      expect(details).toMatchObject({ title: "Group meeting", eventType: null });
+      expect(details.attendees.map((attendee) => attendee.email)).toEqual([
+        "guest@example.com",
+        "olga@example.com",
+      ]);
+      expect((await service.getAvailableSlots(groupQuery)).slots).not.toContain(at("09:30"));
+      // Members see the meetings they attend, but only the organizer manages them.
+      expect(await service.listForHost(otherId, "upcoming", 10)).toEqual([
+        expect.objectContaining({ uid, isOrganizer: false }),
+      ]);
+      expect((await service.listForHost(hostId, "upcoming", 10))[0]).toMatchObject({
+        uid,
+        isOrganizer: true,
+      });
+    });
+
+    it("refuses groups with a member who turned group links off, or who doesn't exist", async () => {
+      await db.update(user).set({ allowDynamicBooking: false }).where(eq(user.id, otherId));
+      await expect(service.getPublicEvent("host+olga", "dynamic")).rejects.toMatchObject({
+        code: "user_dynamic_booking_disabled",
+      });
+      await expect(service.getProfile("host+nobody")).rejects.toMatchObject({ code: "user_not_found" });
+    });
+  });
+
   describe("seats", () => {
     beforeEach(async () => {
       await db

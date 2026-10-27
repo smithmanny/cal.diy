@@ -47,6 +47,7 @@ import type { TravelScheduleRepository } from "../users/TravelScheduleRepository
 import type { UserRepository } from "../users/UserRepository";
 import type { BookerVerificationService } from "../verification/BookerVerificationService";
 import type { BookingRepository, HostBookingFilter, NewBooking } from "./BookingRepository";
+import { dynamicEventType, isDynamicGroup, parseUsernameList } from "./dynamicGroup";
 import type { BookingEvent, BookingListener, BookingSnapshot } from "./events";
 import type {
   AppearanceDto,
@@ -59,7 +60,7 @@ import type {
 } from "./types";
 
 type Deps = {
-  userRepo: Pick<UserRepository, "findByUsername">;
+  userRepo: Pick<UserRepository, "findByUsername" | "findProfile">;
   eventTypeRepo: Pick<EventTypeRepository, "findByUserIdAndSlug" | "findManyVisibleByUserId">;
   scheduleRepo: Pick<
     ScheduleRepository,
@@ -91,6 +92,8 @@ function bookingFieldsOf(eventType: {
   if (!eventType.seatsPerTimeSlot) return fields;
   return fields.map((field) => (field.name === "guests" ? { ...field, hidden: true } : field));
 }
+
+type Host = NonNullable<Awaited<ReturnType<UserRepository["findByUsername"]>>>;
 
 type CreatedBooking = {
   uid: string;
@@ -213,6 +216,18 @@ function publicHost(
   };
 }
 
+/** A group link's members shown as one host: everyone's names, the organizer's look. */
+function groupHost(
+  host: Parameters<typeof publicHost>[0] & { username: string | null },
+  coHosts: { name: string | null; username: string | null }[],
+  username: string
+): PublicHostDto {
+  return {
+    ...publicHost(host, username),
+    name: [host, ...coHosts].map((member) => member.name ?? member.username ?? "").join(", "),
+  };
+}
+
 /** External calendars (e.g. Google) report busy time through this. */
 export type BusyTimesProvider = (input: { userId: number; from: Date; to: Date }) => Promise<BusyInterval[]>;
 
@@ -220,6 +235,16 @@ export class BookingService {
   constructor(private readonly deps: Deps) {}
 
   async getProfile(username: string) {
+    if (isDynamicGroup(username)) {
+      // A group's page offers the one group meeting, as in Cal.
+      const { host, eventType, coHosts } = await this.loadDynamicGroup(username);
+      return {
+        host: groupHost(host, coHosts, username),
+        eventTypes: [
+          { title: eventType.title, slug: eventType.slug, length: eventType.length, description: null },
+        ],
+      };
+    }
     const host = await this.deps.userRepo.findByUsername(username);
     if (!host?.username) throw new AppError("user_not_found", 404);
     const eventTypes = await this.deps.eventTypeRepo.findManyVisibleByUserId(host.id);
@@ -235,9 +260,9 @@ export class BookingService {
   }
 
   async getPublicEvent(username: string, slug: string): Promise<PublicEventDto> {
-    const { host, eventType } = await this.loadEvent(username, slug);
+    const { host, eventType, coHosts } = await this.loadEvent(username, slug);
     return {
-      host: publicHost(host, host.username ?? username),
+      host: coHosts.length ? groupHost(host, coHosts, username) : publicHost(host, host.username ?? username),
       eventType: {
         title: eventType.title,
         slug: eventType.slug,
@@ -273,7 +298,7 @@ export class BookingService {
     if (!(from < to) || to.getTime() - from.getTime() > MAX_RANGE_MS)
       throw new AppError("something_went_wrong");
     if (!isValidTimeZone(query.timeZone)) throw new AppError("invalid_timezone");
-    const { host, eventType } = await this.loadEvent(query.username, query.slug);
+    const { host, eventType, coHosts } = await this.loadEvent(query.username, query.slug);
     const { slots, outOfOffice, seatsTaken } = await this.computeSlots(
       host,
       eventType,
@@ -281,7 +306,8 @@ export class BookingService {
       to,
       query.timeZone,
       query.rescheduleUid,
-      eventLength(eventType, query.duration)
+      eventLength(eventType, query.duration),
+      coHosts
     );
     const seats = eventType.seatsPerTimeSlot;
     return {
@@ -317,7 +343,7 @@ export class BookingService {
   /** `actorUserId` is the signed-in user, if any; a host may move their own booking at any time. */
   async create(input: CreateBookingInput, actorUserId: number | null = null): Promise<CreatedBooking> {
     if (!isValidTimeZone(input.timeZone)) throw new AppError("invalid_timezone");
-    const { host, eventType } = await this.loadEvent(input.username, input.slug);
+    const { host, eventType, coHosts } = await this.loadEvent(input.username, input.slug);
     const now = this.deps.now?.() ?? new Date();
     if (eventType.seatsPerTimeSlot)
       return this.bookSeat(input, host, eventType, eventType.seatsPerTimeSlot, actorUserId === host.id, now);
@@ -329,7 +355,7 @@ export class BookingService {
       ? await this.findReschedulable(input.rescheduleUid, host.id, actorUserId === host.id, now)
       : null;
 
-    await this.assertSlotOffered(host, eventType, start, input.timeZone, original?.uid, length);
+    await this.assertSlotOffered(host, eventType, start, input.timeZone, original?.uid, length, coHosts);
     const locations = parseLocations(eventType.locations);
     const responses = this.checkedResponses(eventType, input.responses, locations, Boolean(original));
     // name and email are system fields that are always shown and required.
@@ -367,7 +393,8 @@ export class BookingService {
         uid: cuid(),
         userId: host.id,
         userPrimaryEmail: host.email,
-        eventTypeId: eventType.id,
+        // The group link's virtual event isn't stored.
+        eventTypeId: eventType.id || null,
         title,
         description: notes,
         startTime: occurrenceStart,
@@ -380,6 +407,14 @@ export class BookingService {
         attendees: [
           { ...attendeeBase, name, email, phoneNumber: attendeePhone },
           ...guests.map((guest) => ({ ...attendeeBase, name: "", email: guest, phoneNumber: null })),
+          // Like Cal's collective events, a group link's other members attend the organizer's booking.
+          ...coHosts.map((coHost) => ({
+            name: coHost.name ?? coHost.username ?? coHost.email,
+            email: coHost.email,
+            timeZone: coHost.timeZone,
+            locale: coHost.locale ?? "en",
+            phoneNumber: null,
+          })),
         ],
       })
     );
@@ -578,7 +613,8 @@ export class BookingService {
     start: Date,
     timeZone: string,
     excludeUid: string | undefined,
-    length: number
+    length: number,
+    coHosts: Host[] = []
   ): Promise<void> {
     const dayAround = 24 * 60 * 60 * 1000;
     const { slots } = await this.computeSlots(
@@ -588,7 +624,8 @@ export class BookingService {
       new Date(start.getTime() + dayAround),
       timeZone,
       excludeUid,
-      length
+      length,
+      coHosts
     );
     if (!slots.some((slot) => slot.getTime() === start.getTime()))
       throw new AppError("booking_conflict_error", 409);
@@ -797,16 +834,21 @@ export class BookingService {
   }
 
   async listForHost(hostId: number, filter: HostBookingFilter, limit: number) {
+    const profile = await this.deps.userRepo.findProfile(hostId);
+    if (!profile) throw new AppError("user_not_found", 404);
     const rows = await this.deps.bookingRepo.findManyForHost({
       userId: hostId,
+      email: profile.email,
       filter,
       now: this.deps.now?.() ?? new Date(),
       limit,
     });
-    const listed = rows.map(({ recurringEvent, ...row }) => {
+    const listed = rows.map(({ recurringEvent, userId, ...row }) => {
       const rule = parseRecurringEvent(recurringEvent);
       return {
         ...row,
+        // Only the organizer confirms, rejects or cancels; members of a group just attend.
+        isOrganizer: userId === hostId,
         eventTypeColor: parseEventTypeColor(row.eventTypeColor),
         recurring: row.recurringEventId && rule ? { ...rule, count: 1 } : null,
       };
@@ -931,12 +973,33 @@ export class BookingService {
     if (this.deps.runInBackground) this.deps.runInBackground(work);
   }
 
-  private async loadEvent(username: string, slug: string) {
+  private async loadEvent(
+    username: string,
+    slug: string
+  ): Promise<{ host: Host; eventType: EventTypeRow; coHosts: Host[] }> {
+    if (isDynamicGroup(username)) return this.loadDynamicGroup(username);
     const host = await this.deps.userRepo.findByUsername(username);
     if (!host) throw new AppError("user_not_found", 404);
     const eventType = await this.deps.eventTypeRepo.findByUserIdAndSlug(host.id, slug);
     if (!eventType) throw new AppError("event_type_not_found", 404);
-    return { host, eventType };
+    return { host, eventType, coHosts: [] };
+  }
+
+  /**
+   * Cal's dynamic group links (/alice+bob): everyone named must allow them; the first organizes,
+   * and times are those when all of them are free.
+   */
+  private async loadDynamicGroup(username: string) {
+    const users = await Promise.all(
+      parseUsernameList(username).map((name) => this.deps.userRepo.findByUsername(name))
+    );
+    const members = users.filter((member): member is Host => Boolean(member));
+    if (members.length !== users.length) throw new AppError("user_not_found", 404);
+    if (members.some((member) => member.allowDynamicBooking === false))
+      throw new AppError("user_dynamic_booking_disabled", 403);
+    const [host, ...coHosts] = members;
+    const messages = await pickMessages(host.locale ?? "en", ["group_meeting"]);
+    return { host, eventType: dynamicEventType(host.id, messages.group_meeting ?? "Group meeting"), coHosts };
   }
 
   /** Cal's "Limit number of upcoming bookings per booker". */
@@ -984,9 +1047,34 @@ export class BookingService {
     return start.getTime() - now.getTime() < thresholdMs;
   }
 
+  /** Slots for the host, or for a group, the times every member has free. */
   private async computeSlots(
-    host: NonNullable<Awaited<ReturnType<UserRepository["findByUsername"]>>>,
-    eventType: NonNullable<Awaited<ReturnType<EventTypeRepository["findByUserIdAndSlug"]>>>,
+    host: Host,
+    eventType: EventTypeRow,
+    from: Date,
+    to: Date,
+    inviteeTimeZone: string,
+    excludeUid: string | undefined,
+    length: number,
+    coHosts: Host[] = []
+  ): Promise<{ slots: Date[]; outOfOffice: OutOfOfficeData; seatsTaken: Map<number, number> }> {
+    const own = await this.computeHostSlots(host, eventType, from, to, inviteeTimeZone, excludeUid, length);
+    if (!coHosts.length) return own;
+    const others = await Promise.all(
+      coHosts.map((coHost) =>
+        this.computeHostSlots(coHost, eventType, from, to, inviteeTimeZone, excludeUid, length)
+      )
+    );
+    const shared = others.map((other) => new Set(other.slots.map((slot) => slot.getTime())));
+    return {
+      ...own,
+      slots: own.slots.filter((slot) => shared.every((times) => times.has(slot.getTime()))),
+    };
+  }
+
+  private async computeHostSlots(
+    host: Host,
+    eventType: EventTypeRow,
     from: Date,
     to: Date,
     inviteeTimeZone: string,
