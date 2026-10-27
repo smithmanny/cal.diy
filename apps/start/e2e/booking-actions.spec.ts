@@ -103,4 +103,16 @@ test("hosts move a booking, add guests and ask the attendee to pick a new time",
   // The request can be answered once.
   await pickNewTime();
   await expect(guest.getByText("This event is canceled")).toBeVisible();
+
+  // The original booking's history tells the whole story, oldest first.
+  await page.getByRole("link", { name: "Canceled" }).click();
+  await row.getByRole("button", { name: "History" }).click();
+  const history = page.getByRole("dialog").locator("ol > li");
+  await expect(history.first()).toContainText("Booked with");
+  await expect(history.nth(1)).toContainText("Location changed from");
+  await expect(history.nth(1)).toContainText("https://meet.example/room");
+  await expect(history.nth(2)).toContainText("Attendee added");
+  await expect(history.nth(2)).toContainText(nina);
+  await expect(history.nth(3)).toContainText("Reschedule requested");
+  await expect(history.nth(3)).toContainText("Something came up");
 });

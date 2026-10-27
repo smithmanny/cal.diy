@@ -53,7 +53,7 @@ import type {
   NewBooking,
 } from "./BookingRepository";
 import { dynamicEventType, isDynamicGroup, parseUsernameList } from "./dynamicGroup";
-import type { BookingEvent, BookingListener, BookingSnapshot } from "./events";
+import type { BookingActor, BookingEvent, BookingListener, BookingSnapshot } from "./events";
 import type {
   AppearanceDto,
   BookingDetailsDto,
@@ -436,7 +436,8 @@ export class BookingService {
 
     await this.emitCreated(
       bookings.map((occurrence) => occurrence.uid),
-      original?.uid ?? null
+      original?.uid ?? null,
+      actorUserId ? { userId: actorUserId } : { email, name }
     );
     return {
       uid,
@@ -548,6 +549,7 @@ export class BookingService {
     }
 
     const seatInfo = { referenceUid: seat.referenceUid, attendeeEmail: email.toLowerCase() };
+    const actor: BookingActor = byHost ? { userId: host.id } : { email: seatInfo.attendeeEmail, name };
     const snapshot = await this.snapshot(uid);
     if (originalSeat) {
       const previous = await this.leaveSeat(originalSeat);
@@ -557,9 +559,10 @@ export class BookingService {
           booking: snapshot,
           rescheduledFrom: previous ?? undefined,
           seat: seatInfo,
+          actor,
         });
     } else if (snapshot) {
-      this.emit({ type: "BOOKING_CREATED", booking: snapshot, seat: seatInfo });
+      this.emit({ type: "BOOKING_CREATED", booking: snapshot, seat: seatInfo, actor });
     }
     return {
       uid,
@@ -597,17 +600,30 @@ export class BookingService {
         type: "BOOKING_CANCELLED",
         booking: { ...before, cancellationReason: reason },
         seat: { referenceUid, attendeeEmail: seat.email },
+        actor: { email: seat.email, name: null },
+        previousStatus: before.status,
       });
   }
 
-  private async emitCreated(uids: string[], rescheduledFromUid: string | null): Promise<void> {
+  private async emitCreated(
+    uids: string[],
+    rescheduledFromUid: string | null,
+    actor: BookingActor
+  ): Promise<void> {
+    const operationId = uuidv7();
     if (rescheduledFromUid) {
       const [snapshot, previous] = await Promise.all([
         this.snapshot(uids[0]),
         this.snapshot(rescheduledFromUid),
       ]);
       if (snapshot)
-        this.emit({ type: "BOOKING_RESCHEDULED", booking: snapshot, rescheduledFrom: previous ?? undefined });
+        this.emit({
+          type: "BOOKING_RESCHEDULED",
+          booking: snapshot,
+          rescheduledFrom: previous ?? undefined,
+          actor,
+          operationId,
+        });
       return;
     }
     for (const [seriesIndex, uid] of uids.entries()) {
@@ -617,6 +633,8 @@ export class BookingService {
         type: snapshot.status === "PENDING" ? "BOOKING_REQUESTED" : "BOOKING_CREATED",
         booking: snapshot,
         seriesIndex: snapshot.recurring ? seriesIndex : undefined,
+        actor,
+        operationId,
       });
     }
   }
@@ -805,11 +823,22 @@ export class BookingService {
    * Anyone holding the uid (attendee or host) may cancel, as in Cal, unless the event type turned
    * cancelling off; the host can still cancel from their bookings.
    */
-  async cancel(uid: string, reason: string | null, cancelledBy: string | null): Promise<void> {
+  async cancel(
+    uid: string,
+    reason: string | null,
+    cancelledBy: string | null,
+    actor?: BookingActor
+  ): Promise<void> {
     const found = await this.deps.bookingRepo.findByUid(uid);
     if (!found) throw new AppError("booking_not_found", 404);
     if (found.eventType?.disableCancelling) throw new AppError("cannot_cancel_booking", 403);
-    await this.cancelFound(found, reason, cancelledBy);
+    await this.cancelFound(
+      found,
+      reason,
+      cancelledBy,
+      true,
+      actor ?? (cancelledBy ? { email: cancelledBy, name: null } : undefined)
+    );
   }
 
   /**
@@ -820,7 +849,8 @@ export class BookingService {
     found: NonNullable<Awaited<ReturnType<BookingRepository["findByUid"]>>>,
     reason: string | null,
     cancelledBy: string | null,
-    allRemaining = true
+    allRemaining = true,
+    actor?: BookingActor
   ): Promise<void> {
     if (found.status === "CANCELLED" || found.status === "REJECTED")
       throw new AppError("event_cancelled", 409);
@@ -837,14 +867,26 @@ export class BookingService {
       cancellationReason: reason,
       cancelledBy,
     });
-    await this.emitForEach(remaining, "BOOKING_CANCELLED");
+    await this.emitForEach(remaining, "BOOKING_CANCELLED", { actor, previousStatus: found.status });
   }
 
   /** One event per booking; for a series, marked so only the first notifies people. */
-  private async emitForEach(uids: string[], type: BookingEvent["type"]): Promise<void> {
+  private async emitForEach(
+    uids: string[],
+    type: BookingEvent["type"],
+    details: Pick<BookingEvent, "actor" | "previousStatus" | "confirmed"> = {}
+  ): Promise<void> {
+    const operationId = uuidv7();
     for (const [index, uid] of uids.entries()) {
       const snapshot = await this.snapshot(uid);
-      if (snapshot) this.emit({ type, booking: snapshot, seriesIndex: uids.length > 1 ? index : undefined });
+      if (snapshot)
+        this.emit({
+          ...details,
+          type,
+          booking: snapshot,
+          seriesIndex: uids.length > 1 ? index : undefined,
+          operationId,
+        });
     }
   }
 
@@ -890,7 +932,7 @@ export class BookingService {
     const found = await this.deps.bookingRepo.findByUid(uid);
     if (!found || found.userId !== hostId) throw new AppError("booking_not_found", 404);
     // From the host's list, one occurrence at a time unless they cancel the series.
-    await this.cancelFound(found, reason, found.host?.email ?? null, allRemaining);
+    await this.cancelFound(found, reason, found.host?.email ?? null, allRemaining, { userId: hostId });
   }
 
   /** Host-only decisions on bookings that require confirmation. */
@@ -908,7 +950,11 @@ export class BookingService {
       uids,
       accept ? { status: "ACCEPTED" } : { status: "REJECTED", rejectionReason: reason }
     );
-    await this.emitForEach(uids, accept ? "BOOKING_CREATED" : "BOOKING_REJECTED");
+    await this.emitForEach(uids, accept ? "BOOKING_CREATED" : "BOOKING_REJECTED", {
+      actor: { userId: hostId },
+      confirmed: accept,
+      previousStatus: "PENDING",
+    });
   }
 
   async snapshot(uid: string): Promise<BookingSnapshot | null> {
@@ -925,6 +971,8 @@ export class BookingService {
       location: found.location,
       responses: (found.responses ?? {}) as Record<string, unknown>,
       cancellationReason: found.cancellationReason,
+      cancelledBy: found.cancelledBy,
+      rejectionReason: found.rejectionReason,
       fromReschedule: found.fromReschedule,
       eventType: found.eventType
         ? {

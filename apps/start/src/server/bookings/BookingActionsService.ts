@@ -5,8 +5,10 @@ import { createT } from "~/lib/i18n";
 import { pickMessages } from "../catalog";
 import { AppError } from "../errors";
 import { type EditableLocation, locationValue } from "../event-types/types";
+import type { BookingAuditRepository } from "./BookingAuditRepository";
 import type { BookingRepository } from "./BookingRepository";
 import type { BookingService } from "./BookingService";
+import { auditFields, type HistoryTitle, historyDetails, historyTitle } from "./bookingHistory";
 import type { BookingEvent } from "./events";
 
 function isRecord(value: unknown): value is { [key: string]: JsonValue } {
@@ -36,7 +38,16 @@ type Deps = {
     findByUid(uid: string): Promise<ActionBooking | null>;
   };
   events: Pick<BookingService, "snapshot" | "emit">;
+  auditRepo?: Pick<BookingAuditRepository, "findByBookingUid" | "userNamesByUuid">;
   now?: () => Date;
+};
+
+type HistoryEntryDto = {
+  id: string;
+  timestamp: string;
+  actor: { type: string; name: string | null; email: string | null };
+  title: HistoryTitle;
+  details: { label: string; value: string }[];
 };
 
 type NoShowUpdate = { email: string; noShow: boolean };
@@ -62,6 +73,7 @@ export class BookingActionsService {
         type: "BOOKING_NO_SHOW_UPDATED",
         booking: snapshot,
         noShow: { message, attendees: applied },
+        actor: { userId: hostId },
       });
     return { message, attendees: applied };
   }
@@ -89,7 +101,7 @@ export class BookingActionsService {
       })),
       { ...responses, guests: [...guests, ...added] }
     );
-    await this.publish(uid, { type: "BOOKING_GUESTS_ADDED", guestsAdded: added });
+    await this.publish(uid, { type: "BOOKING_GUESTS_ADDED", guestsAdded: added, actor: { userId: hostId } });
     return { added };
   }
 
@@ -98,7 +110,11 @@ export class BookingActionsService {
     const value = locationValue(location);
     if (value === found.location) return;
     await this.deps.bookingRepo.updateLocationAndMetadata(uid, { location: value });
-    await this.publish(uid, { type: "BOOKING_LOCATION_CHANGED", previousLocation: found.location });
+    await this.publish(uid, {
+      type: "BOOKING_LOCATION_CHANGED",
+      previousLocation: found.location,
+      actor: { userId: hostId },
+    });
   }
 
   /**
@@ -115,7 +131,37 @@ export class BookingActionsService {
       cancellationReason: reason,
       cancelledBy: found.host?.email ?? null,
     });
-    await this.publish(uid, { type: "BOOKING_CANCELLED", rescheduleRequested: true });
+    await this.publish(uid, {
+      type: "BOOKING_CANCELLED",
+      rescheduleRequested: true,
+      previousStatus: found.status,
+      actor: { userId: hostId },
+    });
+  }
+
+  /** Cal's booking history: what happened to the booking, by whom, oldest first. */
+  async history(hostId: number, uid: string, viewer: { timeZone: string; locale: string }) {
+    await this.hostBooking(hostId, uid);
+    const rows = (await this.deps.auditRepo?.findByBookingUid(uid)) ?? [];
+    const hostUuids = rows
+      .map((row) => auditFields(row.data).hostUserUuid)
+      .filter((uuid): uuid is string => typeof uuid === "string");
+    const names = (await this.deps.auditRepo?.userNamesByUuid([...new Set(hostUuids)])) ?? new Map();
+    const formatDate = (epochMs: number) =>
+      new Intl.DateTimeFormat(viewer.locale, {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: viewer.timeZone,
+      }).format(epochMs);
+    return rows.map(
+      (row): HistoryEntryDto => ({
+        id: row.id,
+        timestamp: row.timestamp.toISOString(),
+        actor: { type: row.actorType, name: row.actorName, email: row.actorEmail },
+        title: historyTitle(row.action, row.data, formatDate, (uuid) => (uuid && names.get(uuid)) || ""),
+        details: historyDetails(row.action, row.data),
+      })
+    );
   }
 
   private async publish(uid: string, event: Omit<BookingEvent, "booking">): Promise<void> {
@@ -147,3 +193,5 @@ export class BookingActionsService {
     return t(only.noShow ? "x_marked_as_no_show" : "x_unmarked_as_no_show", { x: only.email });
   }
 }
+
+export type { HistoryEntryDto };

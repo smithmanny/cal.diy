@@ -21,6 +21,8 @@ const snapshot: BookingSnapshot = {
   location: "https://meet.example/x",
   responses: { name: "Greta", email: "greta@example.com", notes: "Hi", company: "Acme" },
   cancellationReason: null,
+  cancelledBy: null,
+  rejectionReason: null,
   fromReschedule: null,
   recurring: null,
   bookingFields: withSystemFields([

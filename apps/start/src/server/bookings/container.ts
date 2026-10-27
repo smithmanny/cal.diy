@@ -10,6 +10,7 @@ import { TravelScheduleRepository } from "../users/TravelScheduleRepository";
 import { UserRepository } from "../users/UserRepository";
 import { createBookerVerification } from "../verification/container";
 import { BookingActionsService } from "./BookingActionsService";
+import { BookingAuditRepository } from "./BookingAuditRepository";
 import { BookingRepository } from "./BookingRepository";
 import { BookingService } from "./BookingService";
 import { getBookingListeners, getBusyTimesProviders } from "./integrations";
@@ -38,5 +39,6 @@ export async function getBookingActionsService(): Promise<BookingActionsService>
   return new BookingActionsService({
     bookingRepo: new BookingRepository(db),
     events: await getBookingService(),
+    auditRepo: new BookingAuditRepository(db),
   });
 }

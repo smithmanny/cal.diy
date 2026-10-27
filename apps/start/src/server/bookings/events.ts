@@ -13,6 +13,9 @@ export type BookingSnapshot = {
   location: string | null;
   responses: Record<string, unknown>;
   cancellationReason: string | null;
+  /** Who cancelled, by email (Cal's cancelledBy). */
+  cancelledBy: string | null;
+  rejectionReason: string | null;
   fromReschedule: string | null;
   eventType: {
     id: number;
@@ -79,7 +82,18 @@ export type BookingEvent = {
   previousLocation?: string | null;
   /** A BOOKING_CANCELLED where the host asked the attendees to book a new time (Cal's request reschedule). */
   rescheduleRequested?: boolean;
+  /** Missing for changes nobody in particular made, which the audit trail records as the system's. */
+  actor?: BookingActor;
+  /** A BOOKING_CREATED that is the host confirming a request, rather than a new booking. */
+  confirmed?: boolean;
+  /** The status before a cancellation. */
+  previousStatus?: BookingStatus;
+  /** Shared by the events one action caused, like every occurrence of a series it cancelled. */
+  operationId?: string;
 };
+
+/** Who caused an event: a signed-in user, or a booker or attendee known by their email. */
+export type BookingActor = { userId: number } | { email: string; name: string | null };
 
 /** Side effects run after the booking is committed; a failing listener never fails the booking. */
 export type BookingListener = (event: BookingEvent) => Promise<void>;

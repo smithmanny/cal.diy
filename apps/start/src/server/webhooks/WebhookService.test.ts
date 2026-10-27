@@ -101,6 +101,8 @@ describe("webhook listener", () => {
       location: null,
       responses: {},
       cancellationReason: null,
+      cancelledBy: null,
+      rejectionReason: null,
       fromReschedule: null,
       bookingFields: null,
       recurring: null,

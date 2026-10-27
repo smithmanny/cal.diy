@@ -23,6 +23,8 @@ const booking: BookingSnapshot = {
   location: "Room 1; Floor 2, Building A",
   responses: { notes: "<b>bring slides</b>" },
   cancellationReason: null,
+  cancelledBy: null,
+  rejectionReason: null,
   fromReschedule: null,
   bookingFields: null,
   recurring: null,

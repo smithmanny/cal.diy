@@ -36,6 +36,8 @@ const detailColumns = {
   status: booking.status,
   responses: booking.responses,
   cancellationReason: booking.cancellationReason,
+  cancelledBy: booking.cancelledBy,
+  rejectionReason: booking.rejectionReason,
   rescheduled: booking.rescheduled,
   fromReschedule: booking.fromReschedule,
   userId: booking.userId,

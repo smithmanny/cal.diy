@@ -2,6 +2,7 @@ import { Badge } from "@coss/ui/components/badge";
 import { Button } from "@coss/ui/components/button";
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { BookingHistoryButton } from "~/components/bookings/BookingHistoryDialog";
 import { EventColorBar } from "~/components/EventColorBar";
 import { formatLongDate, formatTime } from "~/lib/date-utils";
 import { useT } from "~/lib/i18n";
@@ -103,7 +104,10 @@ export function BookingListItem({
           </span>
         )}
       </div>
-      <div className="flex shrink-0 gap-2">{actions}</div>
+      <div className="flex shrink-0 gap-2">
+        {actions}
+        {booking.isOrganizer && <BookingHistoryButton uid={booking.uid} viewer={viewer} />}
+      </div>
     </li>
   );
 }

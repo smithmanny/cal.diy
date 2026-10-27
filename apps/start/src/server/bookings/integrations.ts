@@ -5,6 +5,8 @@ import { createCalendarService } from "../calendars/container";
 import { createEmailService } from "../emails/container";
 import { WebhookRepository } from "../webhooks/WebhookRepository";
 import { createWebhookListener } from "../webhooks/webhookListener";
+import { createAuditListener } from "./auditListener";
+import { BookingAuditRepository } from "./BookingAuditRepository";
 import type { BusyTimesProvider } from "./BookingService";
 import type { BookingListener } from "./events";
 
@@ -15,6 +17,7 @@ export function getBookingListeners(db: Database): BookingListener[] {
   const listeners: BookingListener[] = [];
   if (calendars) listeners.push((event) => calendars.onBookingEvent(event));
   listeners.push(createWebhookListener(new WebhookRepository(db)));
+  listeners.push(createAuditListener(new BookingAuditRepository(db)));
   if (emails) listeners.push((event) => emails.onBookingEvent(event));
   return listeners;
 }

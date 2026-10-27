@@ -11,6 +11,7 @@ import {
   hasBookingSearch,
   parseBookingSearch,
 } from "~/components/bookings/BookingFilters";
+import { BOOKING_HISTORY_MESSAGE_KEYS } from "~/components/bookings/BookingHistoryDialog";
 import {
   BOOKING_LIST_ITEM_MESSAGE_KEYS,
   BookingListItem,
@@ -52,6 +53,7 @@ const MESSAGE_KEYS = [
   ...BOOKING_FILTER_MESSAGE_KEYS,
   ...BOOKING_LIST_ITEM_MESSAGE_KEYS,
   ...BOOKING_EDIT_MESSAGE_KEYS,
+  ...BOOKING_HISTORY_MESSAGE_KEYS,
   "guests_disabled",
   "booking_has_ended",
   "emails_must_be_unique_valid",

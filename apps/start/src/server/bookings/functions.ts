@@ -66,7 +66,13 @@ export const cancelBookingByUid = createServerFn({ method: "POST" })
     const service = await getBookingService();
     // On a seated booking a booker cancels only their own seat.
     if (data.seatReferenceUid) return service.cancelSeat(data.seatReferenceUid, data.reason ?? null);
-    return service.cancel(data.uid, data.reason ?? null, data.cancelledBy ?? null);
+    const userId = await optionalUserId();
+    return service.cancel(
+      data.uid,
+      data.reason ?? null,
+      data.cancelledBy ?? null,
+      userId ? { userId } : undefined
+    );
   });
 
 // Host endpoints.
@@ -146,4 +152,14 @@ export const requestReschedule = createServerFn({ method: "POST" })
   .validator(uidSchema.extend({ reason: z.string().max(1000).optional() }))
   .handler(async ({ context, data }) =>
     (await getBookingActionsService()).requestReschedule(context.userId, data.uid, data.reason || null)
+  );
+
+export const getBookingHistory = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .validator(uidSchema.extend({ locale: z.string().max(20).default("en") }))
+  .handler(async ({ context, data }) =>
+    (await getBookingActionsService()).history(context.userId, data.uid, {
+      timeZone: context.userTimeZone,
+      locale: data.locale,
+    })
   );
