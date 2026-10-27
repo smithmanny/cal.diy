@@ -1,91 +1,29 @@
 import "@tanstack/react-start/server-only";
 
 import type { Database } from "@calcom/db/database";
-import {
-  booking,
-  bookingReference,
-  credential,
-  destinationCalendar,
-  selectedCalendar,
-} from "@calcom/db/schema";
-import { and, eq, isNull, or } from "drizzle-orm";
+import { booking, bookingReference, destinationCalendar, selectedCalendar } from "@calcom/db/schema";
+import { and, eq, inArray, isNull, or } from "drizzle-orm";
 
-export const GOOGLE_CALENDAR_TYPE = "google_calendar";
-
-export type CredentialRow = { id: number; userId: number | null; key: unknown; encryptedKey: string | null };
-
+/** Selected/destination calendars and calendar booking references, for any calendar provider. */
 export class CalendarRepository {
   constructor(private readonly db: Database) {}
-
-  findGoogleCredentialsByUserId(userId: number): Promise<CredentialRow[]> {
-    return this.db
-      .select({
-        id: credential.id,
-        userId: credential.userId,
-        key: credential.key,
-        encryptedKey: credential.encryptedKey,
-      })
-      .from(credential)
-      .where(and(eq(credential.userId, userId), eq(credential.type, GOOGLE_CALENDAR_TYPE)));
-  }
-
-  async findCredentialById(id: number): Promise<CredentialRow | null> {
-    const [found] = await this.db
-      .select({
-        id: credential.id,
-        userId: credential.userId,
-        key: credential.key,
-        encryptedKey: credential.encryptedKey,
-      })
-      .from(credential)
-      .where(eq(credential.id, id))
-      .limit(1);
-    return found ?? null;
-  }
-
-  async createGoogleCredential(userId: number, encryptedKey: string): Promise<number> {
-    const [created] = await this.db
-      .insert(credential)
-      // The real key lives in encryptedKey; `key` is NOT NULL in Cal's schema.
-      .values({ userId, type: GOOGLE_CALENDAR_TYPE, key: {}, encryptedKey })
-      .returning({ id: credential.id });
-    return created.id;
-  }
-
-  async updateCredentialKey(id: number, encryptedKey: string): Promise<void> {
-    await this.db
-      .update(credential)
-      .set({ key: {}, encryptedKey, invalid: false })
-      .where(eq(credential.id, id));
-  }
-
-  async markCredentialInvalid(id: number): Promise<void> {
-    await this.db.update(credential).set({ invalid: true }).where(eq(credential.id, id));
-  }
-
-  async deleteCredential(id: number): Promise<void> {
-    // SelectedCalendar/DestinationCalendar cascade; booking references keep their history (SET NULL).
-    await this.db.delete(credential).where(eq(credential.id, id));
-  }
 
   findSelectedCalendars(userId: number) {
     return this.db
       .select({ credentialId: selectedCalendar.credentialId, externalId: selectedCalendar.externalId })
       .from(selectedCalendar)
-      .where(
-        and(eq(selectedCalendar.userId, userId), eq(selectedCalendar.integration, GOOGLE_CALENDAR_TYPE))
-      );
+      .where(eq(selectedCalendar.userId, userId));
   }
 
   async setSelected(
     userId: number,
-    credentialId: number,
+    credential: { id: number; type: string },
     externalId: string,
     selected: boolean
   ): Promise<void> {
     const match = and(
       eq(selectedCalendar.userId, userId),
-      eq(selectedCalendar.integration, GOOGLE_CALENDAR_TYPE),
+      eq(selectedCalendar.integration, credential.type),
       eq(selectedCalendar.externalId, externalId)
     );
     if (!selected) {
@@ -101,8 +39,8 @@ export class CalendarRepository {
     await this.db.insert(selectedCalendar).values({
       id: crypto.randomUUID(),
       userId,
-      credentialId,
-      integration: GOOGLE_CALENDAR_TYPE,
+      credentialId: credential.id,
+      integration: credential.type,
       externalId,
     });
   }
@@ -122,21 +60,19 @@ export class CalendarRepository {
 
   async setDestination(
     userId: number,
-    credentialId: number,
+    credential: { id: number; type: string },
     externalId: string,
     primaryEmail: string | null
   ): Promise<void> {
+    const values = { credentialId: credential.id, externalId, integration: credential.type, primaryEmail };
     // DestinationCalendar.userId is unique, so this is a per-user upsert.
     await this.db
       .insert(destinationCalendar)
-      .values({ userId, credentialId, externalId, integration: GOOGLE_CALENDAR_TYPE, primaryEmail })
-      .onConflictDoUpdate({
-        target: destinationCalendar.userId,
-        set: { credentialId, externalId, integration: GOOGLE_CALENDAR_TYPE, primaryEmail },
-      });
+      .values({ userId, ...values })
+      .onConflictDoUpdate({ target: destinationCalendar.userId, set: values });
   }
 
-  async findReferencesByBookingUid(uid: string) {
+  findReferencesByBookingUid(uid: string, types: string[]) {
     return this.db
       .select({
         id: bookingReference.id,
@@ -150,7 +86,7 @@ export class CalendarRepository {
       .where(
         and(
           eq(booking.uid, uid),
-          eq(bookingReference.type, GOOGLE_CALENDAR_TYPE),
+          inArray(bookingReference.type, types),
           // Events already removed (say, before recreating one with new guests) stay gone.
           or(isNull(bookingReference.deleted), eq(bookingReference.deleted, false))
         )
@@ -159,6 +95,7 @@ export class CalendarRepository {
 
   async addReference(data: {
     bookingUid: string;
+    type: string;
     credentialId: number;
     eventId: string;
     calendarId: string;
@@ -171,7 +108,7 @@ export class CalendarRepository {
       .limit(1);
     if (!found) return;
     await this.db.insert(bookingReference).values({
-      type: GOOGLE_CALENDAR_TYPE,
+      type: data.type,
       uid: data.eventId,
       bookingId: found.id,
       credentialId: data.credentialId,
