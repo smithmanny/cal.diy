@@ -7,12 +7,6 @@
   nocompatible: true;
 }
 
-@variant pwa (@media (display-mode: standalone));
-@variant todesktop (html.todesktop &);
-@variant mac (html.todesktop-platform-darwin &);
-@variant windows (html.todesktop-platform-win32 &);
-@variant linux (html.todesktop-platform-linux &);
-
 @theme inline {
   --font-sans: var(--font-sans);
   --font-cal: var(--font-cal);

@@ -59,6 +59,7 @@
       "!!test-results",
     "!!**/test-results",
     "!!**/.wrangler",
+    "!!.claude",
     "!!apps/web/data",
       "!!packages/lib/raqb/resolveQueryValue.test.ts",
       "!!packages/embeds/embed-core/src/lib/domUtils.ts"
