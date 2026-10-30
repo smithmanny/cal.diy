@@ -108,8 +108,8 @@ Every endpoint here returns bookings in this shape (`BookingOutput_2024_08_13`):
 key, the key's owner is recorded as the person who made the booking. OAuth tokens get 403.
 Answers **201**.
 
-Name the event type by `eventTypeId`, or by `username` plus `eventTypeSlug`. Team event types
-can't be booked by `eventTypeId` (404 `Event type not found`).
+Name the event type by `eventTypeId`, or by `username` plus `eventTypeSlug`. A team's event type
+is booked through its team page, so give it by `eventTypeId`.
 
 | Field | Type | Required | Constraints |
 | --- | --- | --- | --- |
@@ -130,7 +130,8 @@ can't be booked by `eventTypeId` (404 `Event type not found`).
 | `emailVerificationCode` | string | no | Six digits. Required when the event type has `requiresBookerEmailVerification` |
 
 Other fields are ignored. `attendee.name`, `attendee.email`, `guests`, `location` and
-`attendee.phoneNumber` override the same keys in `bookingFieldsResponses`.
+`attendee.phoneNumber` override the same keys in `bookingFieldsResponses`. `attendee.phoneNumber`
+is stored on the attendee even when the event's phone question is hidden.
 
 `location` picks one of the event type's locations:
 
@@ -173,7 +174,7 @@ Errors:
 | 400 | `attendee.email - Invalid email`, etc. | Validation |
 | 400 | `Please choose a valid time zone` | Bad `attendee.timeZone` |
 | 400 | `This event can't be booked for that length of time` | `lengthInMinutes` not offered |
-| 400 | `Something went wrong.` | `recurrenceCount` above the event's occurrences |
+| 400 | `This event can be booked at most 4 times in a row.` | `recurrenceCount` above the event's occurrences |
 | 400 | `Email verification is required for this event type` | Missing `emailVerificationCode` |
 | 400 | The form's message, e.g. for a required question | A required booking field is missing or invalid |
 | 404 | `Event type not found` / `User not found` | Unknown event type or username |
@@ -250,7 +251,9 @@ or an out-of-range `take` (`take - Number must be less than or equal to 250`).
 ## Get a booking
 
 `GET /bookings/{bookingUid}` — **Auth:** optional (OAuth needs `READ_BOOKING`). Returns the
-booking object.
+booking object. On a seated event type that doesn't show attendees (`showAttendeeInfo: false`),
+only the host's key sees every seat; other callers get an empty `attendees` list, since every seat
+holder knows the booking's uid.
 
 ```bash
 curl http://localhost:3000/api/v2/bookings/cmvuwxz6z0001023z1h2s3m6z \
@@ -268,7 +271,7 @@ Errors: 404 `Booking not found`.
 | Field | Type | Constraints |
 | --- | --- | --- |
 | `cancellationReason` | string | Up to 1000 characters |
-| `cancelSubsequentBookings` | boolean | Host only: for a recurring booking, also cancel the occurrences that haven't started |
+| `cancelSubsequentBookings` | boolean | Host only: for a recurring booking, also cancel the later occurrences that haven't started |
 | `seatUid` | string | 1-100 characters. Gives up only that seat of a seated booking |
 
 Who cancels depends on the credentials:
@@ -276,8 +279,9 @@ Who cancels depends on the credentials:
 - **The host's API key**: cancels as the host. `cancelledByEmail` is set to the host's email. Only
   this occurrence, unless `cancelSubsequentBookings` is `true`.
 - **Anyone else** (no key, or another user's key): cancels as an attendee would. With `seatUid`,
-  only that seat is released. Without it, the booking is cancelled, and for a recurring booking so
-  is every occurrence that hasn't started.
+  only that seat is released, and the seat must belong to `{bookingUid}`. A seated booking can't be
+  cancelled for everyone this way (403). Otherwise the booking is cancelled, and for a recurring
+  booking so are the later occurrences that haven't started.
 
 ```bash
 curl -X POST http://localhost:3000/api/v2/bookings/cmvuwy62t00025m2s5a3z2m6j/cancel \
@@ -304,8 +308,8 @@ Errors:
 
 | Status | Message | When |
 | --- | --- | --- |
-| 403 | `You cannot cancel this booking` | The event type disables cancelling |
-| 404 | `Booking not found` | Unknown uid or `seatUid` |
+| 403 | `You cannot cancel this booking` | The event type disables cancelling, or a seated booking cancelled without `seatUid` by someone other than the host |
+| 404 | `Booking not found` | Unknown uid or `seatUid`, or a `seatUid` of another booking |
 | 409 | `This event is canceled` | Already cancelled or rejected |
 
 ---
@@ -321,10 +325,11 @@ answers and length, and cancels the old booking. Answers **201** with the **new*
 | --- | --- | --- | --- |
 | `start` | string | yes | ISO 8601 date-time with `Z` or an offset; must be a free slot |
 | `reschedulingReason` | string | no | Up to 1000 characters |
-| `rescheduledBy` | string | no | Email. Accepted but not stored |
+| `rescheduledBy` | string | no | Email of who moved it, shown as `rescheduledByEmail` on the old booking. Defaults to the host's email with the host's key, otherwise the booker's |
 | `seatUid` | string | no | 1-100 characters. Required for a seated booking: moves that seat |
 
-With the host's API key, the minimum reschedule notice doesn't apply.
+With the host's API key, the minimum reschedule notice doesn't apply. The new booking keeps the old
+one's length while the event type still offers it, and otherwise takes the event's length.
 
 ```bash
 curl -X POST http://localhost:3000/api/v2/bookings/cmvuwxz6z0001023z1h2s3m6z/reschedule \
@@ -392,7 +397,7 @@ curl -X POST http://localhost:3000/api/v2/bookings/cmvuwykfo00032d293m5w2q62/dec
 `confirm` returns the booking with `status: "accepted"`.
 
 Errors: 401 without a key; 404 `Booking not found` if you aren't the host; 409
-`Something went wrong.` if the booking isn't pending.
+`This booking was already accepted or rejected` if the booking isn't pending.
 
 ---
 
@@ -428,7 +433,8 @@ new attendees. New guests get a confirmation email; the others an update.
 | --- | --- | --- |
 | `guests` | array | 1-30 objects |
 | `guests[].email` | string | Required, email, up to 320 characters |
-| `guests[].name`, `timeZone`, `phoneNumber`, `language` | string | Accepted but ignored: guests get an empty name and the host's time zone and language |
+| `guests[].name`, `phoneNumber` | string | Optional; stored on the guest's attendee record |
+| `guests[].timeZone`, `language` | string | Optional (a valid IANA zone); the host's are used when left out |
 
 ```bash
 curl -X POST http://localhost:3000/api/v2/bookings/cmvuwy62t00025m2s5a3z2m6j/guests \

@@ -53,7 +53,7 @@ Settings that are off are left out of the object (see the notes).
   "interfaceLanguage": null,
   "bookingLimitsCount": { "day": 3, "disabled": false },
   "bookingWindow": { "type": "calendarDays", "value": 30, "rolling": false, "disabled": false },
-  "bookerLayouts": { "enabledLayouts": ["month_view", "week_view"], "defaultLayout": "month_view" },
+  "bookerLayouts": { "defaultLayout": "month", "enabledLayouts": ["month", "week"] },
   "color": { "lightThemeHex": "#292929", "darkThemeHex": "#fafafa" },
   "seats": { "disabled": true },
   "users": [
@@ -78,8 +78,8 @@ Notes on the output:
 - `bookingLimitsCount`, `bookingLimitsDuration`, `bookerActiveBookingsLimit`, `bookingWindow`,
   `bookerLayouts`, `confirmationPolicy` and `color` appear only when set. `seats` is
   `{ "disabled": true }` when the event isn't seated.
-- `bookerLayouts` values come back as `month_view`, `week_view` and `column_view`, while input takes
-  `month`, `week` and `column`.
+- `bookerLayouts` uses `month`, `week` and `column`, in responses and input alike; input also takes
+  `month_view`, `week_view` and `column_view`.
 - `bookingFields[].label` and `placeholder` are the field's own text, or a translation key such as
   `your_name` for built-in fields. `options` lists the values of select-type fields. The location
   question has `type: "radioInput"`.
@@ -125,7 +125,8 @@ Errors: 401 without `username` and without a key.
 ## Get an event type
 
 `GET /event-types/{eventTypeId}` — **Auth:** API key, or OAuth with `READ_PROFILE`. Only your own
-event types.
+personal event types: a team's event type answers 404 here, as do `PATCH` and `DELETE` (teams
+aren't served by this API).
 
 ```bash
 curl http://localhost:3000/api/v2/event-types/3 \
@@ -257,7 +258,7 @@ curl -X PATCH http://localhost:3000/api/v2/event-types/3 \
 | Status | Message | When |
 | --- | --- | --- |
 | 400 | `body - Unrecognized key(s) in object: '<field>'` | A field not in the table |
-| 400 | `<field> - <problem>` | Validation, e.g. `bookerLayouts.defaultLayout - Invalid enum value. Expected 'month' \| 'week' \| 'column', received 'month_view'` |
+| 400 | `<field> - <problem>` | Validation, e.g. `lengthInMinutes - Number must be greater than or equal to 1` |
 | 400 | `This URL is already taken` | The slug is empty after normalizing |
 | 404 | `Not found` | Unknown event type, not yours, or `scheduleId` isn't one of your schedules |
 | 409 | `This URL is already taken` | You already have an event type with that slug |

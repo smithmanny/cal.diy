@@ -104,6 +104,7 @@ curl -X PATCH http://localhost:3000/api/v2/webhooks/060a558f-fa98-4722-91a4-005d
 | 400 | `active - Required` | Missing required field on create |
 | 400 | `triggers.0 - Invalid enum value. Expected 'BOOKING_CREATED' \| ... , received 'MEETING_ENDED'` | Unsupported trigger |
 | 400 | `subscriberUrl - Invalid url` / `subscriberUrl - Invalid input` | Not a URL / not `http(s)` |
+| 400 | `Webhooks can't be sent to this server's own network...` | `localhost`, a private, link-local or metadata address, or a name without a dot, unless the instance sets `ALLOW_PRIVATE_WEBHOOK_URLS=true` |
 | 400 | `body - Unrecognized key(s) in object: '<field>'` | Unknown field |
 | 404 | `Not found` | Unknown id, not a uuid, or not yours |
 | 409 | `Webhook subscriber url is already defined` | You already have a webhook for that URL |

@@ -85,7 +85,7 @@ taken) and, when the time already has a booking, its `bookingUid`:
 | --- | --- | --- |
 | 400 | `eventTypeId - Provide eventTypeId, or eventTypeSlug and username` | No event type given |
 | 400 | `start - Invalid input` | A `start` or `end` in another format |
-| 400 | `Something went wrong.` | `start` isn't before `end`, or the range is over 62 days |
+| 400 | `Ask for slots from a start before the end, at most 62 days apart.` | `start` isn't before `end`, or the range is over 62 days |
 | 400 | `Please choose a valid time zone` | Unknown `timeZone` |
 | 400 | `This event can't be booked for that length of time` | `duration` isn't offered |
 | 404 | `Event type not found` | Unknown event type id or slug |

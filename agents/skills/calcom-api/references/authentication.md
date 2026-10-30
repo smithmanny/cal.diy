@@ -65,7 +65,10 @@ Clients are approved when created.
 | Scope | Allows |
 | --- | --- |
 | `READ_BOOKING` | `GET /bookings` and `GET /bookings/{bookingUid}` |
-| `READ_PROFILE` | Every other `GET`: `/me`, `/event-types...`, `/schedules...`, `/slots`, `/webhooks...` |
+| `READ_PROFILE` | `GET` on `/me`, `/event-types...`, `/schedules...` and `/slots` |
+
+No scope reads webhooks: their URLs and templates are your own configuration, so `/webhooks` needs
+an API key (an OAuth token gets 403).
 
 Any non-GET request with an OAuth token, including the public `POST /bookings`, answers 403. A GET
 without the needed scope also answers 403:
@@ -207,5 +210,5 @@ Errors:
 | --- | --- | --- |
 | 400 | `body - Unrecognized key(s) in object: 'email'` | A field not listed above |
 | 400 | `Please choose a valid time zone` | Unknown `timeZone` |
-| 400 | `Something went wrong.` | `locale` doesn't match a supported language |
+| 400 | `This language isn't supported.` | `locale` doesn't match a supported language |
 | 404 | `Not found` | `defaultScheduleId` isn't one of your schedules |

@@ -38,7 +38,7 @@ Authorization: Bearer cal_0123456789abcdef0123456789abcdef
   requests a minute.
 - **OAuth access tokens** come from the instance's OAuth 2.0 provider (clients are registered by
   an admin). They can only call `GET` endpoints: `READ_BOOKING` for `/bookings...`, `READ_PROFILE`
-  for everything else.
+  for `/me`, `/event-types...`, `/schedules...` and `/slots`. Webhooks need an API key.
 - **Public endpoints** work without a header. When a key is sent, they act as its owner.
 
 See [references/authentication.md](references/authentication.md) for key handling, the OAuth flow
@@ -152,9 +152,9 @@ Other messages are the app's English text, e.g. `"Booking not found"` or `"This 
 | POST | [`/bookings/{bookingUid}/mark-absent`](references/bookings.md#mark-attendees-absent) | Key only (host) | – | Record attendee no-shows |
 | POST | [`/bookings/{bookingUid}/guests`](references/bookings.md#add-guests) | Key only (host) | – | Add guests |
 | PATCH | [`/bookings/{bookingUid}/location`](references/bookings.md#change-the-location) | Key only (host) | – | Change the meeting location |
-| GET | [`/webhooks`](references/webhooks.md#list-webhooks) | Key | READ_PROFILE | Your webhooks |
+| GET | [`/webhooks`](references/webhooks.md#list-webhooks) | Key only | – | Your webhooks |
 | POST | [`/webhooks`](references/webhooks.md#create-a-webhook) | Key only | – | Subscribe a URL to booking events |
-| GET | [`/webhooks/{webhookId}`](references/webhooks.md#get-a-webhook) | Key | READ_PROFILE | One webhook |
+| GET | [`/webhooks/{webhookId}`](references/webhooks.md#get-a-webhook) | Key only | – | One webhook |
 | PATCH | [`/webhooks/{webhookId}`](references/webhooks.md#update-a-webhook) | Key only | – | Change a webhook |
 | DELETE | [`/webhooks/{webhookId}`](references/webhooks.md#delete-a-webhook) | Key only | – | Delete a webhook |
 
