@@ -1,0 +1,215 @@
+import "@tanstack/react-start/server-only";
+import type { Database } from "@calcom/db/database";
+import { chunkRowsForInsert } from "@calcom/db/insert-chunks";
+import { eventType, host } from "@calcom/db/schema";
+import { and, asc, desc, eq, max, ne } from "drizzle-orm";
+
+const summaryColumns = {
+  id: eventType.id,
+  title: eventType.title,
+  slug: eventType.slug,
+  length: eventType.length,
+  hidden: eventType.hidden,
+  description: eventType.description,
+  eventTypeColor: eventType.eventTypeColor,
+};
+
+const detailColumns = {
+  ...summaryColumns,
+  userId: eventType.userId,
+  teamId: eventType.teamId,
+  schedulingType: eventType.schedulingType,
+  assignAllTeamMembers: eventType.assignAllTeamMembers,
+  scheduleId: eventType.scheduleId,
+  locations: eventType.locations,
+  minimumBookingNotice: eventType.minimumBookingNotice,
+  beforeEventBuffer: eventType.beforeEventBuffer,
+  afterEventBuffer: eventType.afterEventBuffer,
+  slotInterval: eventType.slotInterval,
+  periodType: eventType.periodType,
+  periodDays: eventType.periodDays,
+  periodCountCalendarDays: eventType.periodCountCalendarDays,
+  requiresConfirmation: eventType.requiresConfirmation,
+  periodStartDate: eventType.periodStartDate,
+  periodEndDate: eventType.periodEndDate,
+  offsetStart: eventType.offsetStart,
+  onlyShowFirstAvailableSlot: eventType.onlyShowFirstAvailableSlot,
+  bookingLimits: eventType.bookingLimits,
+  durationLimits: eventType.durationLimits,
+  maxActiveBookingsPerBooker: eventType.maxActiveBookingsPerBooker,
+  maxActiveBookingPerBookerOfferReschedule: eventType.maxActiveBookingPerBookerOfferReschedule,
+  bookingFields: eventType.bookingFields,
+  disableGuests: eventType.disableGuests,
+  metadata: eventType.metadata,
+  requiresConfirmationWillBlockSlot: eventType.requiresConfirmationWillBlockSlot,
+  disableCancelling: eventType.disableCancelling,
+  disableRescheduling: eventType.disableRescheduling,
+  minimumRescheduleNotice: eventType.minimumRescheduleNotice,
+  successRedirectUrl: eventType.successRedirectUrl,
+  forwardParamsSuccessRedirect: eventType.forwardParamsSuccessRedirect,
+  eventName: eventType.eventName,
+  hideCalendarNotes: eventType.hideCalendarNotes,
+  hideCalendarEventDetails: eventType.hideCalendarEventDetails,
+  hideOrganizerEmail: eventType.hideOrganizerEmail,
+  lockTimeZoneToggleOnBookingPage: eventType.lockTimeZoneToggleOnBookingPage,
+  lockedTimeZone: eventType.lockedTimeZone,
+  eventTypeColor: eventType.eventTypeColor,
+  interfaceLanguage: eventType.interfaceLanguage,
+  requiresBookerEmailVerification: eventType.requiresBookerEmailVerification,
+  recurringEvent: eventType.recurringEvent,
+  seatsPerTimeSlot: eventType.seatsPerTimeSlot,
+  seatsShowAttendees: eventType.seatsShowAttendees,
+  seatsShowAvailabilityCount: eventType.seatsShowAvailabilityCount,
+};
+
+type WritableColumns = Partial<Omit<typeof eventType.$inferInsert, "id" | "userId" | "teamId">>;
+
+export type EventTypeRow = NonNullable<Awaited<ReturnType<EventTypeRepository["findById"]>>>;
+
+export class EventTypeRepository {
+  constructor(private readonly db: Database) {}
+
+  findManyByUserId(userId: number) {
+    return this.db
+      .select(summaryColumns)
+      .from(eventType)
+      .where(eq(eventType.userId, userId))
+      .orderBy(desc(eventType.position), asc(eventType.id));
+  }
+
+  async findById(id: number) {
+    const [found] = await this.db.select(detailColumns).from(eventType).where(eq(eventType.id, id)).limit(1);
+    return found ?? null;
+  }
+
+  findManyVisibleByUserId(userId: number) {
+    return this.db
+      .select(summaryColumns)
+      .from(eventType)
+      .where(and(eq(eventType.userId, userId), eq(eventType.hidden, false)))
+      .orderBy(desc(eventType.position), asc(eventType.id));
+  }
+
+  /** Every setting of a user's event types, in the order their list shows them. */
+  findManyByUserIdWithDetails(userId: number, { visibleOnly = false } = {}) {
+    return this.db
+      .select(detailColumns)
+      .from(eventType)
+      .where(and(eq(eventType.userId, userId), visibleOnly ? eq(eventType.hidden, false) : undefined))
+      .orderBy(desc(eventType.position), asc(eventType.id));
+  }
+
+  async findByUserIdAndSlug(userId: number, slug: string) {
+    const [found] = await this.db
+      .select(detailColumns)
+      .from(eventType)
+      .where(and(eq(eventType.userId, userId), eq(eventType.slug, slug)))
+      .limit(1);
+    return found ?? null;
+  }
+
+  async slugExistsForUser(userId: number, slug: string, excludeId?: number): Promise<boolean> {
+    const conditions = [eq(eventType.userId, userId), eq(eventType.slug, slug)];
+    if (excludeId !== undefined) conditions.push(ne(eventType.id, excludeId));
+    const [found] = await this.db
+      .select({ id: eventType.id })
+      .from(eventType)
+      .where(and(...conditions))
+      .limit(1);
+    return Boolean(found);
+  }
+
+  async findMaxPositionForUser(userId: number): Promise<number> {
+    const [row] = await this.db
+      .select({ position: max(eventType.position) })
+      .from(eventType)
+      .where(eq(eventType.userId, userId));
+    return row?.position ?? 0;
+  }
+
+  async create(userId: number, data: WritableColumns & { title: string; slug: string; length: number }) {
+    const [created] = await this.db
+      .insert(eventType)
+      .values({ ...data, userId })
+      .returning({ id: eventType.id });
+    return created;
+  }
+
+  async createMany(
+    userId: number,
+    rows: (WritableColumns & { title: string; slug: string; length: number })[]
+  ) {
+    const values = rows.map((row) => ({ ...row, userId }));
+    const [first, ...rest] = chunkRowsForInsert(eventType, values).map((chunk) =>
+      this.db.insert(eventType).values(chunk)
+    );
+    if (first) await this.db.batch([first, ...rest]);
+  }
+
+  findManyByTeamId(teamId: number, { visibleOnly = false } = {}) {
+    return this.db
+      .select({ ...summaryColumns, schedulingType: eventType.schedulingType })
+      .from(eventType)
+      .where(and(eq(eventType.teamId, teamId), visibleOnly ? eq(eventType.hidden, false) : undefined))
+      .orderBy(desc(eventType.position), asc(eventType.id));
+  }
+
+  async findByTeamIdAndSlug(teamId: number, slug: string) {
+    const [found] = await this.db
+      .select(detailColumns)
+      .from(eventType)
+      .where(and(eq(eventType.teamId, teamId), eq(eventType.slug, slug)))
+      .limit(1);
+    return found ?? null;
+  }
+
+  async slugExistsForTeam(teamId: number, slug: string, excludeId?: number): Promise<boolean> {
+    const [found] = await this.db
+      .select({ id: eventType.id })
+      .from(eventType)
+      .where(
+        and(
+          eq(eventType.teamId, teamId),
+          eq(eventType.slug, slug),
+          excludeId === undefined ? undefined : ne(eventType.id, excludeId)
+        )
+      )
+      .limit(1);
+    return Boolean(found);
+  }
+
+  async createForTeam(
+    teamId: number,
+    data: WritableColumns & { title: string; slug: string; length: number }
+  ) {
+    const [created] = await this.db
+      .insert(eventType)
+      .values({ ...data, teamId })
+      .returning({ id: eventType.id });
+    return created;
+  }
+
+  /** Cal's Host rows: who takes a team event's bookings, and who must always attend (fixed). */
+  findHosts(eventTypeId: number) {
+    return this.db
+      .select({ userId: host.userId, isFixed: host.isFixed, priority: host.priority })
+      .from(host)
+      .where(eq(host.eventTypeId, eventTypeId))
+      .orderBy(asc(host.priority), asc(host.userId));
+  }
+
+  async setHosts(eventTypeId: number, hosts: { userId: number; isFixed: boolean }[]) {
+    await this.db.batch([
+      this.db.delete(host).where(eq(host.eventTypeId, eventTypeId)),
+      ...hosts.map((entry, priority) => this.db.insert(host).values({ ...entry, eventTypeId, priority })),
+    ]);
+  }
+
+  async update(id: number, data: WritableColumns) {
+    await this.db.update(eventType).set(data).where(eq(eventType.id, id));
+  }
+
+  async deleteById(id: number) {
+    await this.db.delete(eventType).where(eq(eventType.id, id));
+  }
+}

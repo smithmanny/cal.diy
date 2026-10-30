@@ -1,189 +1,114 @@
-# Cal.diy Permission Documentation
+# Cal.diy Permissions
 
-This document maps existing role-based permission checks to the new PBAC (Permission-Based Access Control) system's permission strings in the format `resource.action`.
+How access control works in Cal.diy: who has which role, and where each check lives in the code.
+There is no permission-string (PBAC) system; checks are role and ownership checks in middleware and
+services.
 
-## Permissions by Resource
+## Layers
 
-### Team Permissions
+| Layer | What it does | Where |
+| --- | --- | --- |
+| Route `beforeLoad` | Redirects signed-out users to login, hides admin pages (`notFound()`). A convenience for the UI, not a security boundary | `apps/web/src/routes/_authed.tsx`, `apps/web/src/lib/admin-guard.ts` |
+| Server function middleware | Rejects calls without a session (`401`) or without the admin role (`403`) | `authMiddleware` in `apps/web/src/server/middleware.ts`, `adminMiddleware` in `apps/web/src/server/admin/middleware.ts` |
+| Services | Ownership and team-role checks on the specific record | `findOwned` in each service, `canManage` in `apps/web/src/server/teams/TeamService.ts` |
+| Better Auth | Its own checks on the endpoints it serves (admin plugin, organization plugin, API keys) | `apps/web/src/server/auth/createAuth.ts`, `organizations.ts` |
+| API v2 | API key or OAuth token, then the same services | `apps/web/src/server/api-v2/http.ts`, `auth.ts` |
 
-| Permission String | Description | File Path | Line |
-|------------------|-------------|-----------|------|
-| team.create | Create teams | [packages/trpc/server/routers/viewer/teams/create.handler.ts](packages/trpc/server/routers/viewer/teams/create.handler.ts) | 55-57 |
-| team.update | Update team settings | [packages/trpc/server/routers/viewer/teams/update.handler.ts](packages/trpc/server/routers/viewer/teams/update.handler.ts) | 18 |
-| team.changeMemberRole | Change role of team members | [packages/trpc/server/routers/viewer/teams/changeMemberRole.handler.ts](packages/trpc/server/routers/viewer/teams/changeMemberRole.handler.ts) | 18-21 |
-| team.remove | Remove members from team | [packages/trpc/server/routers/viewer/teams/removeMember.handler.ts](packages/trpc/server/routers/viewer/teams/removeMember.handler.ts) | 35-36, 51-55 |
-| team.invite | Invite members to team | [packages/trpc/server/routers/viewer/teams/invite.handler.ts](packages/trpc/server/routers/viewer/teams/invite.handler.ts) | - |
+Server functions are HTTP endpoints anyone can call, so the server function and service checks are
+the ones that protect data. Records someone may not see answer `404` (`not_found`,
+`booking_not_found`, `team_not_found`) rather than `403`, so ids can't be probed.
 
-### Event Type Permissions
+## Instance roles (Better Auth admin plugin)
 
-| Permission String | Description | File Path | Line |
-|------------------|-------------|-----------|------|
-| eventType.create | Create event types | [packages/trpc/server/routers/viewer/eventTypes/create.handler.ts](packages/trpc/server/routers/viewer/eventTypes/create.handler.ts) | - |
-| eventType.update | Update event types | [packages/trpc/server/routers/viewer/eventTypes/update.handler.ts](packages/trpc/server/routers/viewer/eventTypes/update.handler.ts) | 162-164 |
-| eventType.delete | Delete event types | [packages/trpc/server/routers/viewer/eventTypes/delete.handler.ts](packages/trpc/server/routers/viewer/eventTypes/delete.handler.ts) | 13-31 |
+`users.role` is Cal's `UserPermissionRole`: `USER` or `ADMIN`. The plugin is configured in
+`adminPlugin()` in `apps/web/src/server/auth/createAuth.ts` (`defaultRole: "USER"`,
+`adminRoles: ["ADMIN"]`, Better Auth's `adminAc` / `userAc` permissions).
 
-### Booking Permissions
+- The first account created on an empty install becomes `ADMIN` (user create hook in `createAuth.ts`); everyone after is `USER`
+- Admins manage users at `/settings/admin/users` (edit, change role, lock/unlock, impersonate, send a password reset, delete) and OAuth clients at `/settings/admin/oauth`
+- Every admin server function uses `adminMiddleware`: a session, `role === "ADMIN"`, and in production builds two-factor authentication turned on (`admin_needs_two_factor` otherwise). Better Auth's own `/admin/*` endpoints apply the same two-factor rule in `beforeHook`, except stopping an impersonation
+- The admin routes call `requireAdmin(context)` in `beforeLoad`, using `isAdmin` from the session (`apps/web/src/server/auth/session.ts`)
+- A lock is the plugin's ban, stored in `users.locked`: locked users can't sign in
+- Impersonation is recorded in `Session.impersonatedBy`; every page shows a banner to stop it
 
-| Permission String | Description | File Path | Line |
-|------------------|-------------|-----------|------|
-| booking.read | Read booking details | [packages/trpc/server/routers/viewer/bookings/get.handler.ts](packages/trpc/server/routers/viewer/bookings/get.handler.ts) | 95-107, 132-134 |
-| booking.readTeamBookings | Read team bookings | [packages/trpc/server/routers/viewer/bookings/get.handler.ts](packages/trpc/server/routers/viewer/bookings/get.handler.ts) | 240-252 |
-| booking.readOrgBookings | Read organization bookings | [packages/trpc/server/routers/viewer/bookings/get.handler.ts](packages/trpc/server/routers/viewer/bookings/get.handler.ts) | 240-252 |
+Promote someone from the admin pages, or with
+`UPDATE users SET role = 'ADMIN' WHERE email = '…'`.
 
-### Organization Permissions
+## Team and organization roles (Better Auth organization plugin)
 
-| Permission String | Description | File Path | Line |
-|------------------|-------------|-----------|------|
-| organization.read | Read organization details | [packages/trpc/server/routers/viewer/organizations/get.handler.ts](packages/trpc/server/routers/viewer/organizations/get.handler.ts) | - |
-| organization.listMembers | List organization members | [packages/trpc/server/routers/viewer/organizations/listMembers.handler.ts](packages/trpc/server/routers/viewer/organizations/listMembers.handler.ts) | 68-76 |
-| organization.create | Create organization | [packages/trpc/server/routers/viewer/organizations/create.handler.ts](packages/trpc/server/routers/viewer/organizations/create.handler.ts) | - |
+Teams and organizations are Cal `Team` rows, each a Better Auth organization
+(`teamsPlugin()` in `apps/web/src/server/auth/organizations.ts`). `Membership.role` holds Cal's
+`MembershipRole`, mapped to Better Auth's default permissions:
 
-### API Key Permissions
+| Role | Better Auth permissions | In practice |
+| --- | --- | --- |
+| `OWNER` | `ownerAc`: update and delete the organization; create, update, remove members; create and cancel invitations | Everything, including deleting the team |
+| `ADMIN` | `adminAc`: update the organization; create, update, remove members; create and cancel invitations | Edit the team, invite and manage members, manage team event types and team apps |
+| `MEMBER` | `memberAc`: none | See the team and its members; leave it |
 
-| Permission String | Description | File Path | Line |
-|------------------|-------------|-----------|------|
-| apiKey.create | Create API keys | [packages/trpc/server/routers/viewer/apiKeys/create.handler.ts](packages/trpc/server/routers/viewer/apiKeys/create.handler.ts) | 25-26 |
-| apiKey.findKeyOfType | Find API keys by type | [packages/trpc/server/routers/viewer/apiKeys/findKeyOfType.handler.ts](packages/trpc/server/routers/viewer/apiKeys/findKeyOfType.handler.ts) | 18-19 |
+- Whoever creates a team becomes its `OWNER` (`creatorRole: "OWNER"`). Any signed-in user can create a team or an organization
+- Creating a team inside an organization needs `OWNER` or `ADMIN` of that organization (`TeamService.assertCanCreateIn`)
+- Writes to teams, members and invitations go through Better Auth's endpoints from `apps/web/src/server/teams/functions.ts`, so the plugin checks the role; `withTeamErrors` (`teams/errors.ts`) turns its refusals into `AppError("unauthorized", 403)` and its conflicts into translated `409`s
+- Reads go through `TeamService`: a team's page needs a membership (`team_not_found` otherwise), and pending invitations are only returned to owners and admins
+- The last owner can't leave (`team_needs_an_owner`)
+- Invitations are for one email address and need a verified email to accept (`verify_email_to_join_team`), because invitation ids are sequential
 
-## Helper Functions and Utilities
+### `canManage`
 
-The following helper functions are commonly used for permission checks:
+`canManage(role)` in `apps/web/src/server/teams/TeamService.ts` is true for `OWNER` and `ADMIN`. It is
+the check for team-owned things outside Better Auth:
 
-| Function | Description | File Path |
-|----------|-------------|-----------|
-| isTeamAdmin | Checks if user is admin or owner of a team | [packages/lib/server/queries/teams/index.ts](packages/lib/server/queries/teams/index.ts#L385-L405) |
-| isTeamOwner | Checks if user is owner of a team | [packages/lib/server/queries/teams/index.ts](packages/lib/server/queries/teams/index.ts#L407-L416) |
-| isTeamMember | Checks if user is a member of a team | [packages/lib/server/queries/teams/index.ts](packages/lib/server/queries/teams/index.ts#L418-L426) |
-| canEditEntity | Checks if user can edit an entity | [packages/lib/entityPermissionUtils.ts](packages/lib/entityPermissionUtils.ts#L13-L22) |
-| canAccessEntity | Checks if user can access an entity | [packages/lib/entityPermissionUtils.ts](packages/lib/entityPermissionUtils.ts#L24-L34) |
-| getEntityPermissionLevel | Gets permission level for an entity | [packages/lib/entityPermissionUtils.ts](packages/lib/entityPermissionUtils.ts#L36-L73) |
-| canCreateEntity | Checks if user can create an entity | [packages/lib/entityPermissionUtils.ts](packages/lib/entityPermissionUtils.ts#L102-L115) |
-| withRoleCanCreateEntity | Checks if role allows entity creation | [packages/lib/entityPermissionUtils.ts](packages/lib/entityPermissionUtils.ts#L119-L121) |
+| Action | Check |
+| --- | --- |
+| Edit or delete a team event type | `EventTypeService.findOwned` with the `canManageTeam` dependency (`event-types/container.ts`) |
+| Create team event types, set hosts | `TeamEventTypeService.assertManager` |
+| Install an app for a team (`/api/integrations/<app>/add?teamId=`) | `AppsService.assertTeamInstall` |
+| Create a team inside an organization | `TeamService.assertCanCreateIn` |
 
-## Permission Level Enums
+## Personal resources
 
-The codebase uses several enums to define permission levels:
+Everything else belongs to one user and is checked against the session's user id in the service:
 
-### MembershipRole Enum
+| Resource | Check |
+| --- | --- |
+| Event types (personal) | `EventTypeService.findOwned`: `eventType.userId === userId` |
+| Schedules | `ScheduleService.findOwned` |
+| Webhooks | `WebhookService.findOwned`: `webhook.userId === userId` |
+| Calendar and app credentials | `CalendarService.findOwnedCredential` and the apps service |
+| API keys | Better Auth's api-key plugin, keyed to the user (`apps/web/src/server/api-keys/functions.ts`) |
+| Out of office, profile, settings, push subscriptions | Scoped by `context.userId` in their services |
 
-```typescript
-enum MembershipRole {
-  OWNER = "OWNER",
-  ADMIN = "ADMIN",
-  MEMBER = "MEMBER"
-}
-```
+## Bookings
 
-### Entity Permission Level Enum
+| Who | Can |
+| --- | --- |
+| Anyone | View public profiles, event types and slots, and book (`apps/web/src/server/bookings/functions.ts`, no middleware) |
+| Anyone with the booking's `uid` | See the booking page, cancel or reschedule it (the uid is an unguessable token sent to the attendee and host) |
+| The host (`booking.userId`) | Confirm or reject, mark no-shows, add guests, change the location, request a reschedule, see the history (`BookingActionsService.hostBooking`, `BookingService.decide`, `cancelAsHost`) |
 
-```typescript
-enum ENTITY_PERMISSION_LEVEL {
-  NONE,
-  USER_ONLY_WRITE,
-  TEAM_READ_ONLY,
-  TEAM_WRITE
-}
-```
+Host-only actions answer `booking_not_found` (404) for anyone else.
 
-## Common Permission Patterns
+## OAuth provider
 
-1. **Team Admin/Owner Check**: Many operations require the user to be a team admin or owner.
-   ```typescript
-   if (!(await isTeamAdmin(ctx.user?.id, input.teamId))) throw new TRPCError({ code: "UNAUTHORIZED" });
-   ```
+- Admins create and delete clients (`adminMiddleware` in `apps/web/src/server/oauth/functions.ts`)
+- A signed-in user approves a client on `/auth/oauth2/authorize` (`authMiddleware` on `approveOAuthAuthorization`)
+- Access tokens only grant reading through API v2: `READ_BOOKING` for `/api/v2/bookings`, `READ_PROFILE` for everything else (`oauthScopeFor` in `apps/web/src/server/api-v2/auth.ts`). Any write with an OAuth token is refused with `403`
 
-2. **Team Owner Check**: Some operations (like changing an owner's role) require the user to be a team owner.
-   ```typescript
-   if (input.role === MembershipRole.OWNER && !(await isTeamOwner(ctx.user?.id, input.teamId)))
-     throw new TRPCError({ code: "UNAUTHORIZED" });
-   ```
+## API v2
 
-3. **Organization Admin Check**: Operations within an organization require the user to be an organization admin.
-   ```typescript
-   if (user.profile?.organizationId && !user.organization.isOrgAdmin) {
-     throw new TRPCError({ code: "FORBIDDEN", message: "org_admins_can_create_new_teams" });
-   }
-   ```
+Requests authenticate with `Authorization: Bearer cal_…` (an API key, verified and rate-limited to
+120 requests a minute by Better Auth's api-key plugin) or with an OAuth access token (read only, see
+above). The key acts as its owner.
 
-4. **Entity Permission Check**: Entity operations use permission level checks.
-   ```typescript
-   const permissionLevel = await getEntityPermissionLevel(entity, userId);
-   return permissionLevel === ENTITY_PERMISSION_LEVEL.TEAM_WRITE || 
-          permissionLevel === ENTITY_PERMISSION_LEVEL.USER_ONLY_WRITE;
-   ```
+- `apiRoute(handler)` needs credentials (`401` without)
+- `publicApiRoute(handler)` works without them and treats the key's owner as the signed-in user when present (e.g. the host's key cancels as host)
+- After authentication the route calls the same services as the app, so the ownership and role checks above apply unchanged
 
-5. **Booking Access Control**: Complex permission checks for retrieving bookings based on user roles and team/organization membership.
-   ```typescript
-   const membershipIdsWhereUserIsAdminOwner = (
-     await prisma.membership.findMany({
-       where: {
-         userId: user.id,
-         role: {
-           in: ["ADMIN", "OWNER"],
-         },
-       },
-       select: {
-         id: true,
-       },
-     })
-   ).map((membership) => membership.id);
-   ```
+Which endpoints need a key is listed in `MIGRATION.md` ("API v2").
 
-## Migration to PBAC
+## Adding a check
 
-When migrating to the new PBAC system, these existing role-based checks should be replaced with permission string checks using the `permissionMatches` function:
-
-```typescript
-import { permissionMatches } from "@calcom/features/pbac/types/permission-registry";
-
-// Instead of:
-if (!(await isTeamAdmin(ctx.user?.id, input.teamId))) throw new TRPCError({ code: "UNAUTHORIZED" });
-
-// Use:
-if (!permissionMatches("team.update", userPermissions)) throw new TRPCError({ code: "UNAUTHORIZED" });
-```
-
-## Permission String Alternatives for Helper Functions
-
-The following table provides permission string alternatives for common helper functions:
-
-| Helper Function | Permission String Alternative | Description |
-|-----------------|-------------------------------|-------------|
-| isTeamAdmin | `team.*` | Grants all team permissions |
-| isTeamAdmin | `team.update` | Update team settings |
-| isTeamAdmin | `team.invite` | Invite team members |
-| isTeamAdmin | `team.remove` | Remove team members |
-| isTeamOwner | `team.changeMemberRole` | Change role of team members |
-| isTeamOwner | `team.delete` | Delete team |
-| isTeamMember | `team.read` | Read-only access to team |
-
-## Entity Permission Functions and Resources
-
-The following functions are used to check permissions for entities with userId and teamId properties:
-
-| Function | Description | Permission String Alternative |
-|----------|-------------|-------------------------------|
-| canEditEntity | Checks if user can edit an entity | `{resource}.update` |
-| canAccessEntity | Checks if user can access an entity | `{resource}.read` |
-| getEntityPermissionLevel | Gets permission level for an entity | N/A - Implementation detail |
-| canCreateEntity | Checks if user can create an entity | `{resource}.create` |
-
-### Resources Used with Entity Permission Functions
-
-| Resource | canEditEntity Usage | canAccessEntity Usage | Permission String |
-|----------|-------------------|---------------------|------------------|
-| routingForm | [packages/app-store/routing-forms/trpc/forms.handler.ts](packages/app-store/routing-forms/trpc/forms.handler.ts#L72) | [packages/app-store/routing-forms/trpc/getResponseWithFormFields.handler.ts](packages/app-store/routing-forms/trpc/getResponseWithFormFields.handler.ts#L78) | `routingForm.update`, `routingForm.read` |
-| routingForm | [packages/app-store/routing-forms/trpc/formMutation.handler.ts](packages/app-store/routing-forms/trpc/formMutation.handler.ts#L315) | | `routingForm.update` |
-| routingForm | [packages/app-store/routing-forms/api/responses/[formId].ts](packages/app-store/routing-forms/api/responses/[formId].ts#L96) | | `routingForm.update` |
-
-These functions can be used with any entity that has userId and teamId properties. When migrating to PBAC, replace these checks with appropriate permission string checks:
-
-```typescript
-// Instead of:
-if (!(await canEditEntity(form, user.id))) throw new TRPCError({ code: "UNAUTHORIZED" });
-
-// Use:
-if (!permissionMatches("routingForm.update", userPermissions)) throw new TRPCError({ code: "UNAUTHORIZED" });
-```
-
-This allows for more granular permission control and the creation of custom roles with specific permissions.
+1. Put `authMiddleware` (or `adminMiddleware`) on the server function
+2. Check ownership or `canManage` in the service, and throw `AppError("not_found", 404)` when it fails
+3. Add a `beforeLoad` guard to the route if the page shouldn't render for others
+4. Test the refusal: another user's or another team's record must not be readable or writable

@@ -1,0 +1,62 @@
+import type { IntervalLimit } from "@calcom/scheduling/limits";
+import { parseMetadata } from "../metadata";
+import { type EventTypeDto, eventTypeFields, intervalLimitSchema, MAX_RECURRING_COUNT } from "./types";
+
+const thresholdSchema = eventTypeFields.shape.requiresConfirmationThreshold.unwrap();
+const colorSchema = eventTypeFields.shape.eventTypeColor.unwrap();
+const recurringSchema = eventTypeFields.shape.recurringEvent.unwrap();
+const flag = (value: unknown) => value === true;
+
+// Readers for event type columns that hold enums or JSON written by Cal or older code.
+
+export function toPeriodType(value: string | null): EventTypeDto["periodType"] {
+  return value === "ROLLING" || value === "ROLLING_WINDOW" || value === "RANGE" ? value : "UNLIMITED";
+}
+
+/** Limits from older rows or other writers are ignored rather than trusted. */
+export function parseIntervalLimit(value: unknown): IntervalLimit | null {
+  const parsed = intervalLimitSchema.safeParse(value);
+  return parsed.success && Object.values(parsed.data).some(Boolean) ? parsed.data : null;
+}
+
+export function parseConfirmationThreshold(metadata: unknown): EventTypeDto["requiresConfirmationThreshold"] {
+  const parsed = thresholdSchema.safeParse(parseMetadata(metadata).requiresConfirmationThreshold);
+  return parsed.success ? parsed.data : null;
+}
+
+export function parseEventTypeColor(value: unknown): EventTypeDto["eventTypeColor"] {
+  const parsed = colorSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+}
+
+/** Cal's metadata.disableStandardEmails.confirmation, read leniently. */
+export function parseDisabledConfirmationEmails(
+  metadata: unknown
+): EventTypeDto["disableConfirmationEmails"] {
+  const disabled = parseMetadata(metadata).disableStandardEmails;
+  const confirmation =
+    disabled && typeof disabled === "object" && !Array.isArray(disabled) ? disabled.confirmation : null;
+  if (!confirmation || typeof confirmation !== "object" || Array.isArray(confirmation))
+    return { host: false, attendee: false };
+  return { host: flag(confirmation.host), attendee: flag(confirmation.attendee) };
+}
+
+/** The booker's choice of lengths, or just the event's length. */
+export function parseMultipleDuration(metadata: unknown): number[] | null {
+  const value = parseMetadata(metadata).multipleDuration;
+  if (!Array.isArray(value)) return null;
+  const lengths = value.filter((item): item is number => Number.isInteger(item) && Number(item) > 0);
+  return lengths.length ? [...new Set(lengths)].sort((a, b) => a - b) : null;
+}
+
+/** Cal's recurringEvent, keeping only the parts this app schedules with. */
+export function parseRecurringEvent(value: unknown): EventTypeDto["recurringEvent"] {
+  // Cal allows longer series; book at most our cap of them.
+  const record = value && typeof value === "object" ? (value as Record<string, unknown>) : null;
+  const count =
+    typeof record?.count === "number" ? Math.min(record.count, MAX_RECURRING_COUNT) : record?.count;
+  const parsed = recurringSchema.safeParse(record && { ...record, count });
+  return parsed.success
+    ? { freq: parsed.data.freq, interval: parsed.data.interval, count: parsed.data.count }
+    : null;
+}

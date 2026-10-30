@@ -1,67 +1,69 @@
 ---
-title: Maintain 80%+ Test Coverage for New Code
+title: Test the Code You Add or Change
 impact: HIGH
-impactDescription: Prevents bugs and enables confident refactoring
-tags: testing, coverage, quality, ci
+impactDescription: Untested code is where regressions hide
+tags: testing, coverage, quality, vitest
 ---
 
-## Maintain 80%+ Test Coverage for New Code
+## Test the Code You Add or Change
 
 **Impact: HIGH**
 
-Every PR must have near-80%+ test coverage for the code it introduces or modifies. This is enforced automatically in our CI pipeline. If you add 50 lines of new code, those 50 lines must be covered by tests. If you modify an existing function, your changes must be tested.
+Every PR should come with tests for the code it introduces or modifies, aiming at 80%+ coverage
+of that code. If you add 50 lines of logic, those lines should be exercised by a test; if you change
+a function's behavior, a test should show the new behavior.
 
-**Coverage requirements:**
-- Overall test coverage: 80%+ for new code
-- Unit test coverage: Near 100%, especially with AI assistance for generating tests
-- Global coverage tracking as a key metric that improves over time
+CI doesn't enforce a coverage threshold, so check it yourself when it matters:
 
-**Incorrect (untested code):**
+```bash
+yarn workspace @calcom/web vitest run --coverage src/server/webhooks
+```
+
+**Where tests go:**
+- Unit tests next to the code: `apps/web/src/server/<domain>/<Name>.test.ts`, `apps/web/src/lib/*.test.ts`, `packages/scheduling/src/*.test.ts`, `packages/db/src/*.test.ts`
+- Browser tests for user-visible flows: `apps/web/e2e/*.spec.ts` (see `testing-playwright`)
+
+**Incorrect (untested service method):**
 
 ```typescript
-// New function with no tests
-export function calculateAvailability(user: User, date: Date): TimeSlot[] {
-  // Complex logic here...
-  // No corresponding test file
+// WebhookService.ts - new rule with no test
+async create(userId: number, input: WebhookInput) {
+  if (await this.repo.findByUserIdAndUrl(userId, input.subscriberUrl))
+    throw new AppError("webhook_subscriber_url_reserved", 409);
+  ...
 }
 ```
 
-**Correct (comprehensive tests):**
+**Correct (tested against a real database, from `WebhookService.test.ts`):**
 
 ```typescript
-// calculateAvailability.ts
-export function calculateAvailability(user: User, date: Date): TimeSlot[] {
-  // Complex logic here...
-}
+beforeEach(async () => {
+  db = await createTestDb();
+  repo = new WebhookRepository(db);
+  service = new WebhookService(repo);
+  [{ id: ownerId }, { id: otherId }] = await db
+    .insert(user)
+    .values([{ email: "owner@example.com" }, { email: "other@example.com" }])
+    .returning({ id: user.id });
+});
 
-// calculateAvailability.test.ts
-describe("calculateAvailability", () => {
-  it("returns empty array for user with no schedule", () => {
-    const user = createMockUser({ schedules: [] });
-    expect(calculateAvailability(user, new Date())).toEqual([]);
+it("rejects a duplicate URL for the same user and hides other users' webhooks", async () => {
+  const { id } = await service.create(ownerId, input);
+  await expect(service.create(ownerId, input)).rejects.toMatchObject({
+    code: "webhook_subscriber_url_reserved",
   });
-
-  it("excludes busy times from available slots", () => {
-    const user = createMockUser({
-      schedules: [mockSchedule],
-      busyTimes: [mockBusyTime],
-    });
-    const slots = calculateAvailability(user, new Date());
-    expect(slots).not.toContainEqual(expect.objectContaining({
-      start: mockBusyTime.start,
-    }));
-  });
-
-  it("handles timezone conversions correctly", () => {
-    // Test timezone edge cases
-  });
+  await expect(service.get(otherId, id)).rejects.toMatchObject({ code: "not_found" });
 });
 ```
 
-**Addressing the "coverage isn't the full story" argument:**
-Yes, we know coverage doesn't guarantee perfect tests. We know you can write meaningless tests that hit every line but test nothing meaningful. We know coverage is just one metric among many. But it's surely better to shoot for a high percentage than to have no idea where you are at all.
+**What to cover:**
+- The happy path and each `AppError` a method can throw
+- Permission checks: another user's or another team's data is refused
+- Time zones and DST for anything date-related (tests run with `TZ=UTC`)
+- D1 limits for bulk writes (enough rows to cross `chunkRowsForInsert`'s chunk size)
 
-**Leverage AI for test generation:**
-AI can quickly and intelligently build comprehensive test suites. Manual testing is more and more a thing of the past.
+**On "coverage isn't the full story":**
+Coverage doesn't prove tests are good, and tests can hit every line while checking nothing. But a
+high number is still far better than not knowing where you are.
 
 Reference: [Cal.diy Engineering Blog](https://cal.com/blog/engineering-in-2026-and-beyond)

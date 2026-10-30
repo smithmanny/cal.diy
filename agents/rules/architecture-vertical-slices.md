@@ -9,53 +9,60 @@ tags: architecture, vertical-slices, ddd, organization
 
 **Impact: CRITICAL**
 
-Our codebase is organized by domain, not by technical layer. The `packages/features` directory is the heart of this architectural approach. Each folder inside represents a complete vertical slice of the application, driven by the domain it touches.
+Server code is organized by domain, not by technical layer. Each folder in
+`apps/web/src/server/` is a vertical slice for one domain (`bookings`, `event-types`, `schedules`,
+`teams`, `webhooks`, `payments`, `apps`, `calendars`, ...), holding that domain's data access,
+business logic, wiring and transport entry points.
 
-**Incorrect (traditional layered architecture):**
+**Incorrect (layered architecture):**
 
 ```
-src/
-  controllers/
-    bookingController.ts
-    availabilityController.ts
-  services/
-    bookingService.ts
-    availabilityService.ts
+apps/web/src/server/
   repositories/
-    bookingRepository.ts
-    availabilityRepository.ts
+    BookingRepository.ts
+    WebhookRepository.ts
+  services/
+    BookingService.ts
+    WebhookService.ts
+  functions/
+    bookings.ts
+    webhooks.ts
 ```
 
-This creates problems: changes to one feature require touching files scattered across multiple directories, it's hard to understand what a feature does because its code is fragmented, and teams step on each other's toes.
+Changing one feature means touching files spread across several folders, and it's hard to see
+what a feature does.
 
-**Correct (vertical slice architecture):**
+**Correct (vertical slices, as the code is today):**
 
 ```
-packages/features/
-  bookings/
-    services/
-    repositories/
-    components/
-    tests/
-  availability/
-    services/
-    repositories/
-    components/
-    tests/
+apps/web/src/server/webhooks/
+  WebhookRepository.ts     # Drizzle queries for the Webhook table
+  WebhookService.ts        # Business rules (ownership, duplicate URLs, DTOs)
+  WebhookService.test.ts   # Tests against a real SQLite database
+  container.ts             # getWebhookService(): wires the repository into the service
+  functions.ts             # createServerFn entry points for the settings pages
+  types.ts                 # Zod input schemas and DTO types
+  payload.ts               # Domain helpers (Cal-compatible payloads, signing)
+  webhookListener.ts       # Reacts to booking events
 ```
 
-Each feature folder is a self-contained vertical slice that includes:
-- Domain logic: Core business rules and entities specific to that feature
-- Application services: Use case orchestration for that domain
-- Repositories: Data access specific to that feature's needs
-- DTOs: Data transfer objects for crossing boundaries
-- UI components: Frontend components related to this feature
-- Tests: Unit, integration, and e2e tests for this feature
+A slice usually contains:
+- `<Entity>Repository.ts`: data access with Drizzle, no business logic
+- `<Entity>Service.ts`: business rules and use cases
+- `container.ts`: builds services with their dependencies
+- `functions.ts`: server functions for the app's pages
+- `types.ts`: input schemas and DTOs
+- `*.test.ts`: unit tests next to the code they test
+
+Code that crosses slices lives elsewhere:
+- Pages and API routes: `apps/web/src/routes/` (API v2 adapters in `apps/web/src/server/api-v2/`)
+- React components: `apps/web/src/components/<domain>/`
+- Browser-safe helpers shared by client and server: `apps/web/src/lib/`
+- Runtime-specific code (D1 vs libSQL, background work, SMTP): `apps/web/src/server/runtime/`
 
 **Benefits:**
-- Everything related to a feature lives in one directory
-- You can understand the entire feature by exploring one directory
-- Teams can work on different features without conflicts
-- Features are loosely coupled and can evolve independently
+- Everything about a domain is in one folder
+- You can understand a feature by reading one directory
+- Changes to different domains rarely conflict
 
 Reference: [Cal.diy Engineering Blog](https://cal.com/blog/engineering-in-2026-and-beyond)

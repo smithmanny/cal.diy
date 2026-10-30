@@ -24,7 +24,7 @@ specs/{feature}/
 1. Read the spec's `CLAUDE.md` for specific instructions
 2. Read `design.md` to understand what we're building
 3. Check `implementation.md` for current status
-4. Find the relevant code in the codebase
+4. Find the relevant code in the codebase (`apps/web/src/server/<domain>/`, `apps/web/src/routes/`, `apps/web/src/components/`)
 5. Implement in small pieces, update `implementation.md` after each
 
 ---
@@ -33,7 +33,7 @@ specs/{feature}/
 
 1. **Check for design doc** in `specs/` — if it exists, follow it
 2. **If no spec exists** — ask if you should create one first
-3. **Look at existing patterns** — find similar code and follow conventions
+3. **Look at existing patterns** — find similar code and follow conventions (`CLAUDE.md`, `agents/rules/`)
 4. **Update implementation.md** — mark what's done after each piece
 5. **Update decisions.md** — when choosing between approaches
 
@@ -64,16 +64,16 @@ When user asks to build a new feature:
 - [x] Migration file
 
 ## In Progress
-- tRPC endpoints
+- Service and server functions (`apps/web/src/server/<domain>/`)
 
 ## Next Steps
-1. UI components
-2. Tests
+1. UI components and route
+2. Unit tests and an e2e spec
 
 ## Session Notes
 ### 2024-01-15
-- Done: Added schema, created migration
-- Next: Implement tRPC router
+- Done: Added columns to packages/db/src/schema.ts, ran `yarn db:generate`
+- Next: Repository methods, then the service
 ```
 
 ### decisions.md — When choosing between approaches:
@@ -92,8 +92,8 @@ Need to store user-defined locations.
 Separate table for better querying.
 
 ### Consequences
-- Need migration
-- Need new tRPC router
+- Need a migration (`yarn db:generate`) that works on D1
+- Need a new repository, service and server functions
 ```
 
 ---

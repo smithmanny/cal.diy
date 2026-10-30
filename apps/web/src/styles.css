@@ -1,0 +1,46 @@
+@import "tailwindcss";
+@import "../../../packages/config/theme/tokens.css";
+@import "../../../packages/coss-ui/src/styles/globals.css";
+
+@source "./";
+@source "../../../packages/coss-ui/src";
+
+@font-face {
+  font-family: "Cal Sans";
+  src: url("/fonts/cal.ttf");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Inter var";
+  font-weight: 100 900;
+  font-display: swap;
+  font-style: normal;
+  src: url("/fonts/Inter-roman.var.woff2") format("woff2");
+}
+
+:root {
+  --font-sans: "Inter var", system-ui, sans-serif;
+  --font-cal: "Cal Sans", "Inter var", system-ui, sans-serif;
+  --font-heading: var(--font-cal);
+}
+
+/* Host brand colors on public pages (see ThemeScope); more specific than the theme's own tokens. */
+[data-brand] {
+  --primary: var(--brand-color);
+  --primary-foreground: var(--brand-text);
+}
+.dark[data-brand] {
+  --primary: var(--brand-color-dark);
+  --primary-foreground: var(--brand-text-dark);
+}
+
+/* Embedded by embed.js (see EmbedProvider): the iframe grows to the content's height, and the
+   embedding site's background shows around the booking card. */
+html[data-embed],
+html[data-embed] body,
+html[data-embed] [data-theme-scope],
+html[data-embed] main {
+  min-height: 0;
+  background: transparent;
+}

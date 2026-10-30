@@ -1,26 +1,62 @@
 ---
-title: Mock Implementation Patterns
+title: Real Databases and Fakes over Mocks
 impact: MEDIUM
-impactDescription: Poor mocks cause flaky tests and false positives
-tags: testing, mocking, calendar, app-store
+impactDescription: Tests that use real SQLite and protocol fakes catch real bugs
+tags: testing, mocking, fakes, vitest
 ---
 
-# Mock Implementation Patterns
+# Real Databases and Fakes over Mocks
 
-## Calendar Service Mocks
+**Impact: MEDIUM**
 
-When mocking calendar services in Cal.diy test files, implement the `Calendar` interface rather than adding individual properties from each specific calendar service type (like `FeishuCalendarService`).
+## Use a real database
 
-Since all calendar services implement the `Calendar` interface and are stored in a map, the mock service should also implement this interface to ensure type compatibility.
+Unit tests run against a real, fully migrated SQLite database from `createTestDb()`
+(`apps/web/src/test/testDb.ts`); each call gets a fresh file that is deleted after the test file.
+Don't mock repositories or Drizzle: a mocked query can't catch a wrong column, a missing migration
+or a D1 limit.
 
-## App-Store Integration Mocks
+```typescript
+import { createTestDb } from "../../test/testDb";
 
-When mocking app-store resources in Cal.diy tests, prefer implementing simpler mock designs that directly implement the required interfaces rather than trying to match complex deep mock structures created with `mockDeep`.
+beforeEach(async () => {
+  db = await createTestDb();
+  service = new WebhookService(new WebhookRepository(db));
+});
+```
 
-This approach is more maintainable and helps resolve type compatibility issues.
+## Inject what varies
+
+Services take the things tests need to control as constructor dependencies, so no module mocking is
+needed:
+
+- `fetchImpl: typeof fetch` for third-party HTTP (`WebhookService`, `googleCalendarProvider`)
+- `now?: () => Date` for time (`TeamService`, `BookingActionsService`)
+- `runInBackground` for background work
+- Interfaces such as `CalendarProvider` / `VideoProvider` for integrations
+
+## Fakes for third parties
+
+Write a small in-memory fake of the provider's API rather than a deep mock:
+
+- `apps/web/src/server/apps/fakeApps.ts` (Microsoft, Zoom, Daily), `calendars/google/fakeGoogle.ts`, `calendars/caldav/fakeCalDav.ts`, `payments/stripe/fakeStripe.ts`
+- Unit tests call them through `fetchImpl`; e2e serves the same fakes over HTTP from `apps/web/e2e/support/`
+
+**Incorrect:**
+
+```typescript
+vi.mock("./WebhookRepository"); // The test no longer runs any SQL
+```
+
+**Correct:**
+
+```typescript
+const fetchImpl = vi.fn<typeof fetch>(async () => new Response("ok"));
+const service = new WebhookService(new WebhookRepository(db), fetchImpl);
+```
 
 ## General Guidance
 
-- For complex mocks that cause type compatibility issues with deep mocks, consider using simpler fake implementations
-- When needed, you can modify other mock files to support your implementation
-- Creative solutions and refactoring to better designs are encouraged when standard mocking causes persistent type errors
+- `vi.fn()` is fine for a single callback (a listener, `fetchImpl`); avoid `vi.mock` of whole modules
+- If a class is hard to test without mocks, make the dependency injectable instead
+- Keep fakes faithful to the real API's shapes; they are also what e2e runs against

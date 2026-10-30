@@ -7,30 +7,34 @@ tags: pull-request, code-review, workflow
 
 # PR Creation Best Practices
 
+**Impact: HIGH**
+
 ## Draft Mode
 
-Create pull requests in draft mode by default, so that a human reviewer can mark it as ready for review only when it is.
+Create pull requests in draft mode by default, so that a human reviewer can mark it as ready for
+review only when it is.
 
 ## PR Title
 
-- Use conventional commits: `feat:`, `fix:`, `refactor:`
+- Use conventional commits: `feat:`, `fix:`, `refactor:` (checked by the "Validate PRs" workflow)
 - Be specific: `fix: handle timezone edge case in booking creation`
 - Not generic: `fix: booking bug`
 
 ## Size Limits
 
-- **Large PRs** (>500 lines or >10 files) are not recommended
-- Split large changes by layer (database, backend, frontend)
-- Split by feature component (API, UI, integration)
+- **Large PRs** (>500 lines or >10 code files) are not recommended
+- Split large changes by layer (schema and migration, server, UI)
+- Split by feature component (service and server functions, UI, API v2)
 
-## PR Requirements
+## What CI runs
 
-- PR title must follow Conventional Commits specification
-- For most PRs, you only need to run linting and type checking
-- E2E tests will only run if PR has "ready-for-e2e" label
+`.github/workflows/ci.yml` runs on every PR:
+- **Type check, lint and unit tests**: `yarn type-check`, `yarn biome ci apps/web packages/db packages/scheduling`, `yarn test`
+- **Browser tests**: `yarn e2e` on Node + SQLite with fake third-party servers
+- **Cloudflare Workers build**: `yarn build:cf`
 
 ## Before Pushing
 
-1. Run `yarn type-check:ci --force` to check types
-2. Run `yarn biome check --write .` to lint and format
-3. Run relevant tests locally
+1. `yarn type-check`
+2. `yarn lint:fix`
+3. Run the relevant tests: `yarn test`, and the e2e specs your change touches (`yarn e2e <spec>`)

@@ -6,7 +6,7 @@ Review what's been implemented for {feature} and update specs/{feature}/implemen
 
 ## Generate Tests
 
-Write tests for {component}. Follow existing test patterns.
+Write tests for {component}. Follow existing test patterns (`createTestDb()` for unit tests, `apps/web/e2e/support/` helpers for e2e).
 
 ## Code Review
 
@@ -31,10 +31,9 @@ Generate documentation for {feature} with screenshots:
 
 ## Promote Docs to Public
 
-Promote internal docs to public Mintlify docs:
+Promote internal docs to the repo's public docs:
 
 1. Review specs/{feature}/docs/README.md
-2. Copy/adapt content to docs/{feature}.mdx
-3. Move screenshots to docs/images/{feature}/
-4. Update docs/mint.json navigation
-5. Ensure customer-appropriate language (no internal details)
+2. Move the user-facing parts into README.md, or a new page under docs/
+3. Move the screenshots next to that page
+4. Ensure customer-appropriate language (no internal details)

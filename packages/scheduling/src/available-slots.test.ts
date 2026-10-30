@@ -1,0 +1,257 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { computeAvailableSlots, type SlotEventConfig } from "./available-slots";
+import type { WorkingHours } from "./types";
+
+const time = (hhmm: string) => new Date(`1970-01-01T${hhmm}:00.000Z`);
+const weekdays9to5: WorkingHours = {
+  days: [1, 2, 3, 4, 5],
+  startTime: time("09:00"),
+  endTime: time("17:00"),
+};
+
+const event: SlotEventConfig = {
+  length: 60,
+  slotInterval: null,
+  minimumBookingNotice: 0,
+  beforeEventBuffer: 0,
+  afterEventBuffer: 0,
+  periodType: "UNLIMITED",
+  periodDays: null,
+  periodCountCalendarDays: true,
+};
+
+// Monday 2026-11-02, 06:00 UTC.
+const NOW = new Date("2026-11-02T06:00:00.000Z");
+
+beforeEach(() => {
+  vi.useFakeTimers();
+  vi.setSystemTime(NOW);
+});
+afterEach(() => vi.useRealTimers());
+
+const iso = (dates: Date[]) => dates.map((d) => d.toISOString());
+
+describe("computeAvailableSlots", () => {
+  it("offers hourly slots within working hours in the schedule's time zone", () => {
+    const slots = computeAvailableSlots({
+      availability: [weekdays9to5],
+      scheduleTimeZone: "America/New_York",
+      event,
+      busy: [],
+      from: new Date("2026-11-02T00:00:00Z"),
+      to: new Date("2026-11-03T00:00:00Z"),
+      inviteeTimeZone: "America/New_York",
+      now: NOW,
+    });
+    // 9:00-17:00 EST = 14:00-22:00 UTC
+    expect(iso(slots)).toEqual([
+      "2026-11-02T14:00:00.000Z",
+      "2026-11-02T15:00:00.000Z",
+      "2026-11-02T16:00:00.000Z",
+      "2026-11-02T17:00:00.000Z",
+      "2026-11-02T18:00:00.000Z",
+      "2026-11-02T19:00:00.000Z",
+      "2026-11-02T20:00:00.000Z",
+      "2026-11-02T21:00:00.000Z",
+    ]);
+  });
+
+  it("moves working hours to the travel time zone for the days of a trip", () => {
+    const slots = computeAvailableSlots({
+      availability: [weekdays9to5],
+      scheduleTimeZone: "America/New_York",
+      event,
+      busy: [],
+      from: new Date("2026-11-02T00:00:00Z"),
+      to: new Date("2026-11-04T00:00:00Z"),
+      inviteeTimeZone: "UTC",
+      now: NOW,
+      // In London on Tuesday only.
+      travelSchedules: [
+        {
+          timeZone: "Europe/London",
+          start: new Date("2026-11-03T00:00:00Z"),
+          end: new Date("2026-11-03T23:59:59Z"),
+        },
+      ],
+    });
+    // Monday 9-5 New York is 14:00-22:00 UTC; Tuesday 9-5 London is 09:00-17:00 UTC.
+    expect(iso(slots)[0]).toBe("2026-11-02T14:00:00.000Z");
+    expect(iso(slots).filter((slot) => slot.startsWith("2026-11-03"))).toEqual([
+      "2026-11-03T09:00:00.000Z",
+      "2026-11-03T10:00:00.000Z",
+      "2026-11-03T11:00:00.000Z",
+      "2026-11-03T12:00:00.000Z",
+      "2026-11-03T13:00:00.000Z",
+      "2026-11-03T14:00:00.000Z",
+      "2026-11-03T15:00:00.000Z",
+      "2026-11-03T16:00:00.000Z",
+    ]);
+  });
+
+  it("offers nothing on days the host is out of office", () => {
+    const slots = computeAvailableSlots({
+      availability: [weekdays9to5],
+      scheduleTimeZone: "UTC",
+      event,
+      busy: [],
+      from: new Date("2026-11-02T00:00:00Z"),
+      to: new Date("2026-11-04T00:00:00Z"),
+      inviteeTimeZone: "UTC",
+      now: NOW,
+      outOfOffice: { "2026-11-03": { fromUser: { id: 1, displayName: "Hana" } } },
+    });
+    expect(iso(slots).some((slot) => slot.startsWith("2026-11-02"))).toBe(true);
+    expect(iso(slots).some((slot) => slot.startsWith("2026-11-03"))).toBe(false);
+  });
+
+  it("removes busy time padded by both events' buffers", () => {
+    const slots = computeAvailableSlots({
+      availability: [weekdays9to5],
+      scheduleTimeZone: "UTC",
+      event: { ...event, length: 30, beforeEventBuffer: 15 },
+      // 11:00-12:00 booking whose event has a 15 min after-buffer => busy until 12:15, plus our 15 min before-buffer => 12:30
+      busy: [
+        { start: new Date("2026-11-02T11:00:00Z"), end: new Date("2026-11-02T12:00:00Z"), afterBuffer: 15 },
+      ],
+      from: new Date("2026-11-02T10:00:00Z"),
+      to: new Date("2026-11-02T13:30:00Z"),
+      inviteeTimeZone: "UTC",
+      now: NOW,
+    });
+    expect(iso(slots)).toEqual([
+      "2026-11-02T10:00:00.000Z",
+      "2026-11-02T10:30:00.000Z",
+      "2026-11-02T12:30:00.000Z",
+      "2026-11-02T13:00:00.000Z",
+    ]);
+  });
+
+  it("respects minimum notice", () => {
+    const slots = computeAvailableSlots({
+      availability: [weekdays9to5],
+      scheduleTimeZone: "UTC",
+      event: { ...event, minimumBookingNotice: 6 * 60 },
+      busy: [],
+      from: new Date("2026-11-02T00:00:00Z"),
+      to: new Date("2026-11-02T23:59:00Z"),
+      inviteeTimeZone: "UTC",
+      now: NOW,
+    });
+    // now 06:00 + 6h notice => first slot 12:00
+    expect(iso(slots)[0]).toBe("2026-11-02T12:00:00.000Z");
+  });
+
+  it("stops at the end of a rolling window counted in business days", () => {
+    const slots = computeAvailableSlots({
+      availability: [{ ...weekdays9to5, days: [0, 1, 2, 3, 4, 5, 6] }],
+      scheduleTimeZone: "UTC",
+      event: { ...event, periodType: "ROLLING", periodDays: 5, periodCountCalendarDays: false },
+      busy: [],
+      from: new Date("2026-11-02T00:00:00Z"),
+      to: new Date("2026-11-20T00:00:00Z"),
+      inviteeTimeZone: "UTC",
+      now: NOW,
+    });
+    // Monday + 5 business days = next Monday (Nov 9)
+    expect(slots.at(-1)?.toISOString().slice(0, 10)).toBe("2026-11-09");
+  });
+
+  it("returns nothing for a window entirely in the past", () => {
+    expect(
+      computeAvailableSlots({
+        availability: [weekdays9to5],
+        scheduleTimeZone: "UTC",
+        event,
+        busy: [],
+        from: new Date("2026-10-01T00:00:00Z"),
+        to: new Date("2026-10-02T00:00:00Z"),
+        inviteeTimeZone: "UTC",
+        now: NOW,
+      })
+    ).toEqual([]);
+  });
+
+  it("honors an all-day unavailable date override", () => {
+    const slots = computeAvailableSlots({
+      availability: [
+        weekdays9to5,
+        { date: new Date("2026-11-03T00:00:00Z"), startTime: time("00:00"), endTime: time("00:00") },
+      ],
+      scheduleTimeZone: "UTC",
+      event,
+      busy: [],
+      from: new Date("2026-11-02T00:00:00Z"),
+      to: new Date("2026-11-04T23:59:00Z"),
+      inviteeTimeZone: "UTC",
+      now: NOW,
+    });
+    const days = new Set(slots.map((s) => s.toISOString().slice(0, 10)));
+    expect([...days]).toEqual(["2026-11-02", "2026-11-04"]);
+  });
+  describe("booking periods and limits", () => {
+    // Monday 2026-11-02 06:00 UTC (NOW) through Sunday 2026-11-15.
+    const base = {
+      availability: [weekdays9to5],
+      scheduleTimeZone: "UTC",
+      busy: [],
+      from: new Date("2026-11-02T00:00:00Z"),
+      to: new Date("2026-11-15T23:59:00Z"),
+      inviteeTimeZone: "UTC",
+      now: NOW,
+    };
+    const days = (slots: Date[]) => [...new Set(iso(slots).map((slot) => slot.slice(0, 10)))];
+
+    it("keeps a date RANGE inclusive of both days", () => {
+      const slots = computeAvailableSlots({
+        ...base,
+        event: {
+          ...event,
+          periodType: "RANGE",
+          periodStartDate: new Date("2026-11-04T00:00:00Z"),
+          periodEndDate: new Date("2026-11-05T00:00:00Z"),
+        },
+      });
+      expect(days(slots)).toEqual(["2026-11-04", "2026-11-05"]);
+    });
+
+    it("counts a ROLLING_WINDOW in days that have availability, skipping empty ones", () => {
+      const slots = computeAvailableSlots({
+        ...base,
+        // Thursday is fully booked, so the 3 available days are Mon, Tue, Wed... then Fri.
+        busy: [{ start: new Date("2026-11-05T00:00:00Z"), end: new Date("2026-11-06T00:00:00Z") }],
+        event: { ...event, periodType: "ROLLING_WINDOW", periodDays: 4 },
+      });
+      expect(days(slots)).toEqual(["2026-11-02", "2026-11-03", "2026-11-04", "2026-11-06"]);
+    });
+
+    it("measures a rolling window from today even when a later range is asked for", () => {
+      const slots = computeAvailableSlots({
+        ...base,
+        from: new Date("2026-11-05T00:00:00Z"),
+        event: { ...event, periodType: "ROLLING_WINDOW", periodDays: 3 },
+      });
+      // Mon-Wed are the three days; nothing from Thursday on.
+      expect(slots).toEqual([]);
+    });
+
+    it("offsets start times and can offer only the first slot of each day", () => {
+      const slots = computeAvailableSlots({
+        ...base,
+        to: new Date("2026-11-03T23:59:00Z"),
+        event: { ...event, offsetStart: 15, onlyShowFirstAvailableSlot: true },
+      });
+      expect(iso(slots)).toEqual(["2026-11-02T09:15:00.000Z", "2026-11-03T09:15:00.000Z"]);
+    });
+
+    it("drops days that already hit the event's booking limit", () => {
+      const slots = computeAvailableSlots({
+        ...base,
+        to: new Date("2026-11-03T23:59:00Z"),
+        event: { ...event, bookingLimits: { PER_DAY: 1 } },
+        limitBookings: [{ start: new Date("2026-11-02T10:00:00Z"), end: new Date("2026-11-02T11:00:00Z") }],
+      });
+      expect(days(slots)).toEqual(["2026-11-03"]);
+    });
+  });
+});

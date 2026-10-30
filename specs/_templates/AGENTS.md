@@ -8,7 +8,7 @@
 
 1. Read specs/{feature}/design.md
 2. Check specs/{feature}/implementation.md for current progress
-3. Look at existing patterns in {relevant directories}
+3. Look at existing patterns in {relevant directories, e.g. apps/web/src/server/<domain>/}
 
 ## Code Patterns
 

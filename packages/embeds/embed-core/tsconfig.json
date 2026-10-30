@@ -6,11 +6,7 @@
     "module": "esnext",
     "moduleResolution": "Node",
     "baseUrl": ".",
-    "outDir": "dist",
-    "paths": {
-      "@calcom/embed-react": ["../embed-react/src"],
-      "@calcom/embed-snippet": ["../embed-snippet/src"]
-    }
+    "outDir": "dist"
   },
   "include": ["src", "env.d.ts", "index.ts", "*.ts"],
   "exclude": ["dist", "build", "**/node_modules/**"]

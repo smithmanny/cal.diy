@@ -1,0 +1,19 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "cal-diy",
+  "main": "@tanstack/react-start/server-entry",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "cal-diy",
+      // Replace with the id printed by `wrangler d1 create cal-diy`.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "../../packages/db/migrations"
+    }
+  ],
+  // Static files (incl. translation catalogs) are readable from server code through this binding.
+  "assets": { "binding": "ASSETS" },
+  "observability": { "enabled": true }
+}

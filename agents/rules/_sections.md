@@ -8,7 +8,7 @@ The section ID (in parentheses) is the filename prefix used to group rules.
 ## 1. Architecture (architecture)
 
 **Impact:** CRITICAL
-**Description:** Vertical Slice Architecture and Domain-Driven Design patterns that form the foundation of our codebase organization.
+**Description:** Domain folders in `apps/web/src/server`, boundaries between domains and workspaces, and where permission checks go.
 
 ## 2. Code Quality (quality)
 
@@ -18,12 +18,12 @@ The section ID (in parentheses) is the filename prefix used to group rules.
 ## 3. Data Layer (data)
 
 **Impact:** HIGH
-**Description:** Repository patterns, DTOs, and technology isolation to prevent coupling and enable maintainability.
+**Description:** Repositories on Drizzle, column selection, DTOs, and schema migrations that work on D1 and SQLite.
 
 ## 4. API Design (api)
 
 **Impact:** HIGH
-**Description:** Controller patterns, API stability, and proper separation of HTTP concerns from business logic.
+**Description:** Thin server functions and API routes, and API v2 stability.
 
 ## 5. Performance (performance)
 
@@ -38,7 +38,7 @@ The section ID (in parentheses) is the filename prefix used to group rules.
 ## 7. Design Patterns (patterns)
 
 **Impact:** MEDIUM
-**Description:** Factory patterns, dependency injection, and other design patterns for clean, maintainable code.
+**Description:** Factories, constructor injection wired in `container.ts`, app integrations, and background work.
 
 ## 8. Team Culture (culture)
 

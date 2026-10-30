@@ -1,406 +1,214 @@
-# Authentication API Reference
+# Authentication and `/me`
 
-Detailed documentation for authentication methods in the Cal.diy API v2.
+All requests go to `<your Cal.diy URL>/api/v2`, e.g. `http://localhost:3000/api/v2`.
 
-## Authentication Methods
+## The Authorization header
 
-Cal.diy API v2 supports two authentication methods:
-
-1. **API Key Authentication** - For direct API access
-2. **OAuth/Platform Authentication** - For platform integrations managing users on behalf of others
-
-## API Key Authentication
-
-The primary authentication method for most API consumers.
-
-### Obtaining an API Key
-
-1. Log in to your Cal.diy account
-2. Navigate to Settings > Developer > API Keys
-3. Click "Create new API key"
-4. Copy and securely store the generated key
-
-### Using API Keys
-
-Include the API key in the `Authorization` header with the `Bearer` prefix:
-
-```http
-GET /v2/bookings
-Authorization: Bearer cal_live_abc123xyz...
+```
+Authorization: Bearer <API key or OAuth access token>
 ```
 
-### API Key Format
+How the header is read:
 
-All Cal.diy API keys are prefixed with `cal_`:
-- `cal_live_...` - Production API keys
-- `cal_test_...` - Test/sandbox API keys (if available)
+- No `Authorization` header: the request is anonymous. Public endpoints run without a user; all
+  others answer 401.
+- Anything other than `Bearer <token>` (case-insensitive `Bearer`, one token, no spaces): 401.
+- A token shaped like a JWT (`xxx.yyy.zzz`) is checked as an OAuth access token.
+- Anything else is checked as an API key.
 
-### Example Request
+A credential that is wrong or expired is always rejected with 401, even on public endpoints. It is
+never treated as anonymous.
 
-```bash
-curl -X GET "https://api.cal.com/v2/bookings" \
-  -H "Authorization: Bearer cal_live_abc123xyz789" \
-  -H "Content-Type: application/json"
-```
+## API keys
 
-## Refresh API Key
+- Format: `cal_` followed by 32 lowercase hex characters, e.g. `cal_5ffe1dc373bcc67c5780edb0cc510066`.
+  The `cal_` prefix is optional when sending the key.
+- Create one in the app under **Settings > Developer > API keys** (`/settings/developer/api-keys`).
+  Give it a name and an expiry: never, 7, 30, 90 or 365 days. The full key is shown once; the list
+  afterwards shows only its first characters. Delete keys from the same page. There is no API
+  endpoint for creating, refreshing or deleting keys.
+- A key acts as the user who created it, with read and write access to everything that user owns.
+- Rate limit: 120 requests per key per minute. Over the limit you get:
 
-Generate a new API key and invalidate the current one:
-
-```http
-POST /v2/api-keys/refresh
-Authorization: Bearer cal_live_current_key
-Content-Type: application/json
-
+```json
 {
-  "expiresAt": "2025-12-31T23:59:59Z"
+  "status": "error",
+  "timestamp": "2026-10-30T11:52:07.790Z",
+  "path": "/api/v2/bookings",
+  "error": { "code": "ThrottlerException", "message": "Rate limit exceeded" }
 }
 ```
 
-### Request Body
+Requests without a key and OAuth requests are not limited by this.
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| expiresAt | string | No | ISO 8601 expiration date for the new key |
+```bash
+curl http://localhost:3000/api/v2/me \
+  -H "Authorization: Bearer cal_5ffe1dc373bcc67c5780edb0cc510066"
+```
 
-### Response
+## OAuth access tokens
+
+The instance is an OAuth 2.0 provider (authorization code grant, with PKCE). Tokens are read-only.
+
+### Registering a client
+
+An instance admin registers clients under **Settings > Admin > OAuth** (`/settings/admin/oauth`)
+with a name, redirect URI, optional logo and a type:
+
+- **Confidential**: gets a client secret (shown once) and must send it to the token endpoint.
+- **Public**: no secret; must use PKCE (`S256`).
+
+Clients are approved when created.
+
+### Scopes
+
+| Scope | Allows |
+| --- | --- |
+| `READ_BOOKING` | `GET /bookings` and `GET /bookings/{bookingUid}` |
+| `READ_PROFILE` | `GET` on `/me`, `/event-types...`, `/schedules...` and `/slots` |
+
+No scope reads webhooks: their URLs and templates are your own configuration, so `/webhooks` needs
+an API key (an OAuth token gets 403).
+
+Any non-GET request with an OAuth token, including the public `POST /bookings`, answers 403. A GET
+without the needed scope also answers 403:
+
+```json
+{
+  "status": "error",
+  "timestamp": "2026-10-30T11:55:05.151Z",
+  "path": "/api/v2/bookings",
+  "error": { "code": "ForbiddenException", "message": "Unauthorized" }
+}
+```
+
+### Flow
+
+1. Send the user to the consent page:
+
+```
+<your Cal.diy URL>/auth/oauth2/authorize?client_id=CLIENT_ID&redirect_uri=REDIRECT_URI&scope=READ_BOOKING%20READ_PROFILE&state=STATE&code_challenge=CHALLENGE&code_challenge_method=S256
+```
+
+`scope` is space- or comma-separated. `state` and the PKCE parameters are optional for confidential
+clients. `redirect_uri` must equal the registered one. After consent the user is sent to
+`REDIRECT_URI?code=...&state=...`. Codes are valid for 10 minutes and work once.
+
+2. Exchange the code (form-encoded or JSON; client credentials may also go in HTTP Basic auth):
+
+```bash
+curl -X POST http://localhost:3000/api/auth/oauth/token \
+  -d grant_type=authorization_code \
+  -d client_id=CLIENT_ID \
+  -d client_secret=CLIENT_SECRET \
+  -d code=CODE \
+  -d redirect_uri=REDIRECT_URI \
+  -d code_verifier=VERIFIER
+```
+
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer",
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "expires_in": 1800
+}
+```
+
+Access tokens last 30 minutes, refresh tokens 30 days.
+
+3. Refresh with `grant_type=refresh_token`, `client_id`, `client_secret` (confidential clients) and
+   `refresh_token`, either at `/api/auth/oauth/token` or at `/api/auth/oauth/refreshToken`. Both
+   return a new token pair.
+
+Token endpoint errors use the OAuth shape, e.g. `{"error":"invalid_grant","error_description":"code_invalid_or_expired"}`
+(400), `invalid_client` (401) or `unsupported_grant_type` (400).
+
+`GET` or `POST /api/auth/oauth/me` with a `READ_PROFILE` token returns `{"username":"ada"}` (status 201).
+
+Tokens are signed with the instance's `CALENDSO_ENCRYPTION_KEY`, so they stop working if that key
+changes.
+
+---
+
+## GET /me
+
+The profile of the key's owner. No version header.
+
+**Auth:** API key, or OAuth with `READ_PROFILE`.
+
+```bash
+curl http://localhost:3000/api/v2/me \
+  -H "Authorization: Bearer cal_5ffe1dc373bcc67c5780edb0cc510066"
+```
 
 ```json
 {
   "status": "success",
   "data": {
-    "apiKey": "cal_live_new_key_xyz..."
+    "id": 1,
+    "username": "ada",
+    "email": "ada@example.com",
+    "name": "Ada Host",
+    "avatarUrl": null,
+    "bio": null,
+    "timeFormat": 12,
+    "defaultScheduleId": 1,
+    "weekStart": "Sunday",
+    "timeZone": "Europe/London",
+    "locale": "en",
+    "organizationId": null
   }
 }
 ```
 
-## Platform Authentication (OAuth)
+| Field | Type | Notes |
+| --- | --- | --- |
+| `id` | number | |
+| `username` | string | `""` if the user has none |
+| `email` | string | |
+| `name` | string or null | |
+| `avatarUrl` | string or null | |
+| `bio` | string or null | |
+| `timeFormat` | `12` or `24` | |
+| `defaultScheduleId` | number or null | |
+| `weekStart` | string | A weekday name, e.g. `"Monday"` |
+| `timeZone` | string | IANA name |
+| `locale` | string | Defaults to `"en"` |
+| `organizationId` | number or null | |
 
-For platform customers building integrations that manage multiple users.
+## PATCH /me
 
-### Headers for Platform Authentication
+Update the profile. Every field is optional; unknown fields (including `email`) are rejected.
+Returns the updated profile in the same shape as `GET /me`.
 
-Platform customers use additional headers alongside or instead of the Bearer token:
+**Auth:** API key only.
 
-| Header | Description |
-|--------|-------------|
-| `x-cal-client-id` | OAuth client ID |
-| `x-cal-secret-key` | OAuth client secret key |
-| `Authorization` | Bearer token (managed user access token) |
+| Field | Type | Constraints |
+| --- | --- | --- |
+| `name` | string | Trimmed, 1-200 characters |
+| `bio` | string or null | Up to 5000 characters |
+| `avatarUrl` | string or null | A URL, up to 2000 characters |
+| `timeFormat` | number | `12` or `24` |
+| `defaultScheduleId` | number | Positive integer; must be one of your schedules |
+| `weekStart` | string | `Sunday`, `Monday`, `Tuesday`, `Wednesday`, `Thursday`, `Friday` or `Saturday` |
+| `timeZone` | string | 1-100 characters; must be a valid IANA time zone |
+| `locale` | string | 2-20 characters; matched case-insensitively to a supported locale, falling back to the language part (`fr-CA` becomes `fr`) |
 
-### Example Platform Request
-
-```bash
-curl -X GET "https://api.cal.com/v2/bookings" \
-  -H "x-cal-client-id: your_client_id" \
-  -H "x-cal-secret-key: your_secret_key" \
-  -H "Authorization: Bearer managed_user_access_token" \
-  -H "Content-Type: application/json"
-```
-
-### When to Use Each Header
-
-**For endpoints acting on behalf of a managed user:**
-```http
-GET /v2/bookings
-x-cal-client-id: your_client_id
-x-cal-secret-key: your_secret_key
-Authorization: Bearer managed_user_access_token
-```
-
-**For platform-level operations (managing OAuth clients):**
-```http
-GET /v2/oauth-clients
-Authorization: Bearer cal_live_platform_admin_key
-```
-
-## API Versioning
-
-Many endpoints require a version header:
-
-```http
-cal-api-version: 2024-08-13
-```
-
-### Example with Version Header
+Email changes need the verification flow in the app's settings and can't be made here.
 
 ```bash
-curl -X POST "https://api.cal.com/v2/bookings" \
-  -H "Authorization: Bearer cal_live_abc123" \
-  -H "cal-api-version: 2024-08-13" \
+curl -X PATCH http://localhost:3000/api/v2/me \
+  -H "Authorization: Bearer cal_5ffe1dc373bcc67c5780edb0cc510066" \
   -H "Content-Type: application/json" \
-  -d '{"start": "2024-01-15T10:00:00Z", "eventTypeId": 123, ...}'
+  -d '{"timeZone":"Europe/Rome","timeFormat":24}'
 ```
 
-## Authentication Errors
+Errors:
 
-### 401 Unauthorized
-
-Returned when authentication fails:
-
-```json
-{
-  "status": "error",
-  "error": {
-    "code": "UNAUTHORIZED",
-    "message": "Invalid API key"
-  }
-}
-```
-
-Common causes:
-- Missing `Authorization` header
-- Invalid or expired API key
-- API key without `cal_` prefix
-- Incorrect Bearer token format
-
-### 403 Forbidden
-
-Returned when authenticated but lacking permissions:
-
-```json
-{
-  "status": "error",
-  "error": {
-    "code": "FORBIDDEN",
-    "message": "You do not have permission to access this resource"
-  }
-}
-```
-
-Common causes:
-- Accessing another user's resources
-- Missing required scopes for platform tokens
-- Organization/team permission restrictions
-
-## Security Best Practices
-
-1. **Never expose API keys in client-side code**: API keys should only be used in server-side applications
-
-2. **Use environment variables**: Store API keys in environment variables, not in code
-   ```bash
-   export CAL_API_KEY="cal_live_abc123..."
-   ```
-
-3. **Rotate keys regularly**: Use the refresh endpoint to rotate keys periodically
-
-4. **Use minimal permissions**: Request only the scopes/permissions your application needs
-
-5. **Monitor API usage**: Check your Cal.diy dashboard for unusual activity
-
-6. **Secure transmission**: Always use HTTPS for API requests
-
-7. **Handle keys securely in logs**: Never log full API keys - redact sensitive portions
-
-## Rate Limiting
-
-API requests are rate limited. When exceeded, you'll receive:
-
-```http
-HTTP/1.1 429 Too Many Requests
-Retry-After: 60
-```
-
-```json
-{
-  "status": "error",
-  "error": {
-    "code": "RATE_LIMITED",
-    "message": "Too many requests. Please retry after 60 seconds."
-  }
-}
-```
-
-### Rate Limit Headers
-
-| Header | Description |
-|--------|-------------|
-| `X-RateLimit-Limit` | Maximum requests per window |
-| `X-RateLimit-Remaining` | Remaining requests in current window |
-| `X-RateLimit-Reset` | Unix timestamp when the window resets |
-| `Retry-After` | Seconds to wait before retrying (on 429) |
-
-## Testing Authentication
-
-Verify your API key is working:
-
-```bash
-curl -X GET "https://api.cal.com/v2/me" \
-  -H "Authorization: Bearer cal_live_your_api_key" \
-  -H "Content-Type: application/json"
-```
-
-### Expected Response
-
-```json
-{
-  "status": "success",
-  "data": {
-    "id": 12345,
-    "email": "user@example.com",
-    "username": "johndoe",
-    "name": "John Doe",
-    "timeZone": "America/New_York"
-  }
-}
-```
-
-## Common Authentication Patterns
-
-### Server-Side Integration
-
-```javascript
-const CAL_API_KEY = process.env.CAL_API_KEY;
-
-async function getBookings() {
-  const response = await fetch('https://api.cal.com/v2/bookings', {
-    headers: {
-      'Authorization': `Bearer ${CAL_API_KEY}`,
-      'Content-Type': 'application/json',
-      'cal-api-version': '2024-08-13'
-    }
-  });
-  
-  if (!response.ok) {
-    if (response.status === 401) {
-      throw new Error('Invalid API key');
-    }
-    throw new Error(`API error: ${response.status}`);
-  }
-  
-  return response.json();
-}
-```
-
-### Handling Token Refresh
-
-```javascript
-async function makeAuthenticatedRequest(url, options = {}) {
-  let response = await fetch(url, {
-    ...options,
-    headers: {
-      ...options.headers,
-      'Authorization': `Bearer ${apiKey}`
-    }
-  });
-  
-  if (response.status === 401) {
-    // Refresh the API key
-    const refreshResponse = await fetch('https://api.cal.com/v2/api-keys/refresh', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({})
-    });
-    
-    if (refreshResponse.ok) {
-      const { data } = await refreshResponse.json();
-      apiKey = data.apiKey;
-      // Retry original request with new key
-      response = await fetch(url, {
-        ...options,
-        headers: {
-          ...options.headers,
-          'Authorization': `Bearer ${apiKey}`
-        }
-      });
-    }
-  }
-  
-  return response;
-}
-```
-
-## Error Handling
-
-The API returns standard HTTP status codes:
-
-| Status Code | Description |
-|-------------|-------------|
-| 200 | Success |
-| 201 | Created |
-| 400 | Bad Request (invalid parameters) |
-| 401 | Unauthorized (invalid or missing API key) |
-| 403 | Forbidden (insufficient permissions) |
-| 404 | Not Found |
-| 422 | Unprocessable Entity (validation error) |
-| 429 | Too Many Requests (rate limited) |
-| 500 | Internal Server Error |
-
-### Error Response Format
-
-```json
-{
-  "status": "error",
-  "error": {
-    "code": "ERROR_CODE",
-    "message": "Human-readable error message"
-  }
-}
-```
-
-### Common Error Codes
-
-| Code | Description |
-|------|-------------|
-| UNAUTHORIZED | Invalid or missing authentication |
-| FORBIDDEN | Insufficient permissions |
-| NOT_FOUND | Resource not found |
-| VALIDATION_ERROR | Invalid request parameters |
-| RATE_LIMITED | Too many requests |
-
-## Pagination
-
-List endpoints support pagination via `take` and `skip` parameters:
-
-| Parameter | Type | Default | Max | Description |
-|-----------|------|---------|-----|-------------|
-| take | number | 10 | 250 | Number of items to return |
-| skip | number | 0 | - | Number of items to skip |
-
-### Example
-
-```http
-GET /v2/bookings?take=20&skip=40
-```
-
-This returns items 41-60 (skipping the first 40, taking 20).
-
-### Pagination Response
-
-Some endpoints include pagination metadata:
-
-```json
-{
-  "status": "success",
-  "data": [...],
-  "pagination": {
-    "total": 150,
-    "take": 20,
-    "skip": 40
-  }
-}
-```
-
-## Troubleshooting
-
-### "Invalid API key" Error
-
-1. Verify the key starts with `cal_`
-2. Check for extra whitespace or characters
-3. Ensure the key hasn't been revoked or expired
-4. Confirm you're using the correct environment (production vs test)
-
-### "Missing Authorization header" Error
-
-1. Ensure the header name is exactly `Authorization`
-2. Include the `Bearer ` prefix (with space)
-3. Check for typos in the header name
-
-### Platform Authentication Issues
-
-1. Verify both `x-cal-client-id` and `x-cal-secret-key` are provided
-2. Ensure the managed user access token is valid
-3. Check that the OAuth client has the required permissions
+| Status | Message | When |
+| --- | --- | --- |
+| 400 | `body - Unrecognized key(s) in object: 'email'` | A field not listed above |
+| 400 | `Please choose a valid time zone` | Unknown `timeZone` |
+| 400 | `This language isn't supported.` | `locale` doesn't match a supported language |
+| 404 | `Not found` | `defaultScheduleId` isn't one of your schedules |

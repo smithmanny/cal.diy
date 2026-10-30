@@ -2,95 +2,81 @@
 title: Use DTOs at Every Architectural Boundary
 impact: CRITICAL
 impactDescription: Prevents technology coupling and security risks
-tags: data, dto, boundaries, security, types
+tags: data, dto, boundaries, security, types, zod
 ---
 
 ## Use DTOs at Every Architectural Boundary
 
 **Impact: CRITICAL**
 
-Database types should not leak to the frontend. This has become a popular shortcut in our tech stack, but it's a code smell that creates multiple problems.
+Database rows must not leak to the browser or to API clients. Services map rows to DTOs, and the
+public API maps DTOs to Cal's API shapes.
 
-**Problems with leaking database types:**
-- Technology coupling (Prisma types end up in React components)
-- Security risks (accidental leakage of sensitive fields)
-- Fragile contracts between server and client
-- Inability to evolve the database schema independently
+**Problems with leaking rows:**
+- Secret columns reach the client (`webhook.secret`, `credential.key`)
+- Components get coupled to the database schema
+- The schema can't change without breaking the UI or the public API
 
-**Incorrect (database types leaking):**
+**Incorrect (row returned as is):**
 
 ```typescript
-// API route returning Prisma types directly
-import type { User } from "@prisma/client";
+// apps/web/src/server/webhooks/functions.ts
+import type { Webhook } from "@calcom/db/schema";
 
-export async function GET(): Promise<User> {
-  const user = await prisma.user.findFirst();
-  return user; // Leaks all database fields including sensitive ones
-}
-
-// Frontend using Prisma types
-import type { User } from "@prisma/client";
-
-function UserProfile({ user }: { user: User }) {
-  // Component now coupled to database schema
-}
+export const getWebhook = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .validator(z.object({ id: z.string() }))
+  .handler(async ({ data }): Promise<Webhook> => {
+    const db = await getDb();
+    const [row] = await db.select().from(webhook).where(eq(webhook.id, data.id));
+    return row; // Includes `secret`
+  });
 ```
 
-**Correct (explicit DTOs):**
+**Correct (DTO built in the service):**
 
 ```typescript
-// Define explicit DTOs
-interface UserDTO {
-  id: number;
-  name: string;
-  email: string;
-  // Only fields needed by the client
-}
+// apps/web/src/server/webhooks/types.ts
+export type WebhookDto = {
+  id: string;
+  subscriberUrl: string;
+  eventTriggers: SupportedTrigger[];
+  active: boolean;
+  hasSecret: boolean;
+  payloadTemplate: string | null;
+};
 
-// API route transforms to DTO
-export async function GET(): Promise<UserDTO> {
-  const user = await userRepository.findById(id);
-  return UserResponseSchema.parse(user); // Validate with Zod
-}
-
-// Frontend uses DTO
-function UserProfile({ user }: { user: UserDTO }) {
-  // Component decoupled from database
+// apps/web/src/server/webhooks/WebhookService.ts
+function toDto(row: WebhookRow): WebhookDto {
+  // The secret is write-only: it signs payloads and is never sent back to the browser.
+  return {
+    id: row.id,
+    subscriberUrl: row.subscriberUrl,
+    eventTriggers: triggers,
+    active: row.active,
+    hasSecret: Boolean(row.secret),
+    payloadTemplate: row.payloadTemplate,
+  };
 }
 ```
 
 **The standard:**
-1. **Data layer → Application layer → API**: Transform database models into application-layer DTOs, then transform application DTOs into API-specific DTOs
-2. **API → Application layer → Data layer**: Transform API DTOs through application layer and into data-specific DTOs
-3. All DTO conversions through Zod to ensure all data is validated before sending to user
+1. **Data layer to app**: repositories return selected columns; services map them to DTOs declared in the domain's `types.ts` (e.g. `WebhookDto` in `apps/web/src/server/webhooks/types.ts`)
+2. **App to public API**: API v2 mappers in `apps/web/src/server/api-v2/*Mapper.ts` turn DTOs into Cal's response shapes (`toWebhookOutput`, `toMeOutput`) and validate input with Zod (`createWebhookInputSchema`)
+3. **Input**: every server function has `.validator(zodSchema)`; every API route parses with `parseBody` / `parseQuery`
+4. **Components** type their props from server function results (`Awaited<ReturnType<typeof getTeam>>`), never from `@calcom/db/schema` row types
 
-### DTO Location and Naming
+### Naming
 
-**Location**: All DTOs go in `packages/lib/dto/`
+- `{Entity}Dto` for what a service returns (`WebhookDto`)
+- `{Entity}Input` for validated input (`WebhookInput = z.infer<typeof webhookInputSchema>`)
+- `to{Entity}Output` for API v2 response mappers
 
-**Naming conventions**:
-- Base entity: `{Entity}Dto` (e.g., `BookingDto`)
-- With relations: `{Entity}With{Relations}Dto` (e.g., `BookingWithAttendeesDto`)
-- For specific projections: `{Entity}For{Purpose}Dto` (e.g., `BookingForConfirmationDto`)
-- Avoid: `{Entity}Dto2`, `{Entity}DtoForHandler`, or other use-case-specific names
+### Enums
 
-**Enum/union pattern** - use string literal unions to stay ORM-agnostic:
+`@calcom/db/enums` exports plain string-literal unions (`BookingStatus`, `MembershipRole`), so
+DTOs can use them without coupling to Drizzle.
 
-```typescript
-// Good - ORM-agnostic string literal union
-export type BookingStatusDto = "CANCELLED" | "ACCEPTED" | "REJECTED" | "PENDING";
-
-// Bad - importing Prisma enum
-import { BookingStatus } from "@calcom/prisma/client";
-```
-
-**Type safety** - never use `as any` in DTO mapping functions. If types don't align, fix the mapping explicitly.
-
-### Prisma Boundaries
-
-- **Allowed**: `packages/prisma`, repository implementations (`packages/features/**/repositories/*Repository.ts`), and low-level data access infrastructure.
-- **Not allowed**: `packages/features/**` business logic (non-repository), `packages/trpc/**` handlers, `apps/web/**`, `apps/api/v2/**` services/controllers, and workflow/webhook/service layers.
-
-Yes, this requires more code. Yes, it's worth it. Explicit boundaries prevent the architectural erosion that creates long-term maintenance nightmares.
+**Type safety**: never use `as any` in a mapper. If types don't line up, fix the mapping.
 
 Reference: [Cal.diy Engineering Blog](https://cal.com/blog/engineering-in-2026-and-beyond)
