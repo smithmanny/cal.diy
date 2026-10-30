@@ -21,6 +21,7 @@ import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthResetPasswordRouteImport } from './routes/auth/reset-password'
 import { Route as AuthSignupRouteImport } from './routes/auth/signup'
 import { Route as BookingUidRouteImport } from './routes/booking/$uid'
+import { Route as PaymentUidRouteImport } from './routes/payment/$uid'
 import { Route as VideoUidRouteImport } from './routes/video/$uid'
 import { Route as UsernameSlugEmbedRouteImport } from './routes/$username/$slug_.embed'
 import { Route as AuthedAppsIndexRouteImport } from './routes/_authed/apps/index'
@@ -44,6 +45,7 @@ import { Route as AuthedSettingsSecurityPasswordRouteImport } from './routes/_au
 import { Route as AuthedSettingsSecurityTwoFactorAuthRouteImport } from './routes/_authed/settings/security/two-factor-auth'
 import { Route as ApiIntegrationsAppAddRouteImport } from './routes/api/integrations/$app/add'
 import { Route as ApiIntegrationsAppCallbackRouteImport } from './routes/api/integrations/$app/callback'
+import { Route as ApiIntegrationsStripepaymentWebhookRouteImport } from './routes/api/integrations/stripepayment/webhook'
 import { Route as ApiV2BookingsIndexRouteImport } from './routes/api/v2/bookings/index'
 import { Route as ApiV2EventTypesIndexRouteImport } from './routes/api/v2/event-types/index'
 import { Route as ApiV2EventTypesEventTypeIdRouteImport } from './routes/api/v2/event-types/$eventTypeId'
@@ -122,6 +124,11 @@ const AuthSignupRoute = AuthSignupRouteImport.update({
 const BookingUidRoute = BookingUidRouteImport.update({
   id: '/booking/$uid',
   path: '/booking/$uid',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PaymentUidRoute = PaymentUidRouteImport.update({
+  id: '/payment/$uid',
+  path: '/payment/$uid',
   getParentRoute: () => rootRouteImport,
 } as any)
 const VideoUidRoute = VideoUidRouteImport.update({
@@ -251,6 +258,12 @@ const ApiIntegrationsAppCallbackRoute =
     path: '/api/integrations/$app/callback',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiIntegrationsStripepaymentWebhookRoute =
+  ApiIntegrationsStripepaymentWebhookRouteImport.update({
+    id: '/api/integrations/stripepayment/webhook',
+    path: '/api/integrations/stripepayment/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiV2BookingsIndexRoute = ApiV2BookingsIndexRouteImport.update({
   id: '/api/v2/bookings/',
   path: '/api/v2/bookings/',
@@ -375,6 +388,7 @@ export interface FileRoutesByFullPath {
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
   '/booking/$uid': typeof BookingUidRoute
+  '/payment/$uid': typeof PaymentUidRoute
   '/video/$uid': typeof VideoUidRoute
   '/$username/': typeof UsernameIndexRoute
   '/$username/$slug/embed': typeof UsernameSlugEmbedRoute
@@ -399,6 +413,7 @@ export interface FileRoutesByFullPath {
   '/settings/security/two-factor-auth': typeof AuthedSettingsSecurityTwoFactorAuthRoute
   '/api/integrations/$app/add': typeof ApiIntegrationsAppAddRoute
   '/api/integrations/$app/callback': typeof ApiIntegrationsAppCallbackRoute
+  '/api/integrations/stripepayment/webhook': typeof ApiIntegrationsStripepaymentWebhookRoute
   '/api/v2/event-types/$eventTypeId': typeof ApiV2EventTypesEventTypeIdRoute
   '/api/v2/schedules/$scheduleId': typeof ApiV2SchedulesScheduleIdRoute
   '/api/v2/schedules/default': typeof ApiV2SchedulesDefaultRoute
@@ -430,6 +445,7 @@ export interface FileRoutesByTo {
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
   '/booking/$uid': typeof BookingUidRoute
+  '/payment/$uid': typeof PaymentUidRoute
   '/video/$uid': typeof VideoUidRoute
   '/$username': typeof UsernameIndexRoute
   '/$username/$slug/embed': typeof UsernameSlugEmbedRoute
@@ -454,6 +470,7 @@ export interface FileRoutesByTo {
   '/settings/security/two-factor-auth': typeof AuthedSettingsSecurityTwoFactorAuthRoute
   '/api/integrations/$app/add': typeof ApiIntegrationsAppAddRoute
   '/api/integrations/$app/callback': typeof ApiIntegrationsAppCallbackRoute
+  '/api/integrations/stripepayment/webhook': typeof ApiIntegrationsStripepaymentWebhookRoute
   '/api/v2/event-types/$eventTypeId': typeof ApiV2EventTypesEventTypeIdRoute
   '/api/v2/schedules/$scheduleId': typeof ApiV2SchedulesScheduleIdRoute
   '/api/v2/schedules/default': typeof ApiV2SchedulesDefaultRoute
@@ -488,6 +505,7 @@ export interface FileRoutesById {
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/signup': typeof AuthSignupRoute
   '/booking/$uid': typeof BookingUidRoute
+  '/payment/$uid': typeof PaymentUidRoute
   '/video/$uid': typeof VideoUidRoute
   '/$username/': typeof UsernameIndexRoute
   '/$username/$slug_/embed': typeof UsernameSlugEmbedRoute
@@ -512,6 +530,7 @@ export interface FileRoutesById {
   '/_authed/settings/security/two-factor-auth': typeof AuthedSettingsSecurityTwoFactorAuthRoute
   '/api/integrations/$app/add': typeof ApiIntegrationsAppAddRoute
   '/api/integrations/$app/callback': typeof ApiIntegrationsAppCallbackRoute
+  '/api/integrations/stripepayment/webhook': typeof ApiIntegrationsStripepaymentWebhookRoute
   '/api/v2/event-types/$eventTypeId': typeof ApiV2EventTypesEventTypeIdRoute
   '/api/v2/schedules/$scheduleId': typeof ApiV2SchedulesScheduleIdRoute
   '/api/v2/schedules/default': typeof ApiV2SchedulesDefaultRoute
@@ -546,6 +565,7 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/auth/signup'
     | '/booking/$uid'
+    | '/payment/$uid'
     | '/video/$uid'
     | '/$username/'
     | '/$username/$slug/embed'
@@ -570,6 +590,7 @@ export interface FileRouteTypes {
     | '/settings/security/two-factor-auth'
     | '/api/integrations/$app/add'
     | '/api/integrations/$app/callback'
+    | '/api/integrations/stripepayment/webhook'
     | '/api/v2/event-types/$eventTypeId'
     | '/api/v2/schedules/$scheduleId'
     | '/api/v2/schedules/default'
@@ -601,6 +622,7 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/auth/signup'
     | '/booking/$uid'
+    | '/payment/$uid'
     | '/video/$uid'
     | '/$username'
     | '/$username/$slug/embed'
@@ -625,6 +647,7 @@ export interface FileRouteTypes {
     | '/settings/security/two-factor-auth'
     | '/api/integrations/$app/add'
     | '/api/integrations/$app/callback'
+    | '/api/integrations/stripepayment/webhook'
     | '/api/v2/event-types/$eventTypeId'
     | '/api/v2/schedules/$scheduleId'
     | '/api/v2/schedules/default'
@@ -658,6 +681,7 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/auth/signup'
     | '/booking/$uid'
+    | '/payment/$uid'
     | '/video/$uid'
     | '/$username/'
     | '/$username/$slug_/embed'
@@ -682,6 +706,7 @@ export interface FileRouteTypes {
     | '/_authed/settings/security/two-factor-auth'
     | '/api/integrations/$app/add'
     | '/api/integrations/$app/callback'
+    | '/api/integrations/stripepayment/webhook'
     | '/api/v2/event-types/$eventTypeId'
     | '/api/v2/schedules/$scheduleId'
     | '/api/v2/schedules/default'
@@ -715,6 +740,7 @@ export interface RootRouteChildren {
   AuthResetPasswordRoute: typeof AuthResetPasswordRoute
   AuthSignupRoute: typeof AuthSignupRoute
   BookingUidRoute: typeof BookingUidRoute
+  PaymentUidRoute: typeof PaymentUidRoute
   VideoUidRoute: typeof VideoUidRoute
   UsernameIndexRoute: typeof UsernameIndexRoute
   UsernameSlugEmbedRoute: typeof UsernameSlugEmbedRoute
@@ -723,6 +749,7 @@ export interface RootRouteChildren {
   DLinkSlugRoute: typeof DLinkSlugRoute
   ApiIntegrationsAppAddRoute: typeof ApiIntegrationsAppAddRoute
   ApiIntegrationsAppCallbackRoute: typeof ApiIntegrationsAppCallbackRoute
+  ApiIntegrationsStripepaymentWebhookRoute: typeof ApiIntegrationsStripepaymentWebhookRoute
   ApiV2EventTypesEventTypeIdRoute: typeof ApiV2EventTypesEventTypeIdRoute
   ApiV2SchedulesScheduleIdRoute: typeof ApiV2SchedulesScheduleIdRoute
   ApiV2SchedulesDefaultRoute: typeof ApiV2SchedulesDefaultRoute
@@ -827,6 +854,13 @@ declare module '@tanstack/react-router' {
       path: '/booking/$uid'
       fullPath: '/booking/$uid'
       preLoaderRoute: typeof BookingUidRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/payment/$uid': {
+      id: '/payment/$uid'
+      path: '/payment/$uid'
+      fullPath: '/payment/$uid'
+      preLoaderRoute: typeof PaymentUidRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/video/$uid': {
@@ -988,6 +1022,13 @@ declare module '@tanstack/react-router' {
       path: '/api/integrations/$app/callback'
       fullPath: '/api/integrations/$app/callback'
       preLoaderRoute: typeof ApiIntegrationsAppCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/integrations/stripepayment/webhook': {
+      id: '/api/integrations/stripepayment/webhook'
+      path: '/api/integrations/stripepayment/webhook'
+      fullPath: '/api/integrations/stripepayment/webhook'
+      preLoaderRoute: typeof ApiIntegrationsStripepaymentWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/v2/bookings/': {
@@ -1207,6 +1248,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthResetPasswordRoute: AuthResetPasswordRoute,
   AuthSignupRoute: AuthSignupRoute,
   BookingUidRoute: BookingUidRoute,
+  PaymentUidRoute: PaymentUidRoute,
   VideoUidRoute: VideoUidRoute,
   UsernameIndexRoute: UsernameIndexRoute,
   UsernameSlugEmbedRoute: UsernameSlugEmbedRoute,
@@ -1215,6 +1257,8 @@ const rootRouteChildren: RootRouteChildren = {
   DLinkSlugRoute: DLinkSlugRoute,
   ApiIntegrationsAppAddRoute: ApiIntegrationsAppAddRoute,
   ApiIntegrationsAppCallbackRoute: ApiIntegrationsAppCallbackRoute,
+  ApiIntegrationsStripepaymentWebhookRoute:
+    ApiIntegrationsStripepaymentWebhookRoute,
   ApiV2EventTypesEventTypeIdRoute: ApiV2EventTypesEventTypeIdRoute,
   ApiV2SchedulesScheduleIdRoute: ApiV2SchedulesScheduleIdRoute,
   ApiV2SchedulesDefaultRoute: ApiV2SchedulesDefaultRoute,

@@ -41,6 +41,8 @@ import { type EventLocation, eventLocationSchema } from "../event-types/types";
 import type { HolidayService } from "../holidays/HolidayService";
 import { parseMetadata } from "../metadata";
 import type { OutOfOfficeRepository } from "../out-of-office/OutOfOfficeRepository";
+import type { PaymentService } from "../payments/PaymentService";
+import { type EventPayment, parseEventPayment } from "../payments/paidEvent";
 import type { ScheduleRepository } from "../schedules/ScheduleRepository";
 import { isValidTimeZone } from "../schedules/scheduleMapper";
 import type { TravelScheduleRepository } from "../users/TravelScheduleRepository";
@@ -80,6 +82,8 @@ type Deps = {
   busyTimesProviders?: BusyTimesProvider[];
   listeners?: BookingListener[];
   runInBackground?: (promise: Promise<unknown>) => void;
+  /** Stripe, for paid events; without it a paid event can't be booked. */
+  payments?: Pick<PaymentService, "startPayment">;
   now?: () => Date;
 };
 
@@ -107,9 +111,16 @@ type CreatedBooking = {
   redirectUrl: string | null;
   /** The booker's own seat, for seated events; it is how they cancel or move just their place. */
   seatReferenceUid?: string;
+  /** For a paid event: the booker pays at /payment/<paymentUid> before the booking counts. */
+  paymentUid?: string;
 };
 
 type EventTypeRow = NonNullable<Awaited<ReturnType<EventTypeRepository["findByUserIdAndSlug"]>>>;
+
+function paidPrice(metadata: unknown): PublicEventDto["eventType"]["price"] {
+  const payment = parseEventPayment(metadata);
+  return payment && { amount: payment.price, currency: payment.currency };
+}
 
 /** The booker may book fewer occurrences than the event offers, never more. */
 function recurringCount(max: number, requested: number | undefined): number {
@@ -278,6 +289,7 @@ export class BookingService {
         length: eventType.length,
         durations: parseMultipleDuration(eventType.metadata) ?? [eventType.length],
         requiresConfirmation: eventType.requiresConfirmation,
+        price: paidPrice(eventType.metadata),
         // Only what the booker needs to choose; host phone numbers and links are revealed after booking.
         locations: parseLocations(eventType.locations).map((location) =>
           location.type === "inPerson"
@@ -359,6 +371,10 @@ export class BookingService {
     if (!isValidTimeZone(input.timeZone)) throw new AppError("invalid_timezone");
     const { host, eventType, coHosts } = await this.loadEvent(input.username, input.slug);
     const now = this.deps.now?.() ?? new Date();
+    // Cal charges paid events per seat; that isn't supported here, so such events can't be booked.
+    const price = input.rescheduleUid ? null : parseEventPayment(eventType.metadata);
+    if (price && (eventType.seatsPerTimeSlot || !this.deps.payments))
+      throw new AppError("payment_not_created_error", 400);
     if (eventType.seatsPerTimeSlot)
       return this.bookSeat(input, host, eventType, eventType.seatsPerTimeSlot, actorUserId === host.id, now);
     const start = new Date(input.start);
@@ -385,7 +401,9 @@ export class BookingService {
       (typeof responses.attendeePhoneNumber === "string" ? responses.attendeePhoneNumber : null);
     const notes = typeof responses.notes === "string" ? responses.notes : null;
     const title = await this.bookingTitle({ host, eventType, responses, name, location, length });
-    const status = this.needsConfirmation(eventType, start, now) ? "PENDING" : "ACCEPTED";
+    const statusOnceDecided = this.needsConfirmation(eventType, start, now) ? "PENDING" : "ACCEPTED";
+    // Like Cal, a paid booking waits for its payment; a moved booking keeps what was paid.
+    const status = price ? "PENDING" : statusOnceDecided;
 
     // Cal drops guests that repeat the booker.
     const guests = (Array.isArray(responses.guests) ? responses.guests : []).filter(
@@ -394,7 +412,8 @@ export class BookingService {
     const attendeeBase = { timeZone: input.timeZone, locale: input.locale };
 
     // A recurring event books its occurrences together; moving one occurrence moves only that one.
-    const rule = original ? null : parseRecurringEvent(eventType.recurringEvent);
+    // Cal doesn't charge for recurring series either: a paid event books a single occurrence.
+    const rule = original || price ? null : parseRecurringEvent(eventType.recurringEvent);
     const starts = rule
       ? recurringDates(start, input.timeZone, {
           ...rule,
@@ -440,15 +459,21 @@ export class BookingService {
     if (!created) throw new AppError("booking_conflict_error", 409);
     const { uid } = firstBooking;
 
-    await this.emitCreated(
-      bookings.map((occurrence) => occurrence.uid),
-      original?.uid ?? null,
-      actorUserId ? { userId: actorUserId } : { email, name }
-    );
+    const paymentUid = price
+      ? await this.startPayment(uid, { host, eventType, email, price, statusAfterPayment: statusOnceDecided })
+      : undefined;
+    // A paid booking is announced once it is paid (markPaid).
+    if (!paymentUid)
+      await this.emitCreated(
+        bookings.map((occurrence) => occurrence.uid),
+        original?.uid ?? null,
+        actorUserId ? { userId: actorUserId } : { email, name }
+      );
     return {
       uid,
       title,
       status,
+      paymentUid,
       redirectUrl: eventType.successRedirectUrl
         ? successRedirectUrl(eventType, {
             uid,
@@ -611,10 +636,44 @@ export class BookingService {
       });
   }
 
+  /** A paid booking is confirmed (or awaits the host, if it needs confirming) once its payment succeeds. */
+  async markPaid(uid: string, status: "ACCEPTED" | "PENDING"): Promise<void> {
+    await this.deps.bookingRepo.updateStatus(uid, { status, paid: true });
+    await this.emitCreated([uid], null);
+  }
+
+  private async startPayment(
+    uid: string,
+    booking: {
+      host: Host;
+      eventType: EventTypeRow;
+      email: string;
+      price: EventPayment;
+      statusAfterPayment: "ACCEPTED" | "PENDING";
+    }
+  ): Promise<string> {
+    try {
+      if (!this.deps.payments) throw new AppError("payment_not_created_error", 400);
+      return await this.deps.payments.startPayment({
+        bookingUid: uid,
+        hostId: booking.host.id,
+        productName: booking.eventType.title,
+        bookerEmail: booking.email,
+        payment: booking.price,
+        statusAfterPayment: booking.statusAfterPayment,
+      });
+    } catch (error) {
+      // Without a way to pay, the held slot is released again.
+      await this.deps.bookingRepo.updateStatus(uid, { status: "CANCELLED" });
+      console.error(`Starting the payment for booking ${uid} failed`, error);
+      throw new AppError("payment_not_created_error", 400);
+    }
+  }
+
   private async emitCreated(
     uids: string[],
     rescheduledFromUid: string | null,
-    actor: BookingActor
+    actor?: BookingActor
   ): Promise<void> {
     const operationId = uuidv7();
     if (rescheduledFromUid) {

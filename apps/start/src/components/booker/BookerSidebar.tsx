@@ -1,7 +1,8 @@
 import { Input } from "@coss/ui/components/input";
-import { ClockIcon, GlobeIcon, MapPinIcon, RepeatIcon } from "lucide-react";
+import { ClockIcon, CreditCardIcon, GlobeIcon, MapPinIcon, RepeatIcon } from "lucide-react";
 import type { TFunction } from "~/lib/i18n";
 import { LOCATION_LABEL_KEYS } from "~/lib/location-labels";
+import { formatMoney } from "~/lib/money";
 import { recurringSummary } from "~/lib/recurring";
 import type { PublicEventDto } from "~/server/bookings/types";
 import { TimeZoneSelect } from "../TimeZoneSelect";
@@ -51,6 +52,7 @@ export function BookerSidebar({
   onDurationChange,
   recurringCount,
   onRecurringCountChange,
+  locale,
   t,
 }: {
   event: PublicEventDto;
@@ -61,6 +63,7 @@ export function BookerSidebar({
   onDurationChange: (minutes: number) => void;
   recurringCount: number;
   onRecurringCountChange: (count: number) => void;
+  locale: string;
   t: TFunction;
 }) {
   const { eventType, host } = event;
@@ -113,6 +116,12 @@ export function BookerSidebar({
       )}
       {eventType.requiresConfirmation && (
         <p className="text-muted-foreground text-xs">{t("requires_confirmation")}</p>
+      )}
+      {eventType.price && (
+        <p className="flex items-center gap-2 text-sm">
+          <CreditCardIcon className="size-4 text-muted-foreground" aria-label={t("price")} />
+          {formatMoney(eventType.price.amount, eventType.price.currency, locale)}
+        </p>
       )}
       {timeZone && (
         <label className="mt-2 flex flex-col gap-1 text-sm">

@@ -7,14 +7,16 @@ import {
   OFFICE365_CALENDAR_SCOPES,
   OFFICE365_CALENDAR_TYPE,
 } from "../calendars/office365/OutlookCalendarClient";
+import { createStripeClient, getPaymentService } from "../payments/container";
 import { getVideoService } from "../video/container";
 import { TEAMS_SCOPES, TEAMS_VIDEO_TYPE, ZOOM_VIDEO_TYPE } from "../video/providers";
-import { outlookCalendarOAuth, teamsOAuth, zoomOAuth } from "./config";
+import { integrationRedirectUri, outlookCalendarOAuth, teamsOAuth, zoomOAuth } from "./config";
 import { buildOAuthAuthorizeUrl, type OAuthClientConfig } from "./oauth";
 
 /** An app installed through its provider's consent screen, by Cal's folder name (the route segment). */
 type OAuthApp = {
-  authorizeUrl(state: string): string;
+  /** `user` prefills Stripe's account form; other providers ignore it. */
+  authorizeUrl(state: string, user: { email: string; name: string | null }): string;
   connect(userId: number, code: string): Promise<void>;
   /** Where the user lands afterwards. */
   returnTo: string;
@@ -22,6 +24,17 @@ type OAuthApp = {
 
 const CALENDARS_PAGE = "/settings/my-account/calendars";
 const CONFERENCING_PAGE = "/settings/my-account/conferencing";
+
+/** Stripe Connect: the host's own Stripe account receives the payments for their events. */
+async function stripeApp(): Promise<OAuthApp | null> {
+  const [stripe, payments] = [createStripeClient(), await getPaymentService()];
+  if (!stripe || !payments) return null;
+  return {
+    authorizeUrl: (state, user) => stripe.authorizeUrl(state, integrationRedirectUri("stripepayment"), user),
+    connect: async (userId, code) => payments.connect(userId, await stripe.connect(code)),
+    returnTo: "/apps",
+  };
+}
 
 async function calendarApp(
   type: string,
@@ -63,6 +76,8 @@ export async function getOAuthApp(dirName: string): Promise<OAuthApp | null> {
       return videoApp(ZOOM_VIDEO_TYPE, zoomOAuth());
     case "office365video":
       return videoApp(TEAMS_VIDEO_TYPE, teamsOAuth(TEAMS_SCOPES));
+    case "stripepayment":
+      return stripeApp();
     default:
       return null;
   }

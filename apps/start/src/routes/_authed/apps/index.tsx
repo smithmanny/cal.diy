@@ -18,6 +18,7 @@ const MESSAGE_KEYS = [
   "conferencing_description",
   "calendars",
   "conferencing",
+  "payments",
   "install",
   "installed",
   "remove_app",
@@ -38,6 +39,7 @@ const MESSAGE_KEYS = [
 const CATEGORIES = [
   { category: "calendar", labelKey: "calendars" },
   { category: "conferencing", labelKey: "conferencing" },
+  { category: "payment", labelKey: "payments" },
 ] as const;
 
 type Run = (action: () => Promise<unknown>) => Promise<boolean>;

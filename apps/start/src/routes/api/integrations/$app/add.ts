@@ -18,7 +18,10 @@ export const Route = createFileRoute("/api/integrations/$app/add")({
             302
           );
         return Response.redirect(
-          app.authorizeUrl(await signState(Number(session.user.id), oauthStateSecret())),
+          app.authorizeUrl(await signState(Number(session.user.id), oauthStateSecret()), {
+            email: session.user.email,
+            name: session.user.name || null,
+          }),
           302
         );
       },

@@ -535,6 +535,7 @@ export class BookingRepository {
       rejectionReason?: string | null;
       rescheduled?: boolean;
       cancelledBy?: string | null;
+      paid?: boolean;
     }
   ) {
     await this.updateStatusMany([uid], data);
@@ -548,6 +549,7 @@ export class BookingRepository {
       rejectionReason?: string | null;
       rescheduled?: boolean;
       cancelledBy?: string | null;
+      paid?: boolean;
     }
   ) {
     if (uids.length) await this.db.update(booking).set(data).where(inArray(booking.uid, uids));

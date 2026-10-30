@@ -4810,5 +4810,8 @@
   "end_date": "End date",
   "guests_disabled": "This event type doesn't allow guests",
   "booking_has_ended": "This booking has already ended",
+  "payment_processing": "Confirming your payment…",
+  "paid_event_description": "Bookers pay with Stripe before their booking is confirmed.",
+  "paid_events_dont_support_seats_or_recurring": "Paid events can't have seats or repeat",
   "ADD_NEW_STRINGS_ABOVE_THIS_LINE_TO_PREVENT_MERGE_CONFLICTS": "↑↑↑↑↑↑↑↑↑↑↑↑↑ Add your new strings above here ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑"
 }

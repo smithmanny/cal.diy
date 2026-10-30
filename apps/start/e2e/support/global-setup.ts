@@ -1,6 +1,15 @@
 import { startFakeApps } from "./fake-apps-server";
 import { startFakeGoogle, startFakeResend, startWebhookReceiver } from "./fake-servers";
-import { FAKE_APPS_PORT, FAKE_GOOGLE_PORT, FAKE_RESEND_PORT, WEBHOOK_RECEIVER_PORT } from "./ports";
+import { startFakeStripe } from "./fake-stripe-server";
+import {
+  APP_PORT,
+  FAKE_APPS_PORT,
+  FAKE_GOOGLE_PORT,
+  FAKE_RESEND_PORT,
+  FAKE_STRIPE_PORT,
+  STRIPE_WEBHOOK_SECRET,
+  WEBHOOK_RECEIVER_PORT,
+} from "./ports";
 
 export default async function globalSetup() {
   const servers = [
@@ -8,6 +17,11 @@ export default async function globalSetup() {
     startFakeGoogle(FAKE_GOOGLE_PORT),
     startFakeResend(FAKE_RESEND_PORT),
     startFakeApps(FAKE_APPS_PORT),
+    startFakeStripe(
+      FAKE_STRIPE_PORT,
+      `http://localhost:${APP_PORT}/api/integrations/stripepayment/webhook`,
+      STRIPE_WEBHOOK_SECRET
+    ),
   ];
   return async () => {
     await Promise.all(servers.map((server) => new Promise((resolve) => server.close(resolve))));

@@ -9,6 +9,7 @@ import {
 import { bookerLayoutsSchema } from "~/lib/booker-layouts";
 import { bookingFieldInputSchema } from "~/lib/booking-fields";
 import { SUPPORTED_LOCALES } from "~/lib/locales";
+import { eventPaymentSchema } from "../payments/paidEvent";
 
 const limitValue = z.number().int().min(1).max(100_000).optional();
 
@@ -167,6 +168,8 @@ export const eventTypeFields = z.object({
    * Cal's private links. A link expires at the end of `expiresAt` (host's time zone) if set,
    * otherwise after `maxUsageCount` bookings. `usageCount` is shown, never written.
    */
+  /** Cal's metadata.apps.stripe for a paid event; null is free. Left out, it stays as it is. */
+  payment: eventPaymentSchema.nullable().optional(),
   privateLinks: z
     .array(
       z.object({
@@ -196,6 +199,11 @@ export const eventTypeInputSchema = eventTypeFields
   .refine((input) => !input.seatsPerTimeSlot || input.locations.length <= 1, {
     path: ["seatsPerTimeSlot"],
     message: "seats_option_doesnt_support_multi_location",
+  })
+  // Payments are taken once per booking here; Cal's per-seat and per-series charging isn't supported.
+  .refine((input) => !input.payment || (!input.seatsPerTimeSlot && !input.recurringEvent), {
+    path: ["payment"],
+    message: "paid_events_dont_support_seats_or_recurring",
   })
   .refine((input) => !input.recurringEvent || !input.maxActiveBookingsPerBooker, {
     path: ["recurringEvent"],

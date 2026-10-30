@@ -3,6 +3,7 @@ import "@tanstack/react-start/server-only";
 import type { Database } from "@calcom/db/database";
 import { createCalendarService } from "../calendars/container";
 import { createEmailService } from "../emails/container";
+import { createPaymentService } from "../payments/container";
 import { createVideoService } from "../video/container";
 import { WebhookRepository } from "../webhooks/WebhookRepository";
 import { createWebhookListener } from "../webhooks/webhookListener";
@@ -19,9 +20,12 @@ export function getBookingListeners(db: Database): BookingListener[] {
   const video = createVideoService(db);
   const calendars = createCalendarService(db);
   const emails = createEmailService();
+  const payments = createPaymentService(db);
   const listeners: BookingListener[] = [];
   if (video) listeners.push((event) => video.onBookingEvent(event));
   if (calendars) listeners.push((event) => calendars.onBookingEvent(event));
+  // Refunds on cancel and rejection, and moving what was paid to a rescheduled booking.
+  if (payments) listeners.push((event) => payments.onBookingEvent(event));
   listeners.push(createWebhookListener(new WebhookRepository(db)));
   listeners.push(createAuditListener(new BookingAuditRepository(db)));
   if (emails) listeners.push((event) => emails.onBookingEvent(event));
