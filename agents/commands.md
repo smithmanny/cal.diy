@@ -1,89 +1,72 @@
 # Build, Test & Development Commands
 
-## Development Commands
+All commands run from the repo root unless noted.
 
-- `yarn dev` - Start development server for web app
-- `yarn dev:all` - Start web, website, and console apps
-- `yarn dev:api` - Start web app with API proxy and API
-- `yarn dev:console` - Start web app with console
-- `yarn dx` - Start development with database setup
+## Development
 
-## Build Commands
+- `yarn dev` - TanStack Start dev server on http://localhost:3000, Node + a SQLite file (`apps/web/data/cal.db`); migrations run on boot. Reads `apps/web/.env`
+- `yarn dev:cf` - The same app in the Cloudflare Workers runtime (Miniflare + local D1). Reads `apps/web/.dev.vars`; run `yarn db:migrate:d1:local` first
 
-- `yarn build` - Build all packages and apps
-- `yarn build:ai` - Build AI package specifically
-- `yarn clean` - Remove build artifacts (node_modules, .next, .turbo, dist)
+## Build and Deploy
 
-## Lint & Type Check
+- `yarn build` - Production build for Node/Docker (`apps/web/dist`)
+- `yarn build:cf` - Production build for Cloudflare Workers
+- `yarn start` - Serve the Node build (`node apps/web/server.node.mjs`)
+- `yarn deploy:cf` - Build for Workers and `wrangler deploy`
+- `docker compose up -d --build` - Build and run the Docker image (see README)
 
-- `yarn lint` - Run Biome across the codebase
-- `yarn lint:fix` - Run Biome and apply safe fixes
-- `yarn lint:report` - Generate Biome lint report
-- `yarn type-check` - Run TypeScript type checking
-- `yarn format` - Format code with Biome
+## Lint, Format & Type Check
 
-## Testing Commands
+- `yarn type-check` - `tsc --noEmit` in `@calcom/web`, `@calcom/db` and `@calcom/scheduling`
+- `yarn lint` - Biome lint
+- `yarn lint:fix` - Biome check with safe fixes and formatting (`biome check --write .`)
+- `yarn format` - Biome format only
 
-### Unit Tests
+## Unit Tests (Vitest)
 
-- `yarn test` - Run unit tests (vitest)
-- `yarn test <filename>` - Run tests for specific file
-- `yarn test <filename> -t "<testName>"` - Run specific test by name for specific file
-- `yarn tdd` - Run tests in watch mode
-- `yarn test:ui` - Run tests with UI interface
+- `yarn test` - All unit tests in `@calcom/web`, `@calcom/db` and `@calcom/scheduling`, with `TZ=UTC`
+- `yarn workspace @calcom/web test` - One workspace (also `@calcom/db`, `@calcom/scheduling`)
+- `TZ=UTC yarn workspace @calcom/web vitest run src/server/webhooks/WebhookService.test.ts` - One file
+- `TZ=UTC yarn workspace @calcom/web vitest run <file> -t "<test name>"` - One test
+- `TZ=UTC yarn workspace @calcom/web vitest` - Watch mode
+- `yarn workspace @calcom/web vitest run --coverage` - Coverage report
 
-### Integration Tests
+## End-to-End Tests (Playwright)
 
-- `VITEST_MODE=integration yarn test` - Run integration tests (vitest)
-- `VITEST_MODE=integration yarn test <filename>` - Run integration tests for specific file
-- `VITEST_MODE=integration yarn test <filename> -t "<testName>"` - Run specific integration test by name for specific file
+- `yarn workspace @calcom/web playwright install chromium` - Install the browser once
+- `yarn e2e` - Whole suite against a throwaway dev server and database, with fake third-party servers
+- `yarn e2e <spec>` - One spec, e.g. `yarn e2e webhooks.spec.ts`
+- `yarn e2e <spec> --grep "<test name>"` - One test
+- `E2E_BASE_URL=http://localhost:3000 yarn e2e` - Against an already running server (specs that need the fakes skip themselves; `E2E_FAKES=1` runs the webhook spec too)
 
+## Database
 
-### End-to-End Tests
+- `yarn db:generate` - Write a migration after editing `packages/db/src/schema.ts`
+- `yarn db:migrate:d1:local` - Apply migrations to the local D1 database used by `yarn dev:cf`
+- `yarn db:migrate:d1:remote` - Apply migrations to the production D1 database
+- `yarn workspace @calcom/db db:migrate` - Apply migrations to `DATABASE_URL` with drizzle-kit (Node runs them on boot anyway)
+- `yarn workspace @calcom/db db:studio` - Drizzle Studio
+- `yarn import:postgres --from <postgres-url> --to file:./data/cal.db` - Import an existing Cal Postgres database (`--sql <file>` writes SQL for D1 instead)
+- `sqlite3 apps/web/data/cal.db` - Open the local database
 
-- `yarn e2e` - Run end-to-end tests (Playwright)
-- `yarn e2e <filename>` - Run E2E tests for specific file
-- `yarn e2e <filename> --grep "<testName>"` - Run specific E2E test by name
-- `yarn e2e:app-store` - Run app store E2E tests
-- `yarn e2e:embed` - Run embed E2E tests
-- `yarn test-e2e` - Run database seed + E2E tests
+## Other
 
-## Database Commands
+- `yarn workspace @calcom/web cf-typegen` - `wrangler types`
 
-- `yarn prisma` - Run Prisma CLI commands
-- `yarn db-seed` - Seed database with test data
-- `yarn db-deploy` - Deploy database migrations
-- `yarn db-studio` - Open Prisma Studio
-- `psql "postgresql://postgres:@localhost:5432/calendso"` - Connect to local PostgreSQL database
-
-## App Store Commands
-
-- `yarn create-app` - Create new app store integration
-- `yarn edit-app` - Edit existing app
-- `yarn delete-app` - Delete app
-- `yarn app-store:build` - Build app store
-- `yarn app-store:watch` - Watch app store for changes
-
-## Useful Development Patterns
-
-### Running Single Tests
+## Useful Patterns
 
 ```bash
-# Unit test specific file
-yarn vitest run packages/lib/some-file.test.ts
+# Before pushing
+yarn type-check && yarn lint:fix && yarn test
 
-# Integration test specific file
-VITEST_MODE=integration yarn test routing-form-response-denormalized.integration-test.ts
+# Reproduce the CI Workers job
+yarn build:cf
 
-# E2E test specific file
-yarn e2e tests/booking-flow.e2e.ts
-
-# Run specific test by name
-yarn e2e tests/booking-flow.e2e.ts --grep "should create booking"
+# Reset the local database
+rm apps/web/data/cal.db && yarn dev
 ```
 
-### Environment Setup
+## Environment Setup
 
-- Copy `.env.example` to `.env` and configure
-- Copy `.env.appStore.example` to `.env.appStore` for app store development
-- Run `yarn dx` for initial development setup with database
+- `cp apps/web/.env.example apps/web/.env` and set `BETTER_AUTH_SECRET` (`openssl rand -base64 32`) and `CALENDSO_ENCRYPTION_KEY` (`openssl rand -base64 24`)
+- For `yarn dev:cf`: `cp apps/web/.dev.vars.example apps/web/.dev.vars`

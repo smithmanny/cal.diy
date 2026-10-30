@@ -22,6 +22,16 @@ Then tell Claude:
 Review the codebase and fill in specs/{feature}/design.md"
 ```
 
+## Historical Specs
+
+Specs written against Cal's old stack (Next.js, Prisma, tRPC) are kept for their design decisions and
+marked **Historical** at the top. Their file references point at code that no longer exists; each
+one says where the equivalent code lives now.
+
+| Spec | Status |
+|------|--------|
+| [`cancellation-reason-requirement/`](cancellation-reason-requirement/) | Historical: shipped in the old app, not ported to the current one |
+
 ## File Structure
 
 Each feature has:
@@ -61,22 +71,15 @@ Claude will:
 
 ## Promoting to Public Docs
 
-When internal docs are ready for customers:
-```
-"Promote {feature} docs to public"
-```
-
-Claude will:
-1. Copy content to `docs/{feature}.mdx` (Mintlify format)
-2. Move screenshots to `docs/images/{feature}/`
-3. Update `docs/mint.json` navigation
-4. Adjust language for customer audience
+This repo has no docs site. When a feature's docs are ready for users, move the user-facing parts
+into `README.md` (or a new page under `docs/`, which currently holds only Cal's API v2 OpenAPI spec),
+with screenshots alongside, and keep internal details in the spec.
 
 ## The Most Important Rule
 
 Every PR must be reviewable in under 10 minutes:
-- Max 5-7 files changed (excluding tests)
-- Max 500 lines changed
+- Fewer than 10 code files changed
+- Fewer than 500 lines changed
 - One focused change per PR
 
 If your change is bigger, split it into multiple PRs.

@@ -1,5 +1,10 @@
 # Slots and Availability API Reference
 
+> **Cal.diy:** only `GET /slots` is served (`https://<your-cal-diy-host>/api/v2/slots`,
+> `cal-api-version: 2024-09-04`), by `eventTypeId` or `username` + `eventTypeSlug`, with `format=range`
+> supported and no key needed. Slot reservations, calendar busy times and routing form slots are not
+> served.
+
 Detailed documentation for checking availability and managing slots in the Cal.diy API v2.
 
 ## Endpoints Overview

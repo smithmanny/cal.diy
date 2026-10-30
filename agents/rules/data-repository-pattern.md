@@ -1,65 +1,74 @@
 ---
-title: Isolate Technology Choices Behind Repositories
+title: Isolate Data Access Behind Repositories
 impact: CRITICAL
-impactDescription: Enables technology changes without codebase-wide refactors
-tags: data, repository, prisma, orm, isolation
+impactDescription: Keeps Drizzle and SQL details out of business logic
+tags: data, repository, drizzle, orm, isolation
 ---
 
-## Isolate Technology Choices Behind Repositories
+## Isolate Data Access Behind Repositories
 
 **Impact: CRITICAL**
 
-Technology choices must not seep through the application. The Prisma problem illustrates this perfectly: we currently have references to Prisma scattered across hundreds of files. This creates massive coupling and makes technology changes prohibitively expensive.
+All database access goes through Repository classes. A Repository takes the driver-agnostic
+`Database` (`@calcom/db/database`, the same type on D1 and libSQL) in its constructor, owns the
+Drizzle queries for its tables, and returns plain rows. Services never import `drizzle-orm`,
+`@calcom/db/schema` or `getDb`.
 
-**Incorrect (Prisma leaking throughout codebase):**
+This is what let the migration swap Prisma for Drizzle without rewriting the services: only the
+repositories changed.
+
+**Incorrect (Drizzle in a service):**
 
 ```typescript
-// In a service file
-import { prisma } from "@calcom/prisma";
+// apps/web/src/server/webhooks/WebhookService.ts
+import { webhook } from "@calcom/db/schema";
+import { eq } from "drizzle-orm";
+import { getDb } from "../db";
 
-async function getBooking(id: number) {
-  // Direct Prisma usage in service
-  return prisma.booking.findFirst({
-    where: { id },
-    include: { user: true }
-  });
+export class WebhookService {
+  async list(userId: number) {
+    const db = await getDb();
+    return db.select().from(webhook).where(eq(webhook.userId, userId));
+  }
 }
 ```
 
-**Correct (Repository abstraction):**
+**Correct (repository injected into the service):**
 
 ```typescript
-// In repository file
-import { prisma } from "@calcom/prisma";
+// apps/web/src/server/webhooks/WebhookRepository.ts
+import "@tanstack/react-start/server-only";
+import type { Database } from "@calcom/db/database";
+import { webhook } from "@calcom/db/schema";
+import { asc, eq } from "drizzle-orm";
 
-export class BookingRepository {
-  async findById(id: number): Promise<BookingDTO | null> {
-    const booking = await prisma.booking.findFirst({
-      where: { id },
-      select: { id: true, title: true, userId: true }
-    });
-    return booking ? this.toDTO(booking) : null;
+export class WebhookRepository {
+  constructor(private readonly db: Database) {}
+
+  findManyByUserId(userId: number) {
+    return this.db.select(columns).from(webhook).where(eq(webhook.userId, userId)).orderBy(asc(webhook.createdAt));
   }
 }
 
-// In service file - no Prisma knowledge
-import { BookingRepository } from "./repositories/BookingRepository";
+// apps/web/src/server/webhooks/WebhookService.ts
+export class WebhookService {
+  constructor(private readonly repo: WebhookRepository) {}
 
-async function getBooking(id: number) {
-  return this.bookingRepository.findById(id);
+  async list(userId: number): Promise<WebhookDto[]> {
+    return (await this.repo.findManyByUserId(userId)).map(toDto);
+  }
+}
+
+// apps/web/src/server/webhooks/container.ts
+export async function getWebhookService(): Promise<WebhookService> {
+  return new WebhookService(new WebhookRepository(await getDb()));
 }
 ```
 
 **The standard:**
-- All database access must go through Repository classes
-- Repositories are the only code that knows about Prisma (or any other ORM)
-- No business logic should be in repositories
-- Repositories are injected via Dependency Injection containers
-
-**Benefits:**
-If we ever switch from Prisma to Drizzle or another ORM, the only changes required are:
-- Repository implementations
-- DI container wiring for new repositories
-- Nothing else in the codebase should care or change
+- Repositories are the only code that imports `drizzle-orm` and table objects from `@calcom/db/schema` (plus tests and `e2e/support/db.ts`, which set up data)
+- Repositories receive `Database` through the constructor; services receive repositories through theirs (see `patterns-dependency-injection`)
+- No business logic in repositories: no permission checks, no `AppError`s for business rules, no emails
+- D1 rules apply inside repositories: `db.batch` instead of transactions, `chunkRowsForInsert`, `conditionalInsert` (see `data-drizzle-migrations`)
 
 Reference: [Cal.diy Engineering Blog](https://cal.com/blog/engineering-in-2026-and-beyond)

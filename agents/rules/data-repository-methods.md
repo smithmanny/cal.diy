@@ -9,192 +9,93 @@ tags: data, repository, naming, conventions, methods
 
 **Impact: HIGH**
 
-Repository methods should follow consistent naming conventions to improve discoverability and promote code reuse across different features.
+Repository methods follow consistent names so they are easy to find and reuse.
 
-### Rule 1: Don't include the repository's entity name in method names
+### Rule 1: Don't repeat the entity name
 
-Method names should be concise and avoid redundancy since the repository class name already indicates the entity type.
+The class name already says what the entity is.
 
 ```typescript
-// Good - Concise method names
-class BookingRepository {
+// Good - from WebhookRepository
+class WebhookRepository {
+  findManyByUserId(userId: number) { ... }
   findById(id: string) { ... }
-  findByUserId(userId: string) { ... }
-  create(data: BookingCreateInput) { ... }
-  delete(id: string) { ... }
+  findByUserIdAndUrl(userId: number, subscriberUrl: string) { ... }
+  create(data: typeof webhook.$inferInsert) { ... }
+  update(id: string, data: Partial<typeof webhook.$inferInsert>) { ... }
+  deleteById(id: string) { ... }
 }
 
-// Bad - Redundant entity name in methods
-class BookingRepository {
-  findBookingById(id: string) { ... }
-  findBookingByUserId(userId: string) { ... }
-  createBooking(data: BookingCreateInput) { ... }
-  deleteBooking(id: string) { ... }
-}
-```
-
-### Rule 2: Use `include` or similar keywords for methods that fetch relational data
-
-When a method retrieves additional related entities, make this explicit in the method name using keywords like `include`, `with`, or `andRelations`.
-
-```typescript
-// Good - Clear indication of included relations
-class EventTypeRepository {
-  findById(id: string) {
-    return prisma.eventType.findUnique({
-      where: { id },
-    });
-  }
-
-  findByIdIncludeHosts(id: string) {
-    return prisma.eventType.findUnique({
-      where: { id },
-      include: { hosts: true },
-    });
-  }
-
-  findByIdIncludeHostsAndSchedule(id: string) {
-    return prisma.eventType.findUnique({
-      where: { id },
-      include: { hosts: true, schedule: true },
-    });
-  }
-}
-
-// Bad - Unclear what data is included
-class EventTypeRepository {
-  findById(id: string) {
-    return prisma.eventType.findUnique({
-      where: { id },
-      include: { hosts: true, schedule: true },
-    });
-  }
-
-  findByIdForReporting(id: string) {
-    return prisma.eventType.findUnique({
-      where: { id },
-      include: { hosts: true },
-    });
-  }
+// Bad - redundant entity name
+class WebhookRepository {
+  findWebhookById(id: string) { ... }
+  createWebhook(data: NewWebhook) { ... }
 }
 ```
 
-### Rule 3: Keep methods generic and reusable - avoid use-case-specific names
+### Rule 2: Name what extra data a method returns
 
-Repository methods should be general-purpose and describe what data they return, not how or where it's used. This promotes code reuse across different features.
+When a method joins related tables or returns more than the base columns, say so with `With...`.
 
 ```typescript
-// Good - Generic, reusable methods
-class BookingRepository {
-  findByUserIdIncludeAttendees(userId: string) {
-    return prisma.booking.findMany({
-      where: { userId },
-      include: { attendees: true },
-    });
-  }
+// Good - from EventTypeRepository
+findManyByUserIdWithDetails(userId: number, { visibleOnly = false } = {}) { ... }
 
-  findByDateRangeIncludeEventType(startDate: Date, endDate: Date) {
-    return prisma.booking.findMany({
-      where: {
-        startTime: { gte: startDate },
-        endTime: { lte: endDate },
-      },
-      include: { eventType: true },
-    });
-  }
+// Bad - the name hides that hosts and schedules are joined in
+findManyByUserId(userId: number) { ... } // ...but returns hosts, schedule and links too
+```
+
+### Rule 3: Keep methods generic, not tied to one screen
+
+Name a method after the data it returns, not the caller that uses it.
+
+```typescript
+// Good - reusable descriptions of the data
+class BookingRepository {
+  findByUid(uid: string) { ... }
+  findSeries(recurringEventId: string) { ... }
+  findLastBookedAt(eventTypeId: number, userIds: number[]) { ... }
 }
 
-// Bad - Use-case-specific method names
+// Bad - use-case names
 class BookingRepository {
-  findBookingsForReporting(userId: string) {
-    return prisma.booking.findMany({
-      where: { userId },
-      include: { attendees: true },
-    });
-  }
-
-  findBookingsForDashboard(startDate: Date, endDate: Date) {
-    return prisma.booking.findMany({
-      where: {
-        startTime: { gte: startDate },
-        endTime: { lte: endDate },
-      },
-      include: { eventType: true },
-    });
-  }
+  findBookingsForBookingsPage(userId: number) { ... }
+  findBookingsForRoundRobin(eventTypeId: number) { ... }
 }
 ```
 
 ### Rule 4: No business logic in repositories
 
-Repositories should only handle data access. Business logic, validations, and complex transformations belong in the Service layer.
+Repositories only read and write. Ownership checks, status rules, emails and events belong in the
+Service.
 
 ```typescript
-// Good - Repository only handles data access
-class BookingRepository {
-  findByIdIncludeAttendees(id: string) {
-    return prisma.booking.findUnique({
-      where: { id },
-      include: { attendees: true },
-    });
-  }
-
-  updateStatus(id: string, status: BookingStatus) {
-    return prisma.booking.update({
-      where: { id },
-      data: { status },
-    });
-  }
+// Good - BookingActionsService decides; BookingRepository only reads
+private async hostBooking(hostId: number, uid: string) {
+  const found = await this.deps.bookingRepo.findByUid(uid);
+  if (!found || found.userId !== hostId) throw new AppError("booking_not_found", 404);
+  return found;
 }
 
-class BookingService {
-  async confirmBooking(bookingId: string) {
-    const booking = await this.bookingRepository.findByIdIncludeAttendees(bookingId);
-    
-    if (!booking) {
-      throw new Error("Booking not found");
-    }
-
-    if (booking.status !== "PENDING") {
-      throw new Error("Only pending bookings can be confirmed");
-    }
-
-    await this.emailService.sendConfirmationToAttendees(booking.attendees);
-    return this.bookingRepository.updateStatus(bookingId, "CONFIRMED");
-  }
-}
-
-// Bad - Business logic in repository
+// Bad - the repository enforcing who may act
 class BookingRepository {
-  async confirmBooking(bookingId: string) {
-    const booking = await prisma.booking.findUnique({
-      where: { id: bookingId },
-      include: { attendees: true },
-    });
-
-    if (!booking) {
-      throw new Error("Booking not found");
-    }
-
-    if (booking.status !== "PENDING") {
-      throw new Error("Only pending bookings can be confirmed");
-    }
-
-    await sendEmailToAttendees(booking.attendees);
-
-    return prisma.booking.update({
-      where: { id: bookingId },
-      data: { status: "CONFIRMED" },
-    });
+  async findByUidForHost(uid: string, hostId: number) {
+    const found = await this.findByUid(uid);
+    if (found?.userId !== hostId) throw new AppError("booking_not_found", 404);
+    return found;
   }
 }
 ```
 
+A repository method may encode a data-integrity guarantee the database must enforce in one
+statement (`BookingRepository.insertIfSlotFree` uses `conditionalInsert` so two bookers can't take
+the same slot). That is atomicity, not business policy: the service still decides when to call it.
+
 ### Summary
 
-- Method names should be concise: `findById` not `findBookingById`
-- Use `include`/`with` keywords when fetching relations: `findByIdIncludeHosts`
-- Keep methods generic and reusable: `findByUserIdIncludeAttendees` not `findBookingsForReporting`
-- No business logic in repositories - that belongs in Services
+- Concise names: `findById`, not `findWebhookById`
+- `With...` when a method returns related data: `findManyByUserIdWithDetails`
+- Describe the data, not the caller
+- No business rules in repositories
 
 Reference: [Cal.diy Engineering Blog](https://cal.com/blog/engineering-in-2026-and-beyond)

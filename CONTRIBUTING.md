@@ -104,21 +104,21 @@ To ensure consistency and make files easy to fuzzy-find, we follow the naming co
 ### Repository Files
 
 - Repository class files must include the `Repository` suffix.
-- If the repository is backed by a specific technology (e.g. Prisma), prefix the filename and class name with it.
 - File name must match the exported class exactly (PascalCase).
+- No technology prefix: Drizzle is the only data layer.
 
 **Pattern:**
 
-`Prisma<Entity>Repository.ts`
+`<Entity>Repository.ts`
 
 **Examples:**
 
 ```ts
-// File: PrismaAppRepository.ts
-export class PrismaAppRepository { ... }
+// File: apps/web/src/server/webhooks/WebhookRepository.ts
+export class WebhookRepository { ... }
 
-// File: PrismaMembershipRepository.ts
-export class PrismaMembershipRepository { ... }
+// File: apps/web/src/server/teams/TeamRepository.ts
+export class TeamRepository { ... }
 ```
 
 This avoids ambiguous filenames like app.ts and improves discoverability in editors.
@@ -127,7 +127,7 @@ This avoids ambiguous filenames like app.ts and improves discoverability in edit
 
 - Service class files must include the Service suffix.
 - File name should be in PascalCase, matching the exported class.
-- Keep naming specific — avoid generic names like AppService.ts.
+- Keep naming specific — avoid generic names like Service.ts or Utils.ts.
 
 **Pattern:**
 
@@ -136,45 +136,53 @@ This avoids ambiguous filenames like app.ts and improves discoverability in edit
 **Examples:**
 
 ```ts
-// File: MembershipService.ts
-export class MembershipService { ... }
+// File: apps/web/src/server/teams/TeamService.ts
+export class TeamService { ... }
 
-// File: HashedLinkService.ts
-export class HashedLinkService { ... }
+// File: apps/web/src/server/bookings/BookingActionsService.ts
+export class BookingActionsService { ... }
 ```
 
 **Note:**
 
-- New files must avoid dot-suffixes like .service.ts or .repository.ts; these will be migrated from the existing codebase progressively.
+- Files must avoid dot-suffixes like .service.ts or .repository.ts.
 - We still reserve suffixes such as .test.ts, .spec.ts, and .types.ts for their respective use cases.
 
 ## Developing
 
-[See README](https://github.com/calcom/cal.diy#development)
+[See README](https://github.com/calcom/cal.diy#getting-started). Architecture and conventions for the codebase are in [CLAUDE.md](./CLAUDE.md), [MIGRATION.md](./MIGRATION.md) and [agents/](./agents/README.md).
 
 ## Building
 
 You can build the project with:
 
 ```bash
-yarn build
+yarn build      # Node / Docker
+yarn build:cf   # Cloudflare Workers
 ```
 
-Please ensure that you can make a full production build before pushing code.
+Please ensure that you can make a full production build before pushing code. CI builds the Workers
+target on every pull request.
 
 ## Testing
 
-More info on how to add new tests coming soon.
+Unit tests (Vitest) live next to the code they test (`*.test.ts`); browser tests (Playwright) live
+in `apps/web/e2e/`.
 
 ### Running Tests
 
-[See README](https://github.com/calcom/cal.diy#e2e-testing)
+```bash
+yarn test   # unit tests
+yarn e2e    # browser tests, on a throwaway database with fake third-party servers
+```
+
+[See README](https://github.com/calcom/cal.diy#checks-and-tests) for more.
 
 #### Resolving Issues
 
 ##### E2E Test Browsers Not Installed
 
-Run `npx playwright install` to download test browsers and resolve the error below when running `yarn test-e2e`:
+Run `yarn workspace @calcom/web playwright install chromium` to download the test browser and resolve the error below when running `yarn e2e`:
 
 ```
 Executable doesn't exist at /Users/alice/Library/Caches/ms-playwright/chromium-1048/chrome-mac/Chromium.app/Contents/MacOS/Chromium
@@ -182,10 +190,12 @@ Executable doesn't exist at /Users/alice/Library/Caches/ms-playwright/chromium-1
 
 ## Linting
 
-To check the formatting of your code:
+To check your code with Biome:
 
 ```sh
-yarn lint
+yarn lint        # report problems
+yarn lint:fix    # fix and format what can be fixed safely
+yarn type-check
 ```
 
 If you get errors, be sure to fix them before committing.
@@ -211,5 +221,5 @@ Large PRs are difficult to review and more prone to errors. We strongly encourag
 - Be sure to [check the "Allow edits from maintainers" option](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/allowing-changes-to-a-pull-request-branch-created-from-a-fork) when creating your PR. (This option isn't available if you're [contributing from a fork belonging to an organization](https://github.com/orgs/community/discussions/5634))
 - If your PR refers to or fixes an issue, add `refs #XXX` or `fixes #XXX` to the PR description. Replace `XXX` with the respective issue number. See more about [linking a pull request to an issue](https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue).
 - Fill out the PR template accordingly.
-- Review the [App Contribution Guidelines](./packages/app-store/CONTRIBUTING.md) when building integrations.
+- Review the [app integration patterns](./agents/rules/patterns-app-integrations.md) when building integrations.
 - Lastly, make sure to keep your branches updated (e.g., click the `Update branch` button on the GitHub PR page).

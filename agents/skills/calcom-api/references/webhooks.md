@@ -1,5 +1,11 @@
 # Webhooks API Reference
 
+> **Cal.diy:** all five endpoints are served under `https://<your-cal-diy-host>/api/v2` (no
+> `cal-api-version` needed), for the key owner's webhooks. Triggers sent: `BOOKING_CREATED`,
+> `BOOKING_REQUESTED`, `BOOKING_RESCHEDULED`, `BOOKING_CANCELLED`, `BOOKING_REJECTED`,
+> `BOOKING_NO_SHOW_UPDATED`; other triggers in this file are Cal.com-only. Payloads are signed with
+> `X-Cal-Signature-256`; custom templates support `{{variable}}` only.
+
 Detailed documentation for webhook management endpoints in the Cal.diy API v2.
 
 ## Endpoints Overview

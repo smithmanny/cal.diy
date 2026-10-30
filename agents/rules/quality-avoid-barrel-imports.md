@@ -9,27 +9,26 @@ tags: imports, performance, bundling
 
 **Impact: MEDIUM (Improves tree-shaking and reduces bundle size)**
 
-Barrel files (index.ts that re-export from multiple modules) can hurt tree-shaking and increase bundle sizes. Import directly from source files instead.
+Barrel files (an `index.ts` that re-exports many modules) hurt tree-shaking, slow down Vite, and can
+drag server-only code into the client bundle. Import directly from the source file.
 
 **Incorrect (importing from barrel files):**
 
 ```typescript
-// Importing from index.ts barrel files
-import { BookingService, UserService } from "./services";
-
-// Importing from @calcom/ui barrel
-import { Button } from "@calcom/ui";
+import { BookingService, WebhookService } from "~/server";
+import { Button, Input } from "@coss/ui";
 ```
 
 **Correct (importing directly from source):**
 
 ```typescript
-// Import directly from source files
-import { BookingService } from "./services/BookingService";
-import { UserService } from "./services/UserService";
-
-// Import directly from component path
-import { Button } from "@calcom/ui/components/button";
+import { getBookingService } from "~/server/bookings/container";
+import { getWebhookService } from "~/server/webhooks/container";
+import { Button } from "@coss/ui/components/button";
+import { Input } from "@coss/ui/components/input";
 ```
+
+Don't add new `index.ts` re-export files. Route folders may have `index.tsx` route files; those are
+routes, not barrels.
 
 Reference: [Cal.diy Engineering Standards](https://cal.com/blog/engineering-in-2026-and-beyond)

@@ -9,35 +9,38 @@ tags: ci, typescript, type-check, workflow
 
 ## Priority Order
 
-When working on the Cal.diy repository, prioritize fixing type issues before addressing failing tests.
+Fix type errors before failing tests.
 
-1. Run `yarn type-check:ci --force` first
+1. `yarn type-check` (runs `tsc --noEmit` in `@calcom/web`, `@calcom/db` and `@calcom/scheduling`)
 2. Fix all TypeScript errors
-3. Then run tests with `TZ=UTC yarn test`
+3. Then `yarn test`
 
 ## Why Type Check First
 
-Type errors are often the root cause of test failures. Fixing types first:
+Type errors are often the root cause of test failures. Fixing them first:
 - Eliminates cascading failures
-- Ensures code compiles correctly
-- Catches issues that tests might miss
+- Makes sure the code compiles for both runtimes
+- Catches issues tests might miss
 
 ## Comparing Branches
 
-Compare type check results between the main branch and your feature branch to confirm whether you've introduced new type errors:
+To confirm whether you introduced new type errors, compare with `main`:
 
 ```bash
 # On your branch
-yarn type-check:ci --force 2>&1 | tee /tmp/feature-types.log
+yarn type-check 2>&1 | tee /tmp/feature-types.log
 
 # On main
 git checkout main
-yarn type-check:ci --force 2>&1 | tee /tmp/main-types.log
+yarn type-check 2>&1 | tee /tmp/main-types.log
 
 # Compare
 diff /tmp/main-types.log /tmp/feature-types.log
 ```
 
-## Missing Enum Errors
+## Common Causes
 
-If you encounter errors related to missing enum values (like `CreationSource.WEBAPP`), running `yarn prisma generate` will typically resolve these issues by regenerating the TypeScript types from the schema.
+- **Stale route types**: errors about unknown routes in `createFileRoute("...")` or `Link to=...` mean `routeTree.gen.ts` is out of date; restart `yarn dev` to regenerate it
+- **Schema changes**: Drizzle types come straight from `packages/db/src/schema.ts`, so there is no generate step; a column error means the schema and the code disagree
+- **Workers bindings**: `Cloudflare.Env` is declared by hand in `apps/web/src/env.d.ts`; update it when you add a binding to `wrangler.jsonc`
+- **`#runtime`**: type checking resolves it to `server/runtime/node.ts`, so keep `cloudflare.ts` exporting the same names with compatible types

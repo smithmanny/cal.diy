@@ -1,50 +1,89 @@
 ---
 title: Key File Locations
 impact: LOW
-impactDescription: Quick reference for finding important files
-tags: reference, navigation, file-locations
+tags: reference, files, paths
 ---
 
 # Key File Locations
 
-## UI Components
+## Pages (TanStack Router file routes, `apps/web/src/routes/`)
 
-- Event types page: `apps/web/modules/event-types/views/event-types-listing-view.tsx`
-- Bookings page: `apps/web/modules/bookings/views/bookings-view.tsx`
-- Shared UI patterns (tabs, search bars, filter buttons) should maintain consistent alignment across views
+- Root route and request context: `routes/__root.tsx` (session from `server/auth/session.ts`)
+- Signed-in area: `routes/_authed.tsx` (sign-in redirect in `beforeLoad`) and `routes/_authed/**`
+- Event types: `routes/_authed/event-types/index.tsx`, `$eventTypeId.tsx` (editors in `components/event-types/`)
+- Bookings list: `routes/_authed/bookings/$status.tsx` (components in `components/bookings/`)
+- Availability: `routes/_authed/availability/`
+- Teams: `routes/_authed/teams/` (components in `components/teams/`)
+- Settings: `routes/_authed/settings/` (admin pages in `settings/admin/`, API keys and webhooks in `settings/developer/`)
+- Public booking pages: `routes/$username/`, `routes/team/$slug/`, `routes/d/` (private links), `routes/booking/$uid.tsx`
+- Auth pages: `routes/auth/`
+- Generated route tree: `src/routeTree.gen.ts` (never edit)
+
+## Server (`apps/web/src/server/`)
+
+- Domains: `server/<domain>/` with `*Repository.ts`, `*Service.ts`, `container.ts`, `functions.ts`, `types.ts`
+- Errors: `server/errors.ts` (`AppError`), `server/errorMiddleware.ts`
+- Server function middleware: `server/middleware.ts` (`authMiddleware`, `optionalUserId`), `server/admin/middleware.ts` (`adminMiddleware`)
+- Database handle: `server/db.ts` (`getDb`, from `#runtime`)
+- Runtime differences (Workers vs Node): `server/runtime/cloudflare.ts`, `server/runtime/node.ts`
+- Auth: `server/auth/createAuth.ts` (Better Auth with admin, two-factor, API key and organization plugins), `server/auth/organizations.ts` (teams), `server/auth/session.ts`
+- Booking side effects: `server/bookings/integrations.ts` (listeners), `server/bookings/events.ts`
+- Translations on the server: `server/catalog.ts`, `server/i18n.ts`
+
+## Public API v2
+
+- Routes: `apps/web/src/routes/api/v2/`
+- Shared plumbing (auth, envelope, errors, parsing): `apps/web/src/server/api-v2/http.ts`, `auth.ts`
+- Mappers between Cal's API shapes and the services: `apps/web/src/server/api-v2/*Mapper.ts`
+- Cal's OpenAPI spec (the app serves the subset in `MIGRATION.md`): `docs/api-reference/v2/openapi.json`
+
+## Other server routes
+
+- Better Auth: `routes/api/auth/$.ts`; OAuth provider: `routes/api/auth/oauth/`
+- App installs: `routes/api/integrations/$app/add.ts`, `callback.ts`; Stripe webhook: `routes/api/integrations/stripepayment/webhook.ts`
+- Health check: `routes/api/health.ts`
+
+## Apps and integrations
+
+- App catalog: `apps/web/src/lib/apps.ts`; logos in `apps/web/public/app-store/`
+- Calendars: `server/calendars/` (`google/`, `office365/`, `caldav/`); video: `server/video/`; Stripe: `server/payments/stripe/`
 
 ## Database
 
-- Schema: `packages/prisma/schema.prisma`
-- Migrations: `packages/prisma/migrations/`
+- Schema: `packages/db/src/schema.ts` (relations in `relations.ts`, enums in `enums.ts`)
+- Migrations: `packages/db/migrations/` (with `meta/`)
+- Drivers: `packages/db/src/drivers/d1.ts`, `libsql.ts`
+- D1 helpers: `packages/db/src/conditional-insert.ts`, `insert-chunks.ts`, `ids.ts`
 
-## API
+## Slots engine
 
-- tRPC routers: `packages/trpc/server/routers/`
-- API v2 controllers: `apps/api/v2/src/modules/*/controllers/*.controller.ts`
-- OpenAPI spec: `docs/api-reference/v2/openapi.json` (auto-generated, don't edit manually)
+- `packages/scheduling/src/` (`date-ranges.ts`, `slots.ts`, `available-slots.ts`, `limits.ts`, `recurring.ts`, `out-of-office.ts`)
 
-## Features
+## UI components
 
-- Workflow constants: `packages/features/ee/workflows/lib/constants.ts`
-- Round-robin/host prioritization: `packages/features/bookings/lib/getLuckyUser.ts`
-- Calendar cache: `packages/features/calendar-cache-sql`
-- DataTable guide: `packages/features/data-table/GUIDE.md`
+- Shared primitives: `packages/coss-ui/src/components/` (import as `@coss/ui/components/<name>`)
+- App components: `apps/web/src/components/`
 
 ## Translations
 
-- English: `packages/i18n/locales/en/common.json`
+- English: `packages/i18n/locales/en/common.json` (add new keys above `ADD_NEW_STRINGS_ABOVE_THIS_LINE_TO_PREVENT_MERGE_CONFLICTS`)
 
-## App Store
+## Tests
 
-- Generated files: `packages/app-store/*.generated.ts`
-- CLI tool: `packages/app-store-cli/`
+- Unit test database: `apps/web/src/test/testDb.ts`
+- E2E specs: `apps/web/e2e/*.spec.ts`; helpers and fakes: `apps/web/e2e/support/`
+- Playwright config: `apps/web/playwright.config.ts`
+
+## Configuration
+
+- Env examples: `apps/web/.env.example` (Node/Docker), `apps/web/.dev.vars.example` (Workers)
+- Cloudflare: `apps/web/wrangler.jsonc`; Vite: `apps/web/vite.config.ts`
+- Biome: `biome.json`; CI: `.github/workflows/ci.yml`
 
 ## File Naming Conventions
 
-- **Repository files**: `PrismaBookingRepository.ts` (PascalCase with Repository suffix)
-- **Service files**: `MembershipService.ts` (PascalCase with Service suffix)
-- **Components**: `BookingForm.tsx` (PascalCase)
+- **Repository files**: `WebhookRepository.ts` (PascalCase with `Repository` suffix)
+- **Service files**: `WebhookService.ts` (PascalCase with `Service` suffix)
+- **Components**: `TeamMembers.tsx` (PascalCase)
 - **Utilities**: `date-utils.ts` (kebab-case)
-- **Types**: `Booking.types.ts` (PascalCase with .types.ts suffix)
-- **Tests**: Same as source file + `.test.ts` or `.spec.ts`
+- **Tests**: same name as the source file + `.test.ts`; e2e specs are `<feature>.spec.ts`

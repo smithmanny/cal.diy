@@ -9,50 +9,46 @@ tags: performance, scheduling, algorithms, np-hard
 
 **Impact: HIGH**
 
-Scheduling problems are fundamentally NP-hard. This means that as the number of constraints, participants, or time slots grows, the computational complexity can explode exponentially. Most optimal scheduling algorithms have worst-case exponential time complexity, making algorithm choice absolutely critical.
+Scheduling problems are NP-hard in general. As participants, constraints and time slots grow,
+the work can explode. Choosing the algorithm carefully matters more here than almost anywhere else.
 
 **Real-world implications:**
-- Finding the optimal meeting time for 10 people across 3 time zones with individual availability constraints is computationally expensive
-- Adding conflict detection, buffers, and other options amplifies the problem
-- Poor algorithm choices that work fine for small teams become completely unusable for large organizations
-- What takes milliseconds for 5 users might take many seconds for organizations
+- Finding a time for every host of a collective event, across time zones, with buffers, limits, out of office and busy calendars, is expensive
+- Each extra option (seats, recurring series, booking limits, rolling windows) multiplies the work
+- Code that is fine for one host can be unusable for a 30-person round robin team
+- On Cloudflare Workers, every request has a CPU budget; a slow slots query fails instead of just being slow
 
-**Strategies for managing NP-hard complexity:**
+**Where this code lives:**
+- `packages/scheduling` (`@calcom/scheduling`): the slots engine (`date-ranges`, `slots`, `available-slots`, `limits`, `recurring`, `out-of-office`), pure functions with their own tests
+- `apps/web/src/server/bookings/BookingService.ts`: loads schedules, busy times and bookings, then calls the engine
+
+**Strategies:**
 
 ```typescript
-// Use approximation algorithms
-async function findMeetingTime(participants: User[], duration: number) {
-  // Find "good enough" solution quickly rather than perfect solution slowly
-  const approximateSlots = await findApproximateAvailability(participants, {
-    maxIterations: 1000,
-    timeout: 500, // ms
-  });
-  
-  return approximateSlots[0]; // Return first good-enough option
+// Sort once, then break early: subtract() in @calcom/scheduling/date-ranges sorts the busy ranges,
+// skips the ones that end before the current range and stops at the first one that starts after it
+const sortedExcludedRanges = [...excludedRanges].sort((a, b) => a.start.valueOf() - b.start.valueOf());
+for (const excludedRange of sortedExcludedRanges) {
+  if (excludedRange.start.valueOf() >= sourceEnd.valueOf()) break;
+  if (excludedRange.end.valueOf() <= currentStart.valueOf()) continue;
+  // ...
 }
 
-// Implement aggressive caching
-const cachedAvailability = new LRUCache<string, Availability>({
-  max: 10000,
-  ttl: 1000 * 60 * 5, // 5 minutes
-});
+// Bound the search: rolling windows look at most ROLLING_WINDOW_MAX_DAYS ahead
+// instead of scanning until enough days are found
 
-// Pre-compute common scenarios during off-peak hours
-async function precomputeTeamAvailability(teamId: number) {
-  // Run during low-traffic periods
-  const team = await teamRepository.findById(teamId);
-  const availability = await computeTeamAvailability(team);
-  await cache.set(`team:${teamId}:availability`, availability);
-}
+// One query for all hosts, returned as a Map for O(1) lookups
+const lastBooked = await this.deps.bookingRepo.findLastBookedAt(eventTypeId, hostIds);
 ```
 
 **Key strategies:**
-- Use approximation algorithms that find "good enough" solutions quickly
-- Implement aggressive caching of computed schedules and availability
-- Pre-compute common scenarios during off-peak hours
-- Break large scheduling problems into smaller, more manageable chunks
-- Set reasonable timeout limits and fallback to simpler algorithms when needed
+- Keep the date range bounded (the booker asks for a window; never compute "all future slots")
+- Merge and sort intervals once, then use linear passes, binary search or two pointers (see `performance-avoid-quadratic`)
+- Batch database reads across hosts instead of querying per host or per slot
+- Use `Map`/`Set` lookups keyed by user id or day instead of nested `.find`
+- Measure with many hosts and long windows in a unit test before shipping a change to the engine
 
-This is why performance isn't just a nice-to-have in scheduling software. It's the foundation that determines whether your system can scale to enterprise needs.
+This is why performance isn't a nice-to-have in scheduling software: it decides whether the
+booking page works for large teams at all.
 
 Reference: [Cal.diy Engineering Blog](https://cal.com/blog/engineering-in-2026-and-beyond)

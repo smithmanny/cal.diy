@@ -9,45 +9,47 @@ tags: performance, dates, dayjs
 
 **Impact: HIGH (Significant performance improvement in date-heavy operations)**
 
-Day.js with the `@calcom/dayjs` wrapper is heavy because it pre-loads all plugins including locale handling. Use alternatives when strict timezone awareness isn't required.
+`@calcom/dayjs` (`packages/dayjs`) loads every plugin, including time zones and locales, and its
+time-zone operations are slow. Use it where you need strict time-zone math (the slots engine in
+`packages/scheduling`, availability), and native `Date` / `Intl` everywhere else.
 
-**Incorrect (using Day.js unnecessarily):**
+**Incorrect (Day.js where it isn't needed):**
 
 ```typescript
-// Slow in performance-critical code (loops)
+// Slow in loops
 dates.map((date) => dayjs(date).add(1, "day").format());
 
-// Using Dayjs for simple date operations
-const startOfMonth = dayjs().startOf("month");
+// Day.js for a simple comparison
+if (dayjs(booking.endTime).isBefore(dayjs())) { ... }
 ```
 
-**Correct (using performant alternatives):**
+**Correct (cheaper alternatives):**
 
 ```typescript
-// Use .utc() for better performance when timezone doesn't matter
+// UTC mode when the time zone doesn't matter
 dates.map((date) => dayjs.utc(date).add(1, "day").format());
 
-// Use native Date when possible
-dates.map((date) => new Date(date.valueOf() + 24 * 60 * 60 * 1000));
+// Native Date and millisecond comparisons
+dates.map((date) => new Date(date.getTime() + 24 * 60 * 60 * 1000));
+if (found.endTime <= new Date()) throw new AppError("booking_has_ended", 409);
 
-// Use date-fns for simple operations
-import { startOfMonth, endOfDay } from "date-fns";
-const monthStart = startOfMonth(dateObj);
-const dayEnd = endOfDay(dateObj);
-
-// For browser locale, use Intl with i18n
-const { i18n: { language } } = useLocale();
-new Intl.DateTimeFormat(language).format(date);
+// Intl for display, with the locale from the route context
+const dateFormat = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: "UTC" });
 ```
 
+Dates from the database are already `Date` objects (columns are `timestamp_ms`), so compare them
+with `<`, `<=` or `.getTime()`.
+
+`date-fns` is not a dependency of this repo; ask before adding it (see `CLAUDE.md`, "Ask first").
+
 **When to use Day.js:**
-- When you need strict timezone awareness (e.g., in the Booker)
-- When working with complex timezone conversions
-- When the performance impact is negligible (non-loop operations)
+- Strict time-zone awareness (slots, availability, the booker)
+- Complex time-zone conversions
+- One-off operations where the cost doesn't matter
 
 **When to avoid Day.js:**
-- Simple date arithmetic
-- Date formatting without timezone concerns
-- Performance-critical loops over dates
+- Simple date arithmetic and comparisons
+- Formatting without time-zone conversion
+- Hot loops over dates
 
 Reference: [Cal.diy Engineering Standards](https://cal.com/blog/engineering-in-2026-and-beyond)

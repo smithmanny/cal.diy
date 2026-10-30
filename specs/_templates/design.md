@@ -16,15 +16,19 @@
 
 ### Database Changes
 
-{Schema changes, new tables, migrations}
+{Changes to packages/db/src/schema.ts, the migration from `yarn db:generate`, and how it stays within the D1 rules in MIGRATION.md}
+
+### Server Changes
+
+{Repositories, services and server functions in apps/web/src/server/<domain>/; permission checks}
 
 ### API Changes
 
-{New endpoints, tRPC routers, request/response shapes}
+{API v2 routes under apps/web/src/routes/api/v2/ and their request/response shapes, if any}
 
 ### UI Changes
 
-{Components, pages, user flows}
+{Routes in apps/web/src/routes/, components in apps/web/src/components/, translation keys}
 
 ## Edge Cases
 

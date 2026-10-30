@@ -1,6 +1,13 @@
 # Cancellation Reason Requirement Implementation
 
-## Status: complete
+> **Historical.** This spec describes a feature built in Cal's old Next.js + Prisma + tRPC app.
+> The current app (TanStack Start + Drizzle) has not ported it: the `requiresCancellationReason`
+> column and the `CancellationReasonRequirement` enum still exist in the schema (kept for data
+> imported from Cal), but nothing reads them, and cancellation reasons are optional for everyone.
+> The file references below are to the old code; see "Where this maps today" in `CLAUDE.md` for the
+> current equivalents.
+
+## Status: historical (complete in the old app; not ported)
 
 ## Completed
 

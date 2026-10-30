@@ -16,6 +16,8 @@ Rules are organized by section prefix, as defined in `_sections.md`:
 | `testing-` | Testing | MEDIUM-HIGH |
 | `patterns-` | Design Patterns | MEDIUM |
 | `culture-` | Team Culture | MEDIUM |
+| `ci-` | CI/CD | HIGH |
+| `reference-` | Reference | LOW |
 
 ## Files
 
@@ -23,12 +25,16 @@ Rules are organized by section prefix, as defined in `_sections.md`:
 - `_template.md` - Template for creating new rules
 - `{section}-{rule-name}.md` - Individual rule files
 
+The full list, with one line per rule, is in [`../README.md`](../README.md).
+
 ## Rule Format
 
 Each rule file follows a consistent format with YAML frontmatter:
 
 ```markdown
 ---
+paths:            # optional: globs of the files this rule is about
+  - "apps/web/src/routes/**"
 title: Rule Title Here
 impact: CRITICAL | HIGH | MEDIUM | LOW
 impactDescription: Optional description (e.g., "20-50% improvement")
@@ -59,8 +65,9 @@ Reference: [Link](url)
 1. Copy `_template.md` to a new file with the appropriate section prefix
 2. Fill in the frontmatter (title, impact, tags)
 3. Write a clear explanation of the rule
-4. Provide incorrect and correct code examples
+4. Provide incorrect and correct code examples, taken from the real code where possible
 5. Add a reference link if applicable
+6. Add the rule to the index in [`../README.md`](../README.md)
 
 ## Usage
 

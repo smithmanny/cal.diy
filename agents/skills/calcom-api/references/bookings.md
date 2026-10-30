@@ -1,5 +1,11 @@
 # Bookings API Reference
 
+> **Cal.diy:** served under `https://<your-cal-diy-host>/api/v2` with `cal-api-version: 2024-08-13`:
+> list, create (single, recurring, seated), get, cancel, reschedule, confirm, decline, update location,
+> mark absent (attendees only; `host: true` answers 400) and `POST /bookings/{uid}/guests`.
+> Not served: reassign and references. Listing needs an API key; confirm, decline, location,
+> mark-absent and guests need the host's key.
+
 Detailed documentation for booking-related endpoints in the Cal.diy API v2.
 
 ## Endpoints Overview

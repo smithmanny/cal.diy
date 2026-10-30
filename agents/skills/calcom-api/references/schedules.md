@@ -1,5 +1,9 @@
 # Schedules API Reference
 
+> **Cal.diy:** the six endpoints in the overview are served under `https://<your-cal-diy-host>/api/v2`
+> with `cal-api-version: 2024-06-11`, for the key owner's own schedules. The organization and team
+> schedule endpoints are not served.
+
 Detailed documentation for schedule management endpoints in the Cal.diy API v2.
 
 ## Endpoints Overview

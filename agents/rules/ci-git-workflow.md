@@ -9,29 +9,30 @@ tags: git, ci, workflow
 
 ## Push Before Checking CI
 
-Always push committed changes to the remote repository before waiting for or checking CI status.
-
-Waiting for CI checks on unpushed local commits is backwards - the CI runs on the remote repository state, not local commits.
+Push committed changes before waiting for or checking CI. CI runs on the remote branch, not your
+local commits.
 
 **Proper sequence:**
 1. Commit locally
-2. Run local checks (`yarn type-check:ci --force`, `yarn biome check --write .`)
+2. Run local checks: `yarn type-check`, `yarn lint:fix`, relevant tests
 3. Push to remote
 4. Monitor CI status
 
+A pre-commit hook (husky + lint-staged) runs Biome lint on staged files; fix what it reports rather
+than skipping it.
+
 ## Branch Operations
 
-When asked to move changes to a different branch, use git commands to commit existing changes to the specified branch rather than redoing the work. This is more efficient and prevents duplication of effort.
+When asked to move changes to a different branch, commit the existing changes to that branch with
+git rather than redoing the work.
 
 ## Never Force Push
 
-**Never force push to main or production branches** - under any circumstances.
+**Never force push to main or shared branches**, and don't rebase branches other people work on.
 
-## Working with tRPC Changes
+## After Pulling Changes
 
-When making changes that affect tRPC components or after pulling updates that modify tRPC-related files:
-
-1. First run `yarn prisma generate` to ensure all database types are up-to-date
-2. Then run `cd packages/trpc && yarn build` to rebuild the tRPC package
-
-This sequence ensures that type definitions are properly generated before building.
+1. `yarn install` if `yarn.lock` changed
+2. Migrations apply themselves when `yarn dev` starts; for `yarn dev:cf`, run `yarn db:migrate:d1:local`
+3. Restart `yarn dev` if TanStack Router reports unknown routes; it regenerates `apps/web/src/routeTree.gen.ts`
+4. `yarn type-check` before you start changing code

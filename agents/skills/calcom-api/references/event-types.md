@@ -1,5 +1,9 @@
 # Event Types API Reference
 
+> **Cal.diy:** all five endpoints are served under `https://<your-cal-diy-host>/api/v2` with
+> `cal-api-version: 2024-06-14`. `GET /event-types?username=<user>[&eventSlug=<slug>]` works without a
+> key. Input accepts the settings Cal.diy has and rejects unknown fields (e.g. `price`) with a 400.
+
 Detailed documentation for event type endpoints in the Cal.diy API v2.
 
 ## Endpoints Overview

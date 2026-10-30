@@ -11,6 +11,13 @@ metadata:
 
 Comprehensive performance optimization guide for React and Next.js applications, maintained by Vercel. Contains 45 rules across 8 categories, prioritized by impact to guide automated refactoring and code generation.
 
+> **In Cal.diy:** the app is TanStack Start (React 19 + Vite), not Next.js. The React rules apply as
+> written; the Next.js-specific ones don't: for work after the response (`server-after-nonblocking`)
+> use `runInBackground` from `#runtime` (see `agents/rules/patterns-background-work.md`), and for
+> barrel imports (`bundle-barrel-imports`) import files directly rather than relying on
+> `optimizePackageImports`. Server-side data loading happens in route loaders and server functions,
+> not React Server Components.
+
 ## When to Apply
 
 Reference these guidelines when:

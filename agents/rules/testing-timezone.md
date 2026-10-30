@@ -1,37 +1,49 @@
 ---
 title: Timezone Handling in Tests
-impact: HIGH
-impactDescription: Timezone bugs are hard to reproduce without consistent test environments
-tags: testing, timezone, consistency
+impact: MEDIUM
+impactDescription: Prevents flaky date assertions across machines
+tags: testing, timezone, dates
 ---
 
 # Timezone Handling in Tests
 
 ## Always Use TZ=UTC
 
-When running tests in the Cal.diy repository, use the `TZ=UTC` environment variable:
+Unit tests must run with `TZ=UTC`. The root `yarn test` sets it for every workspace, and
+`packages/scheduling` sets it in its own `test` script. When you run Vitest directly, set it yourself:
 
 ```bash
-TZ=UTC yarn test
+# All unit tests (sets TZ=UTC)
+yarn test
+
+# One workspace or one file
+TZ=UTC yarn workspace @calcom/web test
+TZ=UTC yarn workspace @calcom/web vitest run src/server/schedules/ScheduleService.test.ts
 ```
 
-This ensures consistent timezone handling and prevents timezone-related test failures that might occur when tests are run in different environments or by different developers with varying local timezone settings.
+This keeps time-zone handling the same on every machine and in CI.
 
 ## Why This Matters
 
-- Tests may pass locally but fail in CI (or vice versa)
+- Tests may pass locally but fail in CI (or the other way round)
 - Date/time assertions become unpredictable
-- Debugging timezone issues is time-consuming
+- Debugging time-zone issues is slow
 
-## Test Commands
+## Writing Date Tests
+
+- Build instants explicitly: `new Date("2025-03-30T01:00:00Z")`, not `new Date(2025, 2, 30)`
+- Test DST transitions in a real zone (`Europe/London`, `America/New_York`) through the code's own time-zone parameter, not through the machine's zone
+- Pass `now` into services (`now?: () => Date`) instead of depending on the current time
+
+## E2E
 
 ```bash
-# Unit tests
-TZ=UTC yarn test
+yarn e2e
+```
 
-# Specific test file
-TZ=UTC yarn vitest run path/to/file.test.ts
+The browser uses the machine's time zone unless the spec sets one. Specs that check times pin it on
+the context, as `advanced-options.spec.ts` does:
 
-# E2E tests (already configured in yarn e2e)
-PLAYWRIGHT_HEADLESS=1 yarn e2e
+```typescript
+const guest = await (await newClientContext(browser, { timezoneId: "UTC" })).newPage();
 ```

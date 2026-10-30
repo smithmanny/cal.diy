@@ -1,7 +1,7 @@
 ---
 title: Incremental Test Fixing
 impact: MEDIUM
-impactDescription: Methodical approach prevents getting overwhelmed by test failures
+impactDescription: Fixing one file at a time keeps failures understandable
 tags: testing, debugging, workflow
 ---
 
@@ -9,19 +9,25 @@ tags: testing, debugging, workflow
 
 ## One File at a Time
 
-When fixing failing tests in the Cal.diy repository, take an incremental approach by addressing one file at a time rather than attempting to fix all issues simultaneously.
-
-This methodical approach makes it easier to identify and resolve specific issues without getting overwhelmed by the complexity of multiple failing tests across different files.
+When fixing failing tests, address one file at a time rather than everything at once. It makes
+each failure easier to understand and fix.
 
 ## Recommended Order
 
-1. Run `yarn type-check:ci --force` to identify TypeScript type errors
-2. Run `yarn test` to identify failing unit tests
-3. Address both type errors and failing tests before considering the task complete
-4. Type errors often need to be fixed first as they may be causing the test failures
+1. `yarn type-check` to find TypeScript errors
+2. `yarn test` to find failing unit tests
+3. Fix type errors first; they are often the cause of the test failures
+4. Then fix and re-run one test file at a time:
+
+```bash
+TZ=UTC yarn workspace @calcom/web vitest run src/server/bookings/BookingService.test.ts
+TZ=UTC yarn workspace @calcom/web vitest run src/server/bookings/BookingService.test.ts -t "round robin"
+```
+
+5. Run the full `yarn test` again before you finish
 
 ## Focus Strategy
 
-- Focus on getting each file's tests passing completely before moving on to the next file
-- Fix type errors before test failures - they're often the root cause
-- Run `yarn prisma generate` if you see missing enum/type errors
+- Get each file passing completely before moving to the next
+- If a test fails on a missing column or table, check that a migration exists for the schema change (`yarn db:generate`): unit tests build their databases from `packages/db/migrations`
+- For e2e failures, run the single spec (`yarn e2e booking.spec.ts`) and open the trace in `apps/web/test-results`

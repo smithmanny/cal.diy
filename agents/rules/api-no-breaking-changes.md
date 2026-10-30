@@ -9,52 +9,43 @@ tags: api, stability, versioning, backwards-compatibility
 
 **Impact: CRITICAL**
 
-Once an API endpoint is public, it must remain stable. Breaking changes destroy developer trust and create integration nightmares for our users.
+API v2 (`apps/web/src/routes/api/v2/`) serves Cal's public API on Cal's paths and request/response
+shapes, so integrations written against Cal keep working. Once an endpoint is public, its shape must
+stay stable.
 
 **Strategies for avoiding breaking changes:**
-- Always add new fields as optional
-- Use API versioning when you must change existing behavior
-- Deprecate old endpoints gracefully with clear migration paths
-- Maintain backward compatibility for at least two major versions
+- Add new response fields as optional; never rename or remove existing ones
+- Keep accepting the request fields Cal accepts; reject unknown fields with a 400 rather than silently changing meaning
+- Keep Cal's envelope (`{ status: "success", data }`, `pagination` on lists) and error shape (`{ status: "error", timestamp, path, error: { code, message } }`) from `apps/web/src/server/api-v2/http.ts`
+- Keep the `cal-api-version` an endpoint requires; a new shape needs a new version, not a changed old one
 
 **Incorrect (breaking change):**
 
 ```typescript
-// v1 - Original response
-interface BookingResponse {
-  id: number;
-  startTime: string; // ISO string
-}
-
-// v1 - Breaking change: renamed field
-interface BookingResponse {
-  id: number;
-  start: string; // Renamed from startTime - BREAKS CLIENTS
+// apps/web/src/server/api-v2/bookingMapper.ts
+function toBookingOutput(row: ApiBookingRow) {
+  return {
+    id: row.id,
+    startTime: row.startTime.toISOString(), // Renamed from Cal's "start" - BREAKS CLIENTS
+  };
 }
 ```
 
 **Correct (non-breaking evolution):**
 
 ```typescript
-// v1 - Original response
-interface BookingResponse {
-  id: number;
-  startTime: string;
-}
-
-// v1 - Non-breaking: add new field, keep old one
-interface BookingResponse {
-  id: number;
-  startTime: string; // Keep for backwards compatibility
-  start: string; // New preferred field
+function toBookingOutput(row: ApiBookingRow) {
+  return {
+    id: row.id,
+    start: row.startTime.toISOString(), // Cal's field name, kept for existing clients
+    ...(row.iCalUID ? { icsUid: row.iCalUID } : {}), // Added later, and optional
+  };
 }
 ```
 
 **When you must make breaking changes:**
-- Create a new API version using date-specific versioning in API v2
-- Run both versions simultaneously during transition
-- Provide automated migration tools when possible
-- Give users ample time to migrate (minimum 6 months for public APIs)
-- Document exactly what changed and why
+- Serve the new shape under a new `cal-api-version` date, and keep the old version working
+- Run both versions side by side during the transition
+- Document exactly what changed and why in the PR and in `MIGRATION.md` (API v2 section)
 
 Reference: [Cal.diy Engineering Blog](https://cal.com/blog/engineering-in-2026-and-beyond)

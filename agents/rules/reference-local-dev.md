@@ -1,73 +1,78 @@
 ---
 title: Local Development Setup
 impact: LOW
-impactDescription: Reference guide for local development environment
-tags: reference, development, setup
+tags: reference, setup, local-dev
 ---
 
 # Local Development Setup
 
 ## Initial Setup
 
-```bash
-# Install dependencies
-yarn
+Needs Node.js 22+ and Yarn (`corepack enable` once).
 
-# Set up environment
-cp .env.example .env
+```bash
+yarn install
+cp apps/web/.env.example apps/web/.env
 ```
 
 ## Environment Variables
 
-Generate required secrets:
+Generate the required secrets and put them in `apps/web/.env`:
 
 ```bash
-# NEXTAUTH_SECRET
+# BETTER_AUTH_SECRET
 openssl rand -base64 32
 
-# CALENDSO_ENCRYPTION_KEY (must be 32 characters for AES256)
+# CALENDSO_ENCRYPTION_KEY (32 characters, for AES-256; encrypts app credentials and signs OAuth tokens)
 openssl rand -base64 24
 ```
 
-Configure in `.env`:
-- `DATABASE_URL` - PostgreSQL connection string
-- `DATABASE_DIRECT_URL` - Same as DATABASE_URL
+Everything else is optional; the comments in `.env.example` say what each integration needs.
+`DATABASE_URL` defaults to `file:./data/cal.db` (relative to `apps/web`). Without email settings
+(`EMAIL_FROM` plus `RESEND_API_KEY` or `EMAIL_SERVER_*`) no emails are sent.
 
-## Database Setup
+## Running
 
 ```bash
-# Development
-yarn workspace @calcom/prisma db-migrate
+# Node + local SQLite file on http://localhost:3000; migrations run on boot
+yarn dev
 
-# Production
-yarn workspace @calcom/prisma db-deploy
+# Cloudflare Workers runtime (Miniflare + local D1); reads apps/web/.dev.vars
+cp apps/web/.dev.vars.example apps/web/.dev.vars
+yarn db:migrate:d1:local
+yarn dev:cf
 ```
 
-## Test Users
+## Users
 
-When setting up local development database, it creates test users. The passwords are the same as the username:
-- `free:free`
-- `pro:pro`
+There are no seeded test users. Sign up at `/auth/signup`; the first account on an empty database
+becomes the instance admin. To promote another account:
+
+```sql
+UPDATE users SET role = 'ADMIN' WHERE email = 'you@example.com';
+```
+
+In production builds an admin must turn on two-factor authentication before the admin pages work.
+
+## Database
+
+```bash
+yarn db:generate                          # write a migration after editing packages/db/src/schema.ts
+yarn workspace @calcom/db db:studio       # browse the database with Drizzle Studio
+sqlite3 apps/web/data/cal.db              # or open the SQLite file directly
+```
+
+To start over locally, stop the server and delete `apps/web/data/cal.db`.
+
+## Importing an existing Cal install
+
+```bash
+yarn import:postgres --from "postgresql://user:pass@host:5432/calendso" --to file:./data/cal.db
+```
+
+See `MIGRATION.md` ("Migrating from an existing Cal install") for the D1 variant and what comes across.
 
 ## Logging
 
-Control logging verbosity by setting `NEXT_PUBLIC_LOGGER_LEVEL` in .env:
-- 0: silly
-- 1: trace
-- 2: debug
-- 3: info
-- 4: warn
-- 5: error
-- 6: fatal
-
-## API v2 Imports
-
-If you need to import from `@calcom/features` or `@calcom/trpc` into `apps/api/v2`, use the platform-libraries package instead:
-
-```typescript
-// ✅ Good
-import { SomeService } from "@calcom/platform-libraries";
-
-// ❌ Bad - Will cause module resolution errors
-import { SomeService } from "@calcom/features/...";
-```
+There is no log-level setting: the server logs with `console.error` / `console.warn`. On Node the
+output is in the terminal running `yarn dev`; on Workers, in `wrangler tail` or the dashboard.
