@@ -12,11 +12,13 @@ import {
   eventType,
   hashedLink,
   host,
+  membership,
   outOfOfficeEntry,
   outOfOfficeReason,
   schedule,
   secondaryEmail,
   selectedCalendar,
+  team,
   travelSchedule,
   twoFactor,
   user,
@@ -27,6 +29,7 @@ import {
 import type { ImportStep } from "./importer";
 import {
   mapApiKey,
+  mapEventType,
   mapNextAuthAccount,
   mapUser,
   mapUserPassword,
@@ -34,8 +37,8 @@ import {
   twoFactorFromUser,
 } from "./mappers";
 
-// Teams and organizations aren't part of the new app yet, so anything owned by a team is left out
-// and references to them (users.organizationId, profiles, memberships) are cleared on the way in.
+// Teams, their members and event types come over; what a team owns that the new app has no team
+// feature for (installed apps, webhooks, verified emails) is left out.
 const TEAM_OWNED = ["teamId"];
 
 /** What gets imported, in an order where every row's references are already in place. */
@@ -44,7 +47,9 @@ export function importPlan(crypto: TwoFactorCrypto): ImportStep[] {
     // App rows hold the app keys an admin configured (e.g. Google's client id) and are what
     // Credential.appId points at.
     { source: "App", target: app },
+    { source: "Team", target: team },
     { source: "users", target: user, map: mapUser },
+    { source: "Membership", target: membership },
     { source: "Account", target: account, map: mapNextAuthAccount },
     { source: "UserPassword", target: account, map: mapUserPassword },
     {
@@ -54,7 +59,7 @@ export function importPlan(crypto: TwoFactorCrypto): ImportStep[] {
     },
     { source: "Schedule", target: schedule },
     { source: "Credential", target: credential, skipWhenSet: TEAM_OWNED },
-    { source: "EventType", target: eventType, skipWhenSet: TEAM_OWNED },
+    { source: "EventType", target: eventType, map: mapEventType },
     { source: "DestinationCalendar", target: destinationCalendar },
     { source: "SelectedCalendar", target: selectedCalendar },
     { source: "Availability", target: availability },

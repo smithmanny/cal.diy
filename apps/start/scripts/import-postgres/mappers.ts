@@ -1,4 +1,4 @@
-import { user } from "@calcom/db/schema";
+import { eventType, user } from "@calcom/db/schema";
 import { convertRow, parsePostgresDate, type SourceRow, type TargetRow } from "./convert";
 
 // Tables whose shape changed with Better Auth, mapped by hand. Everything else in the import plan
@@ -42,8 +42,21 @@ async function remainingBackupCodes(encrypted: unknown, crypto: TwoFactorCrypto)
 }
 
 /** The 2FA secret and backup codes move to the TwoFactor table (see twoFactorFromUser). */
+/**
+ * The new app has no organization-scoped usernames, so organization members keep their username
+ * as an ordinary one (organizations still come over as teams with their members).
+ */
 export function mapUser(row: SourceRow): TargetRow {
-  return { ...convertRow(user, row), twoFactorSecret: null, backupCodes: null };
+  return { ...convertRow(user, row), twoFactorSecret: null, backupCodes: null, organizationId: null };
+}
+
+/**
+ * Managed event types aren't supported: the team's template is left out, and each member's copy
+ * (whose parent then wasn't imported) becomes their own event type.
+ */
+export function mapEventType(row: SourceRow): TargetRow | null {
+  if (row.schedulingType === "managed" || row.schedulingType === "MANAGED") return null;
+  return convertRow(eventType, row);
 }
 
 /** A NextAuth OAuth account (Google, SAML) in Better Auth's shape. `expires_at` is in seconds. */

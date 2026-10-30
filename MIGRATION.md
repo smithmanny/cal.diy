@@ -95,8 +95,13 @@ trusted client-IP header) sits behind the `#runtime` alias in `apps/start/src/se
 - [x] Public pages `/$username` and `/$username/$slug`, booking with a slot that can't be double-booked,
       reschedule and cancel from `/booking/$uid`
 - [x] Bookings list (upcoming, unconfirmed, past, cancelled) with confirm, reject and cancel
-- [ ] Teams, organizations, seats, round robin, recurring events, payments, per-period booking
-      and duration limits
+- [x] Seats, recurring events, per-period booking and duration limits, private links, dynamic
+      group links, booker layouts, embeds
+- [x] Booking actions: no-shows, bookings list filters, add guests, change location, request a
+      reschedule, booking history (Cal's AuditActor/BookingAudit format)
+- [x] Teams and organizations (see below): collective and round robin team event types, out of
+      office forwarding to a teammate
+- [ ] Payments (Stripe)
 
 ### Phase 4: integrations, webhooks, emails ✅ (MVP set)
 - [x] Google Calendar: OAuth connect, busy times from selected calendars, events created, moved and
@@ -169,6 +174,26 @@ for calendar credentials and OAuth tokens). See `apps/start/.env.example` (Node/
 
 Cloudflare note: Better Auth hashes passwords with scrypt, which takes more CPU than the Workers
 free plan allows per request (10 ms), so sign-up and login need the paid plan.
+
+## Teams and organizations
+
+Teams run on Better Auth's organization plugin (`apps/start/src/server/auth/organizations.ts`),
+mapped onto Cal's own tables so existing data stays readable:
+
+- Every Cal `Team` is a Better Auth organization. An organization is a team with `isOrganization`;
+  the teams inside it point at it with `parentId`, as in Cal.
+- `Membership` holds the members, with Cal's `OWNER`/`ADMIN`/`MEMBER` roles and Better Auth's default
+  permissions for each. Owners and admins edit the team and invite people; only owners delete it.
+- Invitations are in a new `TeamInvitation` table and are emailed. Accepting one needs a verified
+  email: invitation ids are serial numbers, so the email is what proves the invite is yours.
+- Team event types are collective (all hosts must be free and all attend; the first organizes) or
+  round robin (any host free at that time; the one booked least recently for that event type takes
+  it, and "fixed" hosts always attend). Hosts are Cal's `Host` rows, or everyone on the team with
+  "Assign all team members". They're booked at `/team/<slug>/<type>`, and listed on `/team/<slug>`.
+- Out of office entries can name a teammate; the booking page then offers their page instead.
+
+Not ported: managed event types, routing forms, org subdomains and org-scoped usernames, team
+billing, SCIM/directory sync.
 
 ## API v2
 
@@ -294,10 +319,10 @@ What comes across, with ids unchanged:
 What doesn't:
 
 - Sessions: everyone signs in again.
-- Teams and organizations, and everything they own (team event types, team webhooks, credentials
-  and API keys), until they land in the new app. References to them are cleared: an organization
-  member becomes a regular user, a booking of a team event type keeps its host and attendees, and
-  a managed event type's per-user copies become ordinary event types.
+- What teams own that the new app has no team feature for: team-installed apps, team webhooks,
+  team API keys. Teams, organizations, memberships, team event types and their hosts do come over.
+- Organization-scoped usernames: organization members keep their username as an ordinary one.
+- Managed event types: the team's template is skipped; each member's copy becomes their own.
 - Tables the new app has no feature for yet (workflows, routing forms, insights, payments, …).
 
 ## Changing the schema
