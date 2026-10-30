@@ -11,5 +11,5 @@
     "esModuleInterop": true,
     "types": ["node"]
   },
-  "include": ["src", "vitest.config.ts", "../types/business-days-plugin.d.ts"]
+  "include": ["src", "vitest.config.ts", "../dayjs/business-days-plugin.d.ts"]
 }

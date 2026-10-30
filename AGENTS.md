@@ -1,20 +1,20 @@
 # Cal.diy Development Guide for AI Agents
 
-You are a senior Cal.diy engineer working in a Yarn/Turbo monorepo. You prioritize type safety, security, and small, reviewable diffs.
+You are a senior Cal.diy engineer working in a Yarn workspaces monorepo (TanStack Start + Drizzle on Cloudflare D1 or SQLite). You prioritize type safety, security, and small, reviewable diffs.
 
 ## Do
 
-- Use `select` instead of `include` in Prisma queries for performance and security
+- Select only the columns you need in Drizzle queries (`db.select({ ... })`), never whole rows with secrets
 - Use `import type { X }` for TypeScript type imports
 - Use early returns to reduce nesting: `if (!booking) return null;`
-- Use `ErrorWithCode` for errors in non-tRPC files (services, repositories, utilities); use `TRPCError` only in tRPC routers
+- Throw `AppError(code, status, values)` (`apps/web/src/server/errors.ts`) with a translation key as the code
 - Use conventional commits: `feat:`, `fix:`, `refactor:`
 - Create PRs in draft mode by default
-- Run `yarn type-check:ci --force` before concluding CI failures are unrelated to your changes
-- Import directly from source files, not barrel files (e.g., `@calcom/ui/components/button` not `@calcom/ui`)
+- Run `yarn type-check` before concluding CI failures are unrelated to your changes
+- Import directly from source files, not barrel files (e.g., `@coss/ui/components/button`)
 - Add translations to `packages/i18n/locales/en/common.json` for all UI strings
 - Use `date-fns` or native `Date` instead of Day.js when timezone awareness isn't needed
-- Put permission checks in `page.tsx`, never in `layout.tsx`
+- Put permission checks in the route's `beforeLoad` or the server function, never in a layout
 - Use `ast-grep` for searching if available; otherwise use `rg` (ripgrep), then fall back to `grep`
 - Use Biome for formatting and linting
 - Only add code comments that explain **why**, not **what** — see [code comment guidelines](agents/rules/quality-code-comments.md)
@@ -25,7 +25,7 @@ You are a senior Cal.diy engineer working in a Yarn/Turbo monorepo. You prioriti
 - Never use `as any` - use proper type-safe solutions instead
 - Never expose `credential.key` field in API responses or queries
 - Never commit secrets or API keys
-- Never modify `*.generated.ts` files directly - they're created by app-store-cli
+- Never modify `routeTree.gen.ts` directly - TanStack Router generates it
 - Never put business logic in repositories - that belongs in Services
 - Never use barrel imports from index.ts files
 - Never skip running type checks before pushing
@@ -77,13 +77,16 @@ When a task requires extensive changes, break it into multiple PRs:
 
 ## Commands
 
-See [agents/commands.md](agents/commands.md) for full reference. Key commands:
+Key commands (from the repo root):
 
 ```bash
-yarn type-check:ci --force  # Type check (always run before pushing)
-yarn biome check --write .  # Lint and format
-TZ=UTC yarn test            # Run unit tests
-yarn prisma generate        # Regenerate types after schema changes
+yarn dev                    # Node + local SQLite file on :3000
+yarn dev:cf                 # Cloudflare Workers runtime (Miniflare + local D1)
+yarn type-check             # Type check (always run before pushing)
+yarn lint:fix               # Biome lint and format
+yarn test                   # Unit tests (TZ=UTC)
+yarn e2e                    # Playwright browser tests against a throwaway database
+yarn db:generate            # Generate a Drizzle migration after editing packages/db/src/schema.ts
 ```
 
 
@@ -92,13 +95,13 @@ yarn prisma generate        # Regenerate types after schema changes
 ### Always do
 - Run type check on changed files before committing
 - Run relevant tests before pushing
-- Use `select` in Prisma queries
+- Select only the columns you need in Drizzle queries
 - Follow conventional commits for PR titles
 - Run Biome before pushing
 
 ### Ask first
 - Adding new dependencies
-- Schema changes to `packages/prisma/schema.prisma`
+- Schema changes to `packages/db/src/schema.ts` (they need a migration that works on D1)
 - Changes affecting multiple packages
 - Deleting files
 - Running full build or E2E suites
@@ -113,32 +116,35 @@ yarn prisma generate        # Regenerate types after schema changes
 ## Project Structure
 
 ```
-apps/web/                    # Main Next.js application
-packages/prisma/             # Database schema (schema.prisma) and migrations
-packages/trpc/               # tRPC API layer (routers in server/routers/)
-packages/ui/                 # Shared UI components
-packages/features/           # Feature-specific code
-packages/app-store/          # Third-party integrations
-packages/lib/                # Shared utilities
+apps/web/                    # TanStack Start app (pages, server functions, API v2, auth)
+  src/routes/                # File-based routes; src/routes/api/v2 is the public API
+  src/server/<domain>/       # Repositories, services and server functions per domain
+  src/components/            # React components
+  e2e/                       # Playwright specs and fake third-party servers
+packages/db/                 # Drizzle schema, migrations, D1 and libSQL drivers
+packages/scheduling/         # Slots engine (date ranges, limits, recurring)
+packages/coss-ui/            # UI components (@coss/ui)
+packages/i18n/               # Translations
+packages/embeds/embed-core/  # Embed snippet library, built into apps/web/public/embed
 ```
 
 ### Key files
-- Routes: `apps/web/app/` (App Router)
-- Database schema: `packages/prisma/schema.prisma`
-- tRPC routers: `packages/trpc/server/routers/`
+- Database schema: `packages/db/src/schema.ts` (migrations in `packages/db/migrations`)
+- Auth: `apps/web/src/server/auth/createAuth.ts` (Better Auth, with the organization, admin, 2FA and API key plugins)
+- Runtime differences (Workers vs Node): `apps/web/src/server/runtime/`
 - Translations: `packages/i18n/locales/en/common.json`
-- Workflow constants: `packages/features/ee/workflows/lib/constants.ts`
+- Migration notes and D1 rules: `MIGRATION.md`
 
 ## Tech Stack
 
-- **Framework**: Next.js 13+ (App Router in some areas)
+- **Framework**: TanStack Start (React 19, Vite)
 - **Language**: TypeScript (strict)
-- **Database**: PostgreSQL with Prisma ORM
-- **API**: tRPC for type-safe APIs
-- **Auth**: NextAuth.js
-- **Styling**: Tailwind CSS
+- **Database**: Drizzle ORM on Cloudflare D1 or a local SQLite/libSQL file
+- **API**: TanStack Start server functions (internal), server routes under `/api/v2` (public)
+- **Auth**: Better Auth
+- **Styling**: Tailwind CSS 4
 - **Testing**: Vitest (unit), Playwright (E2E)
-- **i18n**: next-i18next
+- **Hosting**: Cloudflare Workers, or Docker (Node) on any machine including a Raspberry Pi
 
 ## Code Examples
 
@@ -152,65 +158,38 @@ throw new Error(`Unable to create booking: User ${userId} has no available time 
 throw new Error("Booking failed");
 ```
 
-For which error class to use (`ErrorWithCode` vs `TRPCError`) and concrete examples, see [quality-error-handling](agents/rules/quality-error-handling.md).
-
-### Good Prisma query
+### Good Drizzle query
 
 ```typescript
-// Good - Use select for performance and security
-const booking = await prisma.booking.findFirst({
-  select: {
-    id: true,
-    title: true,
-    user: {
-      select: {
-        id: true,
-        name: true,
-        email: true,
-      }
-    }
-  }
-});
+// Good - Only the columns the caller needs
+const [found] = await db
+  .select({ id: booking.id, title: booking.title, userId: booking.userId })
+  .from(booking)
+  .where(eq(booking.uid, uid))
+  .limit(1);
 
-// Bad - Include fetches all fields including sensitive ones
-const booking = await prisma.booking.findFirst({
-  include: { user: true }
-});
+// Bad - Whole rows, including columns the caller shouldn't see
+const [found] = await db.select().from(credential).where(eq(credential.userId, userId));
 ```
+
+D1 has no interactive transactions: write atomically with `db.batch([...])`. See `MIGRATION.md`
+for the other SQLite/D1 rules.
 
 ### Good imports
 
 ```typescript
 // Good - Type imports and direct paths
-import type { User } from "@prisma/client";
-import { Button } from "@calcom/ui/components/button";
+import type { Database } from "@calcom/db/database";
+import { Button } from "@coss/ui/components/button";
 
-// Bad - Regular import for types, barrel imports
-import { User } from "@prisma/client";
-import { Button } from "@calcom/ui";
-```
-
-### API v2 Imports (apps/api/v2)
-
-When importing from `@calcom/features` or `@calcom/trpc` into `apps/api/v2`, **do not import directly** because the API v2 app's `tsconfig.json` doesn't have path mappings for these modules, which causes "module not found" errors.
-
-Instead, re-export from `packages/platform/libraries/index.ts` and import from `@calcom/platform-libraries`:
-
-```typescript
-// Step 1: In packages/platform/libraries/index.ts, add the export
-export { ProfileRepository } from "@calcom/features/profile/repositories/ProfileRepository";
-
-// Step 2: In apps/api/v2, import from platform-libraries
-import { ProfileRepository } from "@calcom/platform-libraries";
-
-// Bad - Direct import causes module not found error in apps/api/v2
-import { ProfileRepository } from "@calcom/features/profile/repositories/ProfileRepository";
+// Bad - Regular import for types
+import { Database } from "@calcom/db/database";
 ```
 
 ## PR Checklist
 
 - [ ] Title follows conventional commits: `feat(scope): description`
-- [ ] Type check passes: `yarn type-check:ci --force`
+- [ ] Type check passes: `yarn type-check`
 - [ ] Lint passes: `yarn lint:fix`
 - [ ] Relevant tests pass
 - [ ] Diff is small and focused (<500 lines, <10 files)
@@ -224,7 +203,7 @@ import { ProfileRepository } from "@calcom/features/profile/repositories/Profile
 - Propose a short plan for complex tasks
 - Open a draft PR with notes if unsure about approach
 - Fix type errors before test failures - they're often the root cause
-- Run `yarn prisma generate` if you see missing enum/type errors
+- Restart `yarn dev` if TanStack Router reports unknown routes; it regenerates `routeTree.gen.ts`
 
 ## Spec-Driven Development (Opt-In)
 

@@ -4,7 +4,7 @@
 #   echo "BETTER_AUTH_SECRET=$(openssl rand -base64 32)" >> .env
 #   docker compose up -d --build
 #
-# See apps/start/.env.example for the other settings (public URL, Google sign-in).
+# See apps/web/.env.example for the other settings (public URL, Google sign-in).
 #
 # Data lives in the `cal-data` volume. To back it up, stop the container and copy all of
 # /data/cal.db* (the -wal and -shm files hold recent writes):
@@ -24,10 +24,10 @@ services:
       DATABASE_URL: file:/data/cal.db
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET in .env (openssl rand -base64 32)}
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
-      # Only needed once you connect a calendar; see apps/start/.env.example.
+      # Only needed once you connect a calendar; see apps/web/.env.example.
       CALENDSO_ENCRYPTION_KEY: ${CALENDSO_ENCRYPTION_KEY:-}
       # Behind a reverse proxy (Caddy, nginx, Traefik), list its address so sign-in rate limits
-      # see real client IPs instead of the proxy's; see apps/start/.env.example.
+      # see real client IPs instead of the proxy's; see apps/web/.env.example.
       TRUST_PROXY: ${TRUST_PROXY:-}
     volumes:
       - cal-data:/data

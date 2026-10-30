@@ -17,8 +17,8 @@
   "scripts": {
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:migrate:d1:local": "wrangler d1 migrations apply cal-diy --local --config ../../apps/start/wrangler.jsonc",
-    "db:migrate:d1:remote": "wrangler d1 migrations apply cal-diy --remote --config ../../apps/start/wrangler.jsonc",
+    "db:migrate:d1:local": "wrangler d1 migrations apply cal-diy --local --config ../../apps/web/wrangler.jsonc",
+    "db:migrate:d1:remote": "wrangler d1 migrations apply cal-diy --remote --config ../../apps/web/wrangler.jsonc",
     "db:studio": "drizzle-kit studio",
     "type-check": "tsc --noEmit",
     "test": "vitest run"

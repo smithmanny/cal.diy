@@ -8,8 +8,8 @@
 FROM --platform=$BUILDPLATFORM node:22-bookworm-slim AS builder
 WORKDIR /app
 COPY . .
-RUN yarn workspaces focus @calcom/start @calcom/db @calcom/scheduling \
-  && yarn workspace @calcom/start build
+RUN yarn workspaces focus @calcom/web @calcom/db @calcom/scheduling \
+  && yarn workspace @calcom/web build
 
 FROM node:22-bookworm-slim AS runtime
 WORKDIR /app
@@ -18,13 +18,13 @@ ENV NODE_ENV=production \
   DATABASE_URL=file:/data/cal.db \
   MIGRATIONS_DIR=/app/migrations
 
-# Version-pinned to match packages/db and apps/start.
+# Version-pinned to match packages/db and apps/web.
 RUN echo '{"type":"module","private":true}' > package.json \
   && npm install --omit=dev --no-audit --no-fund @libsql/client@0.18.0 srvx@1.0.5 \
   && npm cache clean --force
 
-COPY --from=builder /app/apps/start/dist ./dist
-COPY --from=builder /app/apps/start/server.node.mjs ./server.node.mjs
+COPY --from=builder /app/apps/web/dist ./dist
+COPY --from=builder /app/apps/web/server.node.mjs ./server.node.mjs
 COPY --from=builder /app/packages/db/migrations ./migrations
 
 RUN mkdir -p /data && chown node:node /data

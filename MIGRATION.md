@@ -1,23 +1,36 @@
 # Stack migration: Next.js + Prisma + tRPC → TanStack Start + Drizzle + D1/SQLite
 
-Working branch: `claude/migrate-tanstack-drizzle-d1-c8bkot`. This is a big-bang migration: the new
-app lives in `apps/start` beside the old one, which stays in the tree as a reference until the
-remaining slices are ported and it can be deleted in one step (Phase 5).
+Working branch: `claude/migrate-tanstack-drizzle-d1-c8bkot`. This was a big-bang migration: the new
+app was built in `apps/start` beside the old Next.js app, and once everything was ported the old
+stack was deleted and the new app took over `apps/web` (Phase 5). The old code is in git history.
+
+What's left of the monorepo:
+
+| Workspace | What it is |
+| --- | --- |
+| `apps/web` (`@calcom/web`) | The TanStack Start app: pages, server functions, API v2, auth |
+| `packages/db` | Drizzle schema, migrations, D1 and libSQL drivers |
+| `packages/scheduling` | The slots engine (Cal's date ranges and slots, limits, recurring) |
+| `packages/coss-ui` | UI components (`@coss/ui`) |
+| `packages/i18n` | Cal's translations (`locales/<lang>/common.json`) |
+| `packages/dayjs`, `packages/lib` | Cal's dayjs setup, and the few shared utilities still used |
+| `packages/embeds/embed-core` | Cal's embed snippet library, built by `apps/web` into `/embed/embed.js` |
+| `packages/config`, `packages/tsconfig` | Theme tokens and base TypeScript configs |
 
 ## Target architecture
 
 | Concern | Before | After |
 | --- | --- | --- |
-| Framework | Next.js (`apps/web`) | TanStack Start (`apps/start`) |
+| Framework | Next.js (`apps/web`) | TanStack Start (`apps/web`, built as `apps/start`) |
 | Data access | Prisma + Postgres (`packages/prisma`) | Drizzle + SQLite (`packages/db`) |
 | Internal API | tRPC (`packages/trpc`) | TanStack Start server functions (`createServerFn`) |
 | Public API | NestJS (`apps/api/v2`) | TanStack Start server routes under `/api/v2/*` |
-| Auth | NextAuth | Better Auth (`apps/start/src/server/auth`) |
+| Auth | NextAuth | Better Auth (`apps/web/src/server/auth`) |
 | Hosting | Vercel / Docker (Node + Postgres) | Cloudflare Workers + D1, **or** Docker (Node + SQLite file) |
 
 The same code serves both hosting targets. `DEPLOY_TARGET=cloudflare` switches the Vite build to the
 Workers runtime; everything runtime-specific (database, static asset reads, background work, SMTP,
-trusted client-IP header) sits behind the `#runtime` alias in `apps/start/src/server/runtime/`.
+trusted client-IP header) sits behind the `#runtime` alias in `apps/web/src/server/runtime/`.
 
 ## Rules for ported code (D1 / SQLite constraints)
 
@@ -51,7 +64,7 @@ trusted client-IP header) sits behind the `#runtime` alias in `apps/start/src/se
       `wrangler d1 migrations apply` and the libSQL migrator
 - [x] Drivers: D1 (`@calcom/db/drivers/d1`) and libSQL/SQLite file (`@calcom/db/drivers/libsql`)
 - [x] Tests against real SQLite: relations, JSON columns, foreign keys, atomic batches
-- [x] `apps/start` skeleton with SSR and a DB-backed `/api/health` route
+- [x] `apps/web` skeleton with SSR and a DB-backed `/api/health` route
 - [x] Cloudflare: `wrangler.jsonc` with D1 binding, verified locally with Miniflare
 - [x] Docker: multi-arch Dockerfile (amd64 / arm64 / armv7) and single-service `docker-compose.yml`,
       with migrations on boot and data in a volume
@@ -120,8 +133,12 @@ trusted client-IP header) sits behind the `#runtime` alias in `apps/start/src/se
       request/response shapes (see API v2 below)
 - [ ] API v2 endpoints outside the MVP domain: teams, organizations, OAuth clients and managed
       users, calendars, conferencing, booking seats and attendees, reassign, host no-shows
-- [ ] Delete `apps/web`, `apps/api/v2`, `packages/trpc`, `packages/prisma`, `packages/kysely`
-- [ ] Rename `apps/start` → `apps/web`
+- [x] Delete the old stack: the Next.js app, `apps/api/v2`, `apps/docs`, `packages/trpc`,
+      `packages/prisma`, `packages/kysely`, `packages/features`, `packages/app-store` (its logos
+      now live in `apps/web/public/app-store`), `packages/platform`, `packages/ui`,
+      `packages/emails` and the other workspaces only the old app used, with their CI workflows
+- [x] Rename `apps/start` → `apps/web` (`@calcom/web`); one CI workflow (`.github/workflows/ci.yml`)
+      runs type checks, Biome, unit tests, the browser suite and a Workers build
 
 ## Apps
 
@@ -159,11 +176,11 @@ Conferencing; new event types start with it as their location.
   rejected request is always refunded. A rescheduled booking keeps its payment. Not supported:
   Cal's card hold and no-show fee (`HOLD`), paid seats and paid recurring series.
 - Endpoint overrides for local fakes (`MS_OAUTH_URL`, `ZOOM_API_URL`, `STRIPE_API_URL`, …; see
-  `apps/start/.env.example`) only work outside production builds.
+  `apps/web/.env.example`) only work outside production builds.
 
 ## Auth
 
-`createAuth()` in `apps/start/src/server/auth/createAuth.ts` configures Better Auth on top of the
+`createAuth()` in `apps/web/src/server/auth/createAuth.ts` configures Better Auth on top of the
 existing tables:
 
 - `users` is Better Auth's `user` model (`image` → `avatarUrl`, `createdAt` → `createdDate`), with
@@ -208,15 +225,15 @@ valid. API v2 accepts access tokens as `Bearer` for reading only: `READ_BOOKING`
 
 Settings: `BETTER_AUTH_SECRET` (required in production), `BETTER_AUTH_URL`, and optionally
 `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`; `CALENDSO_ENCRYPTION_KEY` (required in production
-for calendar credentials and OAuth tokens). See `apps/start/.env.example` (Node/Docker) and
-`apps/start/.dev.vars.example` (Workers).
+for calendar credentials and OAuth tokens). See `apps/web/.env.example` (Node/Docker) and
+`apps/web/.dev.vars.example` (Workers).
 
 Cloudflare note: Better Auth hashes passwords with scrypt, which takes more CPU than the Workers
 free plan allows per request (10 ms), so sign-up and login need the paid plan.
 
 ## Teams and organizations
 
-Teams run on Better Auth's organization plugin (`apps/start/src/server/auth/organizations.ts`),
+Teams run on Better Auth's organization plugin (`apps/web/src/server/auth/organizations.ts`),
 mapped onto Cal's own tables so existing data stays readable:
 
 - Every Cal `Team` is a Better Auth organization. An organization is a team with `isOrganization`;
@@ -236,7 +253,7 @@ billing, SCIM/directory sync.
 
 ## API v2
 
-`apps/start/src/routes/api/v2/` serves Cal's public API on the same paths and shapes as
+`apps/web/src/routes/api/v2/` serves Cal's public API on the same paths and shapes as
 `apps/api/v2`. `src/server/api-v2/http.ts` holds what every endpoint shares: `Authorization: Bearer
 cal_…` API keys (verified by Better Auth's api-key plugin, which also rate-limits each key to 120
 requests a minute), the `cal-api-version` header, the `{ status: "success", data }` envelope with
@@ -265,14 +282,17 @@ fields (e.g. `price`) rather than ignoring them.
 ## Running it
 
 ```bash
-yarn workspaces focus @calcom/start @calcom/db @calcom/scheduling   # only what the new stack needs
+yarn install
 
-# Node + local SQLite file (migrations run on boot). Reads apps/start/.env.
-yarn workspace @calcom/start dev
+# Node + local SQLite file (migrations run on boot). Reads apps/web/.env.
+yarn dev
 
-# Cloudflare Workers runtime locally (Miniflare + local D1). Reads apps/start/.dev.vars.
-yarn workspace @calcom/db db:migrate:d1:local
-yarn workspace @calcom/start dev:cf
+# Cloudflare Workers runtime locally (Miniflare + local D1). Reads apps/web/.dev.vars.
+yarn db:migrate:d1:local
+yarn dev:cf
+
+# Checks CI runs
+yarn type-check && yarn lint && yarn test && yarn e2e
 ```
 
 ### Tests
@@ -280,25 +300,25 @@ yarn workspace @calcom/start dev:cf
 ```bash
 yarn workspace @calcom/db test
 yarn workspace @calcom/scheduling test
-yarn workspace @calcom/start test
+yarn workspace @calcom/web test
 
 # Browser tests. By default they start the dev server on a throwaway SQLite file, with a fake
 # Google and a webhook receiver on localhost.
-yarn workspace @calcom/start test:e2e
+yarn workspace @calcom/web test:e2e
 # Against a running production build instead (Node with TRUST_PROXY=loopback, a Workers preview
 # from `vite preview`, or the Docker image). E2E_FAKES=1 also runs the webhook spec; the Google
 # spec needs the dev server, since production builds ignore endpoint overrides.
-E2E_BASE_URL=http://localhost:3000 yarn workspace @calcom/start test:e2e
+E2E_BASE_URL=http://localhost:3000 yarn workspace @calcom/web test:e2e
 ```
 
 ### Deploy to Cloudflare
 
 ```bash
-npx wrangler d1 create cal-diy        # put the printed database_id into apps/start/wrangler.jsonc
+npx wrangler d1 create cal-diy        # put the printed database_id into apps/web/wrangler.jsonc
 npx wrangler secret put BETTER_AUTH_SECRET
 npx wrangler secret put BETTER_AUTH_URL   # e.g. https://cal.example.com
 yarn workspace @calcom/db db:migrate:d1:remote
-yarn workspace @calcom/start deploy:cf
+yarn workspace @calcom/web deploy:cf
 ```
 
 ### Self-host with Docker (any machine, including a Raspberry Pi)
@@ -327,12 +347,12 @@ export CALENDSO_ENCRYPTION_KEY=…   # the old install's key (keep it for the ne
 
 # Docker / Node: writes and migrates a new SQLite file, then copy it into the `cal-data` volume
 # as /data/cal.db
-yarn workspace @calcom/start import:postgres --from "postgresql://user:pass@host:5432/calendso" \
+yarn workspace @calcom/web import:postgres --from "postgresql://user:pass@host:5432/calendso" \
   --to file:./data/cal.db
 
 # Cloudflare: apply the migrations to the D1 database first, then load the generated SQL
 yarn workspace @calcom/db db:migrate:d1:remote
-yarn workspace @calcom/start import:postgres --from "postgresql://…" --sql import.sql
+yarn workspace @calcom/web import:postgres --from "postgresql://…" --sql import.sql
 npx wrangler d1 execute cal-diy --remote --file import.sql
 ```
 
@@ -367,4 +387,5 @@ What doesn't:
 ## Changing the schema
 
 Edit `packages/db/src/schema.ts` (and `relations.ts`), then run `yarn workspace @calcom/db db:generate`.
-`packages/prisma/schema.prisma` is frozen and only kept as a reference until Phase 5.
+`packages/prisma/schema.prisma` is gone with the old stack; `git show` an earlier commit to compare
+against Cal's Prisma schema.

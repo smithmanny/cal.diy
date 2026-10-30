@@ -1,36 +1,30 @@
 {
-  "extends": "@calcom/tsconfig/nextjs.json",
   "compilerOptions": {
-    "baseUrl": ".",
+    "target": "ES2022",
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "allowImportingTsExtensions": true,
+    "types": ["@cloudflare/workers-types", "node", "vite/client"],
     "paths": {
-      "~/*": ["modules/*"],
-      "@components/*": ["components/*"],
-      "@pages/*": ["pages/*"],
-      "@lib/*": ["lib/*"],
-      "@server/*": ["server/*"],
-      "@prisma/client/*": ["@calcom/prisma/client/*"],
-      "@calcom/testing/*": ["../../packages/testing/src/*"],
-      "@calcom/repository/*": ["@calcom/lib/server/repository/*"],
-      "@coss/ui/*": ["../../packages/coss-ui/src/*"]
-    },
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
-    "strictNullChecks": true,
-    "experimentalDecorators": true
+      "#runtime": ["./src/server/runtime/node.ts"],
+      "~/*": ["./src/*"],
+      "@better-auth/core": ["../../node_modules/@better-auth/core"],
+      "@better-auth/core/*": ["../../node_modules/@better-auth/core/*"],
+      "better-call": ["../../node_modules/better-call"],
+      "better-call/*": ["../../node_modules/better-call/*"]
+    }
   },
   "include": [
-    /* Find a way to not require this - App files don't belong here. */
-    "../../packages/app-store/routing-forms/env.d.ts",
-    "next-env.d.ts",
-    "../../packages/trpc/types/router.d.ts",
-    "../../packages/types/*.d.ts",
-    "../../packages/types/next-auth.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts"
-  ],
-  "exclude": ["**/node_modules/**", ".next", "playwright"]
+    "src",
+    "scripts",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "../../packages/dayjs/business-days-plugin.d.ts"
+  ]
 }
