@@ -8,6 +8,11 @@ import { defineConfig, loadEnv } from "vite";
 import { buildEmbedPlugin } from "./scripts/build-embed.ts";
 import { copyLocalesPlugin } from "./scripts/copy-locales.ts";
 
+// Cal's scheduling code (slots, booking limits, date overrides) assumes the dev server runs in UTC,
+// as Cal's own servers and Workers do; on a server set to local time, limits and day boundaries
+// would shift. Every time zone the app works in is explicit.
+process.env.TZ = "UTC";
+
 // See resolve.dedupe below. Dedupe only applies to code Vite processes, so these are inlined in dev too.
 const BETTER_AUTH_SHARED = ["@better-auth/core", "better-call"];
 const BETTER_AUTH_INLINE = [/^better-auth/, /^@better-auth\//, /^better-call/];

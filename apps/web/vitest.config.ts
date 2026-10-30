@@ -1,5 +1,10 @@
+import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
+
+// Tests run in UTC like the app does (see server.node.mjs), whatever the machine is set to.
+process.env.TZ = "UTC";
+
 import { copyLocalesPlugin } from "./scripts/copy-locales.ts";
 
 export default defineConfig({

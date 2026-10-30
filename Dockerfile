@@ -16,7 +16,8 @@ WORKDIR /app
 ENV NODE_ENV=production \
   PORT=3000 \
   DATABASE_URL=file:/data/cal.db \
-  MIGRATIONS_DIR=/app/migrations
+  MIGRATIONS_DIR=/app/migrations \
+  TZ=UTC
 
 # Version-pinned to match packages/db and apps/web.
 RUN echo '{"type":"module","private":true}' > package.json \

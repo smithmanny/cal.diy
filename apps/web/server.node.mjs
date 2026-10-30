@@ -16,6 +16,11 @@ function trustProxy(value) {
   return value.split(",").map((entry) => entry.trim());
 }
 
+// Cal's scheduling code (slots, booking limits, date overrides) assumes the process runs in UTC,
+// as Cal's own servers and Workers do; on a server set to local time, limits and day boundaries
+// would shift. Every time zone the app works in is explicit.
+process.env.TZ = "UTC";
+
 serve({
   port: Number(process.env.PORT ?? 3000),
   hostname: process.env.HOST ?? "0.0.0.0",
