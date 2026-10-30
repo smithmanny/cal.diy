@@ -11,30 +11,27 @@ import {
 import { Input } from "@coss/ui/components/input";
 import { Menu, MenuItem, MenuPopup, MenuTrigger } from "@coss/ui/components/menu";
 import { Textarea } from "@coss/ui/components/textarea";
-import { type FormEvent, type ReactNode, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useState } from "react";
+import { FormError } from "~/components/AuthCard";
 import { selectClass } from "~/components/availability/TimeSelect";
+import {
+  emptyLocation,
+  LOCATIONS_MESSAGE_KEYS,
+  LocationDetails,
+  locationOptions,
+} from "~/components/event-types/LocationsEditor";
 import { useT } from "~/lib/i18n";
-import { LOCATION_LABEL_KEYS } from "~/lib/location-labels";
+import type { ConferencingAppDto } from "~/server/apps/AppsService";
+import { getConferencingSettings } from "~/server/apps/functions";
 import { addBookingGuests, editBookingLocation, requestReschedule } from "~/server/bookings/functions";
-import type { EditableLocation } from "~/server/event-types/types";
+import {
+  type EditableLocation,
+  type EventLocation,
+  editableLocationSchema,
+} from "~/server/event-types/types";
 
 type Action = "location" | "guests" | "reschedule";
 type Run = (action: () => Promise<unknown>) => Promise<boolean>;
-
-const LOCATION_TYPES = ["inPerson", "link", "userPhone", "integrations:google:meet"] as const;
-
-function toLocation(type: (typeof LOCATION_TYPES)[number], value: string): EditableLocation {
-  switch (type) {
-    case "inPerson":
-      return { type, address: value };
-    case "link":
-      return { type, link: value };
-    case "userPhone":
-      return { type, hostPhoneNumber: value };
-    default:
-      return { type };
-  }
-}
 
 function ActionDialog({
   title,
@@ -78,41 +75,64 @@ function ActionDialog({
   );
 }
 
+/** The attendee's phone isn't offered: the host can't move a booking onto a number they'd have to give. */
+function toEditable(location: EventLocation): EditableLocation | null {
+  if (location.type === "phone") return null;
+  const trimmed = Object.fromEntries(
+    Object.entries(location).map(([key, value]) => [key, typeof value === "string" ? value.trim() : value])
+  );
+  const parsed = editableLocationSchema.safeParse(trimmed);
+  return parsed.success ? parsed.data : null;
+}
+
+/** The host's installed conferencing apps, the same options the event type editor offers. */
+function useConferencingApps(): ConferencingAppDto[] {
+  const [apps, setApps] = useState<ConferencingAppDto[]>([]);
+  useEffect(() => {
+    let current = true;
+    getConferencingSettings().then(
+      (settings) => current && setApps(settings.apps),
+      // Without them the built-in locations are still there to pick.
+      () => {}
+    );
+    return () => {
+      current = false;
+    };
+  }, []);
+  return apps;
+}
+
 function LocationDialog({ uid, run, onClose }: { uid: string; run: Run; onClose: () => void }) {
   const t = useT();
-  const [type, setType] = useState<(typeof LOCATION_TYPES)[number]>("inPerson");
-  const [value, setValue] = useState("");
-  const needsValue = type !== "integrations:google:meet";
+  const options = locationOptions(useConferencingApps(), t).filter((option) => option.type !== "phone");
+  const [location, setLocation] = useState<EventLocation>({ type: "inPerson", address: "" });
+  const [invalid, setInvalid] = useState(false);
   return (
     <ActionDialog
       title={t("edit_location")}
       submitLabel={t("update_location")}
       onClose={onClose}
-      onSubmit={() =>
-        run(() => editBookingLocation({ data: { uid, location: toLocation(type, value.trim()) } }))
-      }>
+      onSubmit={async () => {
+        const editable = toEditable(location);
+        setInvalid(!editable);
+        return editable ? run(() => editBookingLocation({ data: { uid, location: editable } })) : false;
+      }}>
       <select
         aria-label={t("new_location")}
         className={selectClass}
-        value={type}
-        onChange={(event) =>
-          setType(LOCATION_TYPES.find((option) => option === event.target.value) ?? "inPerson")
-        }>
-        {LOCATION_TYPES.map((option) => (
-          <option key={option} value={option}>
-            {t(LOCATION_LABEL_KEYS[option])}
+        value={location.type}
+        onChange={(event) => {
+          const option = options.find((candidate) => candidate.type === event.target.value);
+          if (option) setLocation(emptyLocation(option));
+        }}>
+        {options.map((option) => (
+          <option key={option.type} value={option.type}>
+            {option.label}
           </option>
         ))}
       </select>
-      {needsValue && (
-        <Input
-          aria-label={t(LOCATION_LABEL_KEYS[type])}
-          type={type === "link" ? "url" : "text"}
-          required
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-        />
-      )}
+      <LocationDetails location={location} onChange={setLocation} t={t} />
+      <FormError message={invalid ? t("invalid_input") : null} />
     </ActionDialog>
   );
 }
@@ -190,5 +210,6 @@ export const BOOKING_EDIT_MESSAGE_KEYS = [
   "send_reschedule_request",
   "reason_for_reschedule_request",
   "cancel",
-  ...LOCATION_TYPES.map((type) => LOCATION_LABEL_KEYS[type]),
+  "invalid_input",
+  ...LOCATIONS_MESSAGE_KEYS,
 ];

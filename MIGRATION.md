@@ -112,7 +112,8 @@ trusted client-IP header) sits behind the `#runtime` alias in `apps/start/src/se
 - [x] Emails: localized organizer and attendee emails with `.ics`, over Resend (both runtimes) or
       SMTP (Node/Docker)
 - [ ] Workflows: this fork has no workflows feature, so there was nothing to port
-- [ ] Other app-store apps (Outlook, CalDAV/Apple, Zoom, Daily/Cal Video, …)
+- [x] App store (see Apps below): Outlook, CalDAV and Apple calendars; Zoom, Microsoft Teams,
+      Cal Video (Daily), Jitsi and 19 room-link video apps; Stripe payments for paid events
 
 ### Phase 5: public API and cleanup
 - [x] Rebuild the `apps/api/v2` endpoints for the MVP domain as Start server routes, keeping
@@ -121,6 +122,44 @@ trusted client-IP header) sits behind the `#runtime` alias in `apps/start/src/se
       users, calendars, conferencing, booking seats and attendees, reassign, host no-shows
 - [ ] Delete `apps/web`, `apps/api/v2`, `packages/trpc`, `packages/prisma`, `packages/kysely`
 - [ ] Rename `apps/start` → `apps/web`
+
+## Apps
+
+`src/lib/apps.ts` lists the apps with Cal's slugs, credential types and location types, so
+credentials, event type locations and booking references from Cal stay readable. Logos are copied
+from `packages/app-store/<app>/static` at build time. Hosts install apps under Apps and pick a
+default conferencing app (Cal's `users.metadata.defaultConferencingApp`) under Settings >
+Conferencing; new event types start with it as their location.
+
+| App | Kind | Installed by | Settings |
+| --- | --- | --- | --- |
+| Google Calendar (+ Meet) | calendar | OAuth | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` |
+| Outlook Calendar | calendar | OAuth (Microsoft Graph) | `MS_GRAPH_CLIENT_ID`, `MS_GRAPH_CLIENT_SECRET` |
+| CalDAV, Apple Calendar | calendar | server login (iCloud: app-specific password) | none |
+| Zoom | video | OAuth | `ZOOM_CLIENT_ID`, `ZOOM_CLIENT_SECRET` |
+| Microsoft Teams | video | OAuth (Graph online meetings) | `MS_GRAPH_CLIENT_ID`, `MS_GRAPH_CLIENT_SECRET` |
+| Cal Video | video | everyone, once configured; joins via `/video/<uid>` | `DAILY_API_KEY` |
+| Jitsi Meet | video | one click | `JITSI_HOST` (optional) |
+| Whereby, Riverside, Discord, FaceTime, … (19) | room link | one click; the host's link goes on the event type | none |
+| Stripe | payment | Stripe Connect OAuth | `STRIPE_PRIVATE_KEY`, `STRIPE_CLIENT_ID`, `STRIPE_WEBHOOK_SECRET` |
+
+- Calendars share one `CalendarClient` interface (busy times, event create/delete); selected and
+  destination calendars work for every provider. Credentials are encrypted with
+  `CALENDSO_ENCRYPTION_KEY` in Cal's format, and Cal's older layouts (plaintext tokens, CalDAV's
+  encrypted `key`) still open.
+- A video listener runs before calendar sync: it creates the meeting, stores the booking reference
+  and puts the join link on the booking, so calendar events, webhooks and emails carry it.
+- OAuth apps use Cal's routes, `/api/integrations/<app>/add` and `/callback`.
+- **Payments**: a paid event (Cal's `metadata.apps.stripe`: price in the smallest currency unit,
+  currency, refund policy) books as `PENDING` with a `Payment` row and a Stripe Checkout session on
+  the host's connected account. The booker pays at `/payment/<uid>`; the Connect webhook
+  (`/api/integrations/stripepayment/webhook`, verified with WebCrypto HMAC) marks it paid and
+  confirms the booking, and only then are emails, webhooks and calendar events sent. Cancellations
+  refund by the event's policy (never, always, or until N calendar/business days before); a
+  rejected request is always refunded. A rescheduled booking keeps its payment. Not supported:
+  Cal's card hold and no-show fee (`HOLD`), paid seats and paid recurring series.
+- Endpoint overrides for local fakes (`MS_OAUTH_URL`, `ZOOM_API_URL`, `STRIPE_API_URL`, …; see
+  `apps/start/.env.example`) only work outside production builds.
 
 ## Auth
 

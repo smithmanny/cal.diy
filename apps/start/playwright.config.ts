@@ -6,6 +6,8 @@ import {
   FAKE_APPS_PORT,
   FAKE_GOOGLE_PORT,
   FAKE_RESEND_PORT,
+  FAKE_STRIPE_PORT,
+  STRIPE_WEBHOOK_SECRET,
 } from "./e2e/support/ports";
 
 const PORT = APP_PORT;
@@ -24,6 +26,12 @@ const fakeAppsEnv = {
   DAILY_API_KEY: "fake-daily-key",
   DAILY_API_URL: `${FAKE_APPS}/daily`,
   APPLE_CALDAV_URL: `${FAKE_APPS}/dav/`,
+  // Stripe goes to e2e/support/fake-stripe-server.ts.
+  STRIPE_PRIVATE_KEY: "sk_test_e2e",
+  STRIPE_CLIENT_ID: "ca_e2e",
+  STRIPE_WEBHOOK_SECRET,
+  STRIPE_API_URL: `http://localhost:${FAKE_STRIPE_PORT}/v1`,
+  STRIPE_CONNECT_URL: `http://localhost:${FAKE_STRIPE_PORT}/connect`,
 };
 // Set once in the runner so workers, which re-read this file, reach the same database (see e2e/support/db.ts).
 process.env.E2E_DATABASE_URL ??= `file:./data/e2e-${Date.now()}.db`;

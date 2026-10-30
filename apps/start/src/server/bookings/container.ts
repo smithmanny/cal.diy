@@ -5,6 +5,7 @@ import { EventTypeRepository } from "../event-types/EventTypeRepository";
 import { HashedLinkRepository } from "../event-types/HashedLinkRepository";
 import { createHolidayService } from "../holidays/container";
 import { OutOfOfficeRepository } from "../out-of-office/OutOfOfficeRepository";
+import { createPaymentService } from "../payments/container";
 import { ScheduleRepository } from "../schedules/ScheduleRepository";
 import { TeamRepository } from "../teams/TeamRepository";
 import { TravelScheduleRepository } from "../users/TravelScheduleRepository";
@@ -38,6 +39,7 @@ export async function getBookingService(): Promise<BookingService> {
     }),
     busyTimesProviders: getBusyTimesProviders(db),
     listeners: getBookingListeners(db),
+    payments: createPaymentService(db) ?? undefined,
     runInBackground,
   });
 }

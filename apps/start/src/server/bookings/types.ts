@@ -83,6 +83,8 @@ export type PublicEventDto = {
     /** Lengths the booker can choose from; just `length` when there is no choice. */
     durations: number[];
     requiresConfirmation: boolean;
+    /** Paid events: what the booker pays, in the currency's smallest unit. */
+    price: { amount: number; currency: string } | null;
     locations: PublicEventLocation[];
     bookingFields: BookingField[];
     /** For recurring events, the rule; bookers may book fewer than `count` occurrences. */

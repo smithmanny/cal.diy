@@ -31,8 +31,26 @@ const BUILT_IN_OPTIONS: {
   { type: "userPhone", labelKey: "organizer_phone_number", icon: PhoneIcon },
 ];
 
+function OptionIcon({ option }: { option: LocationOption | undefined }) {
+  if (option?.logoUrl) return <AppLogo src={option.logoUrl} className="size-4" />;
+  const Icon = option?.icon ?? MapPinIcon;
+  return <Icon className="size-4 text-muted-foreground" />;
+}
+
+export type { LocationOption };
+
+export const LOCATIONS_MESSAGE_KEYS = [
+  "location",
+  "add_location",
+  "address",
+  "meeting_url",
+  "phone_number",
+  "remove",
+  ...BUILT_IN_OPTIONS.map((option) => option.labelKey),
+];
+
 /** Built-in locations, then the host's installed conferencing apps (app names aren't translated). */
-function locationOptions(apps: ConferencingAppDto[], t: TFunction): LocationOption[] {
+export function locationOptions(apps: ConferencingAppDto[], t: TFunction): LocationOption[] {
   return [
     ...BUILT_IN_OPTIONS.map((option) => ({
       type: option.type,
@@ -48,7 +66,7 @@ function locationOptions(apps: ConferencingAppDto[], t: TFunction): LocationOpti
   ];
 }
 
-function emptyLocation(option: LocationOption): EventLocation {
+export function emptyLocation(option: LocationOption): EventLocation {
   switch (option.type) {
     case "inPerson":
       return { type: "inPerson", address: "" };
@@ -62,7 +80,7 @@ function emptyLocation(option: LocationOption): EventLocation {
   }
 }
 
-function LocationDetails({
+export function LocationDetails({
   location,
   onChange,
   t,
@@ -102,22 +120,6 @@ function LocationDetails({
     );
   return null;
 }
-
-function OptionIcon({ option }: { option: LocationOption | undefined }) {
-  if (option?.logoUrl) return <AppLogo src={option.logoUrl} className="size-4" />;
-  const Icon = option?.icon ?? MapPinIcon;
-  return <Icon className="size-4 text-muted-foreground" />;
-}
-
-export const LOCATIONS_MESSAGE_KEYS = [
-  "location",
-  "add_location",
-  "address",
-  "meeting_url",
-  "phone_number",
-  "remove",
-  ...BUILT_IN_OPTIONS.map((option) => option.labelKey),
-];
 
 export function LocationsEditor({
   value,

@@ -53,6 +53,7 @@ const BOOKER_MESSAGE_KEYS = [
   "loading",
   "reschedule_booking",
   "requires_confirmation",
+  "price",
   "booking_conflict_error",
   "enter_phone_number",
   "invalid_timezone",
@@ -226,7 +227,7 @@ function useBookingSubmit({
   async function book(submission: BookingSubmission) {
     if (!slot || !timeZone) return;
     const rescheduling = submission.rescheduleUid ?? rescheduleUid;
-    const { uid, title, status, redirectUrl, seatReferenceUid } = await createBooking({
+    const { uid, title, status, redirectUrl, seatReferenceUid, paymentUid } = await createBooking({
       data: {
         username,
         slug,
@@ -241,6 +242,11 @@ function useBookingSubmit({
         hashedLink,
       },
     });
+    // A paid event is booked once it is paid for, on the payment page.
+    if (paymentUid) {
+      await navigate({ to: "/payment/$uid", params: { uid: paymentUid } });
+      return;
+    }
     embed.fire(
       rescheduling ? "rescheduleBookingSuccessfulV2" : "bookingSuccessfulV2",
       bookingSuccessfulPayload({
@@ -338,6 +344,7 @@ export function BookerPage({
                 setDuration(minutes);
                 setSelectedSlot(null);
               }}
+              locale={locale}
               t={t}
             />
             <section className="flex flex-col gap-4 p-6">

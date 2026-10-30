@@ -13,6 +13,7 @@ import {
 } from "~/lib/booking-fields";
 import { AppError } from "../errors";
 import { mergeMetadata, parseMetadata } from "../metadata";
+import { parseEventPayment, withEventPayment } from "../payments/paidEvent";
 import type { ScheduleRepository } from "../schedules/ScheduleRepository";
 import type { EventTypeRepository, EventTypeRow } from "./EventTypeRepository";
 import {
@@ -105,6 +106,7 @@ function toDto(row: EventTypeRow): EventTypeDto {
     lockTimeZoneToggleOnBookingPage: row.lockTimeZoneToggleOnBookingPage,
     lockedTimeZone: row.lockedTimeZone,
     eventTypeColor: parseEventTypeColor(row.eventTypeColor),
+    payment: parseEventPayment(row.metadata),
     interfaceLanguage: row.interfaceLanguage || null,
     bookerLayouts: parseBookerLayouts(parseMetadata(row.metadata).bookerLayouts),
     disableConfirmationEmails: parseDisabledConfirmationEmails(row.metadata),
@@ -274,6 +276,11 @@ export class EventTypeService {
           input.multipleDuration && input.multipleDuration.length > 1
             ? [...new Set(input.multipleDuration)].sort((a, b) => a - b)
             : null,
+        // Only when it changes something, so a free event's metadata stays as it was.
+        ...(input.payment !== undefined &&
+          (input.payment !== null || parseEventPayment(row.metadata) !== null) && {
+            apps: withEventPayment(row.metadata, input.payment),
+          }),
       }),
       hideCalendarNotes: input.hideCalendarNotes,
       hideCalendarEventDetails: input.hideCalendarEventDetails,

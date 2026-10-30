@@ -18,7 +18,10 @@ export const Route = createFileRoute("/api/integrations/$app/add")({
             new URL(`/auth/login?callbackUrl=${encodeURIComponent(app.returnTo)}`, request.url),
             302
           );
-        const authorizeUrl = app.authorizeUrl(await signState(Number(session.user.id), oauthStateSecret()));
+        const authorizeUrl = app.authorizeUrl(await signState(Number(session.user.id), oauthStateSecret()), {
+          email: session.user.email,
+          name: session.user.name || null,
+        });
         // Onboarding passes returnTo so the user comes back to its calendar step.
         const returnTo = new URL(request.url).searchParams.get("returnTo");
         return redirectResponse(authorizeUrl, returnCookie(returnTo));

@@ -10,6 +10,9 @@ export type AppEndpoints = {
   zoomApi: string;
   dailyApi: string;
   appleCalDav: string;
+  stripeApi: string;
+  /** Stripe Connect's OAuth: `${base}/oauth/authorize` and `${base}/oauth/token`. */
+  stripeConnect: string;
 };
 
 export function appEndpoints(
@@ -24,5 +27,7 @@ export function appEndpoints(
     zoomApi: pick("ZOOM_API_URL", "https://api.zoom.us/v2"),
     dailyApi: pick("DAILY_API_URL", "https://api.daily.co/v1"),
     appleCalDav: pick("APPLE_CALDAV_URL", "https://caldav.icloud.com"),
+    stripeApi: pick("STRIPE_API_URL", "https://api.stripe.com/v1"),
+    stripeConnect: pick("STRIPE_CONNECT_URL", "https://connect.stripe.com"),
   };
 }

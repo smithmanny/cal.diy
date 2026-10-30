@@ -23,6 +23,7 @@ import { DURATION_MESSAGE_KEYS, DurationEditor } from "~/components/event-types/
 import { Field, Section } from "~/components/event-types/EditorLayout";
 import { LIMITS_MESSAGE_KEYS, LimitsEditor, limitsErrorKey } from "~/components/event-types/LimitsEditor";
 import { LOCATIONS_MESSAGE_KEYS, LocationsEditor } from "~/components/event-types/LocationsEditor";
+import { PAYMENT_EDITOR_MESSAGE_KEYS, PaymentEditor } from "~/components/event-types/PaymentEditor";
 import { PRIVATE_LINKS_MESSAGE_KEYS, PrivateLinksEditor } from "~/components/event-types/PrivateLinksEditor";
 import { RECURRING_EDITOR_MESSAGE_KEYS, RecurringEditor } from "~/components/event-types/RecurringEditor";
 import { HydratedFieldset } from "~/components/HydratedFieldset";
@@ -30,7 +31,7 @@ import { DEFAULT_BOOKER_LAYOUTS } from "~/lib/booker-layouts";
 import { errorMessageKey } from "~/lib/errors";
 import { useT } from "~/lib/i18n";
 import { loadMessages } from "~/lib/messages";
-import { getConferencingSettings } from "~/server/apps/functions";
+import { getApps, getConferencingSettings } from "~/server/apps/functions";
 import {
   deleteEventType,
   getEventType,
@@ -52,6 +53,7 @@ const MESSAGE_KEYS = [
   ...DURATION_MESSAGE_KEYS,
   ...BOOKING_QUESTIONS_MESSAGE_KEYS,
   ...LOCATIONS_MESSAGE_KEYS,
+  ...PAYMENT_EDITOR_MESSAGE_KEYS,
   ...LIMITS_MESSAGE_KEYS,
   "setup",
   "availability",
@@ -78,7 +80,7 @@ const MESSAGE_KEYS = [
 ];
 
 function EventTypeEditorPage() {
-  const { eventType, schedules, conferencing, assignment, teamSlug } = Route.useLoaderData();
+  const { eventType, schedules, conferencing, assignment, teamSlug, stripeConnected } = Route.useLoaderData();
   const { user, origin } = Route.useRouteContext();
   const t = useT();
   const router = useRouter();
@@ -105,6 +107,9 @@ function EventTypeEditorPage() {
         : null) ??
       (form.recurringEvent && form.maxActiveBookingsPerBooker
         ? "recurring_event_doesnt_support_booker_booking_limit"
+        : null) ??
+      (form.payment && (form.seatsPerTimeSlot || form.recurringEvent)
+        ? "paid_events_dont_support_seats_or_recurring"
         : null) ??
       (redirect && !/^https?:\/\/\S+$/i.test(redirect) ? "url_validation_error" : null);
     if (invalid) {
@@ -252,6 +257,13 @@ function EventTypeEditorPage() {
         <RecurringEditor form={form} set={set} t={t} />
       </Section>
 
+      {/* Shown once Stripe is connected, or when the event already charges (to switch it off). */}
+      {(stripeConnected || form.payment) && (
+        <Section title={t("payments")}>
+          <PaymentEditor form={form} set={set} t={t} />
+        </Section>
+      )}
+
       <Section title={t("event_limit_tab_title")}>
         <LimitsEditor form={form} set={set} t={t} />
       </Section>
@@ -280,13 +292,15 @@ export const Route = createFileRoute("/_authed/event-types/$eventTypeId")({
     stringify: ({ eventTypeId }) => ({ eventTypeId: String(eventTypeId) }),
   },
   loader: async ({ context, params }) => {
-    const [messages, eventType, schedules, conferencing, assignment] = await Promise.all([
+    const [messages, eventType, schedules, conferencing, assignment, apps] = await Promise.all([
       loadMessages(context, MESSAGE_KEYS),
       getEventType({ data: { id: params.eventTypeId } }),
       listSchedules(),
       getConferencingSettings(),
       getEventTypeAssignment({ data: { id: params.eventTypeId } }),
+      getApps(),
     ]);
+    const stripe = apps.find((app) => app.slug === "stripe");
     return {
       messages,
       eventType,
@@ -294,6 +308,7 @@ export const Route = createFileRoute("/_authed/event-types/$eventTypeId")({
       conferencing,
       assignment,
       teamSlug: assignment?.teamSlug ?? null,
+      stripeConnected: Boolean(stripe?.available && stripe.credentialIds.length),
     };
   },
   component: EventTypeEditorPage,

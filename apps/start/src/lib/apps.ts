@@ -4,7 +4,7 @@
  * the Apps pages; nothing here is secret.
  */
 
-type AppCategory = "calendar" | "conferencing";
+type AppCategory = "calendar" | "conferencing" | "payment";
 
 /**
  * How an app is added: through the provider's OAuth consent screen, a form for server credentials
@@ -294,6 +294,15 @@ export const APPS: AppDefinition[] = [
     locationType: "integrations:jitsi",
   },
   ...STATIC_LINK_APPS,
+  {
+    slug: "stripe",
+    dirName: "stripepayment",
+    name: "Stripe",
+    logo: "icon.svg",
+    category: "payment",
+    credentialType: "stripe_payment",
+    install: "oauth",
+  },
 ];
 
 export type { AppCategory, AppDefinition, AppInstallFlow };

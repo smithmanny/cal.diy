@@ -22,6 +22,8 @@ type Deps = {
   users: Pick<UserRepository, "findMetadata" | "updateMetadata">;
   calendars: CalendarService | null;
   video: VideoService | null;
+  /** Whether Stripe is configured, so hosts can connect it for paid events. */
+  paymentsConfigured?: boolean;
 };
 
 function parseUrl(value: string | undefined): URL | null {
@@ -171,6 +173,7 @@ export class AppsService {
   }
 
   private isAvailable(app: AppDefinition): boolean {
+    if (app.category === "payment") return Boolean(this.deps.paymentsConfigured);
     switch (app.install) {
       case "oauth":
       case "credentials":

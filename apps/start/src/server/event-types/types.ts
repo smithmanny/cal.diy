@@ -9,6 +9,7 @@ import {
 import { bookerLayoutsSchema } from "~/lib/booker-layouts";
 import { bookingFieldInputSchema } from "~/lib/booking-fields";
 import { SUPPORTED_LOCALES } from "~/lib/locales";
+import { eventPaymentSchema } from "../payments/paidEvent";
 
 const limitValue = z.number().int().min(1).max(100_000).optional();
 
@@ -50,20 +51,23 @@ export const eventLocationSchema = z.discriminatedUnion("type", [
 export type EventLocation = z.infer<typeof eventLocationSchema>;
 
 /** Where a host can move an existing booking: any location but the attendee's phone, which they'd have to give. */
-export const editableLocationSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("inPerson"), address: z.string().trim().min(1).max(500) }),
-  z.object({ type: z.literal("link"), link: z.string().trim().url().max(2000) }),
-  z.object({
-    type: z.literal("userPhone"),
-    hostPhoneNumber: z
-      .string()
-      .trim()
-      .regex(/^\+?[\d\s().-]{6,20}$/),
-  }),
-  z.object({ type: z.literal("integrations:google:meet") }),
-  // The video listener creates the meeting for the booking's new location.
-  z.object({ type: z.enum(DYNAMIC_VIDEO_LOCATION_TYPES) }),
-]);
+export const editableLocationSchema = z
+  .discriminatedUnion("type", [
+    z.object({ type: z.literal("inPerson"), address: z.string().trim().min(1).max(500) }),
+    z.object({ type: z.literal("link"), link: z.string().trim().url().max(2000) }),
+    z.object({
+      type: z.literal("userPhone"),
+      hostPhoneNumber: z
+        .string()
+        .trim()
+        .regex(/^\+?[\d\s().-]{6,20}$/),
+    }),
+    z.object({ type: z.literal("integrations:google:meet") }),
+    // The video listener creates the meeting for the booking's new location.
+    z.object({ type: z.enum(DYNAMIC_VIDEO_LOCATION_TYPES) }),
+    z.object({ type: z.enum(STATIC_LINK_LOCATION_TYPES), link: z.string().trim().url().max(2000) }),
+  ])
+  .superRefine((location, context) => checkAppLinks([location], context));
 
 export type EditableLocation = z.infer<typeof editableLocationSchema>;
 
@@ -77,7 +81,8 @@ export function locationValue(location: EditableLocation): string {
     case "userPhone":
       return location.hostPhoneNumber;
     default:
-      return location.type;
+      // Static-link apps meet in the host's room; conferencing apps get their link from the app.
+      return "link" in location ? location.link : location.type;
   }
 }
 
@@ -163,6 +168,8 @@ export const eventTypeFields = z.object({
    * Cal's private links. A link expires at the end of `expiresAt` (host's time zone) if set,
    * otherwise after `maxUsageCount` bookings. `usageCount` is shown, never written.
    */
+  /** Cal's metadata.apps.stripe for a paid event; null is free. Left out, it stays as it is. */
+  payment: eventPaymentSchema.nullable().optional(),
   privateLinks: z
     .array(
       z.object({
@@ -192,6 +199,11 @@ export const eventTypeInputSchema = eventTypeFields
   .refine((input) => !input.seatsPerTimeSlot || input.locations.length <= 1, {
     path: ["seatsPerTimeSlot"],
     message: "seats_option_doesnt_support_multi_location",
+  })
+  // Payments are taken once per booking here; Cal's per-seat and per-series charging isn't supported.
+  .refine((input) => !input.payment || (!input.seatsPerTimeSlot && !input.recurringEvent), {
+    path: ["payment"],
+    message: "paid_events_dont_support_seats_or_recurring",
   })
   .refine((input) => !input.recurringEvent || !input.maxActiveBookingsPerBooker, {
     path: ["recurringEvent"],
