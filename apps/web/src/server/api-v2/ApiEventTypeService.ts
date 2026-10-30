@@ -1,6 +1,7 @@
 import "@tanstack/react-start/server-only";
 
 import { AppError } from "../errors";
+import type { EventTypeRepository } from "../event-types/EventTypeRepository";
 import type { EventTypeService } from "../event-types/EventTypeService";
 import { type EventTypeDto, type EventTypeInput, eventTypeInputSchema } from "../event-types/types";
 import type { UserRepository } from "../users/UserRepository";
@@ -13,6 +14,7 @@ type Deps = {
   eventTypes: EventTypeService;
   users: ApiUserRepository;
   userRepo: UserRepository;
+  eventTypeRepo: Pick<EventTypeRepository, "findById">;
 };
 
 type EventTypeOutput = ReturnType<typeof toEventTypeOutput>;
@@ -50,6 +52,7 @@ class ApiEventTypeService {
   }
 
   async get(actor: ApiUser, id: number, origin: string): Promise<EventTypeOutput> {
+    await this.assertPersonal(id);
     const owner = await this.owner(actor.id);
     return toEventTypeOutput(await this.deps.eventTypes.get(actor.id, id, owner.timeZone), owner, origin);
   }
@@ -76,6 +79,7 @@ class ApiEventTypeService {
     input: EventTypeApiInput,
     origin: string
   ): Promise<EventTypeOutput> {
+    await this.assertPersonal(id);
     const owner = await this.owner(actor.id);
     const current = await this.deps.eventTypes.get(actor.id, id, owner.timeZone);
     const next = applyEventTypeInput(withoutId(current), input);
@@ -84,9 +88,18 @@ class ApiEventTypeService {
   }
 
   async delete(actor: ApiUser, id: number) {
+    await this.assertPersonal(id);
     const current = await this.deps.eventTypes.get(actor.id, id);
     await this.deps.eventTypes.delete(actor.id, id);
     return { id, lengthInMinutes: current.length, title: current.title, slug: current.slug };
+  }
+
+  /**
+   * These are the personal event type endpoints; a team's event types (Cal's
+   * /teams/{teamId}/event-types) aren't served, rather than answered with the caller as owner.
+   */
+  private async assertPersonal(id: number): Promise<void> {
+    if ((await this.deps.eventTypeRepo.findById(id))?.teamId) throw new AppError("event_type_not_found", 404);
   }
 
   private async owner(userId: number): Promise<OwnerRow> {

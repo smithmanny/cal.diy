@@ -1,10 +1,13 @@
 import "@tanstack/react-start/server-only";
 
 import type { z } from "zod";
+import { teamTarget } from "~/lib/team-target";
 import type { BookingActionsService } from "../bookings/BookingActionsService";
 import type { BookingService } from "../bookings/BookingService";
 import { AppError } from "../errors";
 import type { EventTypeRepository } from "../event-types/EventTypeRepository";
+import { parseMultipleDuration } from "../event-types/fields";
+import type { TeamRepository } from "../teams/TeamRepository";
 import type { ApiBookingRepository, ApiBookingRow } from "./ApiBookingRepository";
 import type { ApiUserRepository } from "./ApiUserRepository";
 import type { ApiUser } from "./auth";
@@ -30,6 +33,7 @@ type Deps = {
   apiBookings: ApiBookingRepository;
   eventTypeRepo: EventTypeRepository;
   users: ApiUserRepository;
+  teams: Pick<TeamRepository, "findById">;
   now?: () => Date;
 };
 
@@ -57,6 +61,7 @@ class ApiBookingService {
         responses: toResponses(input),
         duration: input.lengthInMinutes,
         recurringCount: input.recurrenceCount,
+        attendeePhoneNumber: input.attendee.phoneNumber,
         verificationCode: input.emailVerificationCode,
       },
       actor?.id ?? null
@@ -136,7 +141,8 @@ class ApiBookingService {
           ...(input.reschedulingReason ? { rescheduleReason: input.reschedulingReason } : {}),
         },
         rescheduleUid: input.seatUid ?? uid,
-        duration: Math.round((row.endTime.getTime() - row.startTime.getTime()) / 60_000),
+        rescheduledBy: input.rescheduledBy,
+        duration: await this.keptDuration(row),
       },
       actor?.id ?? null
     );
@@ -157,7 +163,7 @@ class ApiBookingService {
     return this.get(uid, actor);
   }
 
-  /** Host-only; the service takes only the guests' emails, as the app's add guests dialog does. */
+  /** Host-only. */
   async addGuests(
     uid: string,
     actor: ApiUser,
@@ -166,7 +172,7 @@ class ApiBookingService {
     await this.deps.actions.addGuests(
       actor.id,
       uid,
-      input.guests.map((guest) => guest.email)
+      input.guests.map(({ language, ...guest }) => ({ ...guest, locale: language }))
     );
     return this.get(uid, actor);
   }
@@ -178,6 +184,15 @@ class ApiBookingService {
   ): Promise<BookingOutput> {
     await this.deps.actions.editLocation(actor.id, uid, toEditableLocation(input.location));
     return this.get(uid, actor);
+  }
+
+  /** The booking's length, while the event type still offers it; otherwise the event's default. */
+  private async keptDuration(row: ApiBookingRow): Promise<number | undefined> {
+    const eventType = row.eventTypeId ? await this.deps.eventTypeRepo.findById(row.eventTypeId) : null;
+    if (!eventType) return undefined;
+    const minutes = Math.round((row.endTime.getTime() - row.startTime.getTime()) / 60_000);
+    const offered = parseMultipleDuration(eventType.metadata) ?? [eventType.length];
+    return offered.includes(minutes) ? minutes : undefined;
   }
 
   /**
@@ -205,6 +220,12 @@ class ApiBookingService {
     if (input.eventTypeId === undefined)
       return { username: input.username ?? "", slug: input.eventTypeSlug ?? "" };
     const eventType = await this.deps.eventTypeRepo.findById(input.eventTypeId);
+    if (eventType?.teamId) {
+      // A team's event type is booked through its team page, /team/<slug>/<event>.
+      const team = await this.deps.teams.findById(eventType.teamId);
+      if (!team?.slug) throw new AppError("event_type_not_found", 404);
+      return { username: teamTarget(team.slug), slug: eventType.slug };
+    }
     const owner = eventType?.userId ? await this.deps.users.findOwner(eventType.userId) : null;
     if (!eventType || !owner?.username) throw new AppError("event_type_not_found", 404);
     return { username: owner.username, slug: eventType.slug };

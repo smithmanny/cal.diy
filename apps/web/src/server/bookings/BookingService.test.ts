@@ -451,7 +451,8 @@ describe("BookingService", () => {
       const created = events.filter((event) => event.type === "BOOKING_CREATED" && event.booking.recurring);
       expect(created.map((event) => event.seriesIndex)).toEqual([0, 1, 2]);
       await expect(service.create({ ...input(at("11:00")), recurringCount: 5 })).rejects.toMatchObject({
-        code: "something_went_wrong",
+        code: "too_many_occurrences",
+        values: { max: 4 },
       });
     });
 
@@ -911,6 +912,6 @@ describe("BookingService", () => {
         to: "2030-06-01T00:00:00.000Z",
         timeZone: "UTC",
       })
-    ).rejects.toMatchObject({ code: "something_went_wrong" });
+    ).rejects.toMatchObject({ code: "invalid_slots_range", values: { days: 62 } });
   });
 });

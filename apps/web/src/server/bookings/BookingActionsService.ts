@@ -16,6 +16,9 @@ function isRecord(value: unknown): value is { [key: string]: JsonValue } {
 }
 
 /** The parts of a booking these actions read; BookingRepository.findByUid returns more. */
+/** A guest the host adds; what isn't given follows the organizer, as in Cal. */
+type NewGuest = { email: string; name?: string; timeZone?: string; locale?: string; phoneNumber?: string };
+
 type ActionBooking = {
   id: number;
   uid: string;
@@ -79,25 +82,28 @@ export class BookingActionsService {
   }
 
   /** Cal's add guests: new attendees get a confirmation, everyone else an update. */
-  async addGuests(hostId: number, uid: string, emails: string[]): Promise<{ added: string[] }> {
+  async addGuests(hostId: number, uid: string, newGuests: NewGuest[]): Promise<{ added: string[] }> {
     const found = await this.liveHostBooking(hostId, uid);
     if (found.eventType?.disableGuests) throw new AppError("guests_disabled", 403);
     const taken = new Set([found.host?.email, ...found.attendees.map((attendee) => attendee.email)]);
-    const added = [...new Set(emails.map((email) => email.trim().toLowerCase()))].filter(
-      (email) => !taken.has(email)
-    );
+    const byEmail = new Map<string, NewGuest>();
+    for (const guest of newGuests) {
+      const email = guest.email.trim().toLowerCase();
+      if (!taken.has(email) && !byEmail.has(email)) byEmail.set(email, guest);
+    }
+    const added = [...byEmail.keys()];
     if (!added.length) throw new AppError("emails_must_be_unique_valid", 400);
     const responses = isRecord(found.responses) ? found.responses : {};
     const guests = Array.isArray(responses.guests) ? responses.guests : [];
     // Like Cal, guests take the organizer's time zone and language until they say otherwise.
     await this.deps.bookingRepo.addAttendees(
       found.id,
-      added.map((email) => ({
-        name: "",
+      [...byEmail].map(([email, guest]) => ({
+        name: guest.name?.trim() ?? "",
         email,
-        timeZone: found.host?.timeZone ?? "UTC",
-        locale: found.host?.locale ?? "en",
-        phoneNumber: null,
+        timeZone: guest.timeZone ?? found.host?.timeZone ?? "UTC",
+        locale: guest.locale ?? found.host?.locale ?? "en",
+        phoneNumber: guest.phoneNumber?.trim() || null,
       })),
       { ...responses, guests: [...guests, ...added] }
     );

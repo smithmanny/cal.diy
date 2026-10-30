@@ -90,10 +90,10 @@ describe("BookingActionsService.addGuests", () => {
   it("adds new guests in the organizer's time zone and records them in the responses", async () => {
     const { service, repo, emitted } = setup({ now: before });
     const result = await service.addGuests(7, "uid-1", [
-      "New@Example.com",
-      "new@example.com",
-      "ada@example.com",
-      "host@example.com",
+      { email: "New@Example.com" },
+      { email: "new@example.com" },
+      { email: "ada@example.com" },
+      { email: "host@example.com" },
     ]);
     expect(result).toEqual({ added: ["new@example.com"] });
     expect(repo.addAttendees).toHaveBeenCalledWith(
@@ -106,24 +106,52 @@ describe("BookingActionsService.addGuests", () => {
     ]);
   });
 
+  it("keeps the details the host gives for a guest", async () => {
+    const { service, repo } = setup({ now: before });
+    await service.addGuests(7, "uid-1", [
+      {
+        email: "bo@example.com",
+        name: " Bo ",
+        timeZone: "Asia/Tokyo",
+        locale: "ja",
+        phoneNumber: "+81 3 1234",
+      },
+    ]);
+    expect(repo.addAttendees).toHaveBeenCalledWith(
+      3,
+      [
+        {
+          name: "Bo",
+          email: "bo@example.com",
+          timeZone: "Asia/Tokyo",
+          locale: "ja",
+          phoneNumber: "+81 3 1234",
+        },
+      ],
+      expect.anything()
+    );
+  });
+
   it("refuses when nobody new is added, guests are off, or the booking is over", async () => {
     await expect(
-      setup({ now: before }).service.addGuests(7, "uid-1", ["ADA@example.com"])
+      setup({ now: before }).service.addGuests(7, "uid-1", [{ email: "ADA@example.com" }])
     ).rejects.toMatchObject({
       code: "emails_must_be_unique_valid",
     });
     const noGuests = setup({ now: before, booking: bookingRow({ eventType: { disableGuests: true } }) });
-    await expect(noGuests.service.addGuests(7, "uid-1", ["x@example.com"])).rejects.toMatchObject({
+    await expect(noGuests.service.addGuests(7, "uid-1", [{ email: "x@example.com" }])).rejects.toMatchObject({
       code: "guests_disabled",
     });
     const over = setup({ now: new Date("2030-01-07T11:00:00Z") });
-    await expect(over.service.addGuests(7, "uid-1", ["x@example.com"])).rejects.toMatchObject({
+    await expect(over.service.addGuests(7, "uid-1", [{ email: "x@example.com" }])).rejects.toMatchObject({
       code: "booking_has_ended",
     });
     const cancelled = setup({ now: before, booking: bookingRow({ status: "CANCELLED" }) });
-    await expect(cancelled.service.addGuests(7, "uid-1", ["x@example.com"])).rejects.toMatchObject({
-      code: "event_cancelled",
-    });
+    await expect(cancelled.service.addGuests(7, "uid-1", [{ email: "x@example.com" }])).rejects.toMatchObject(
+      {
+        code: "event_cancelled",
+      }
+    );
   });
 });
 

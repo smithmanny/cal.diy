@@ -85,12 +85,12 @@ function toEditable(location: EventLocation): EditableLocation | null {
   return parsed.success ? parsed.data : null;
 }
 
-/** The host's installed conferencing apps, the same options the event type editor offers. */
-function useConferencingApps(): ConferencingAppDto[] {
+/** The host's installed conferencing apps (and the team's, for its events), as the event type editor offers. */
+function useConferencingApps(teamId: number | null): ConferencingAppDto[] {
   const [apps, setApps] = useState<ConferencingAppDto[]>([]);
   useEffect(() => {
     let current = true;
-    getConferencingSettings().then(
+    getConferencingSettings({ data: { teamId } }).then(
       (settings) => current && setApps(settings.apps),
       // Without them the built-in locations are still there to pick.
       () => {}
@@ -98,13 +98,23 @@ function useConferencingApps(): ConferencingAppDto[] {
     return () => {
       current = false;
     };
-  }, []);
+  }, [teamId]);
   return apps;
 }
 
-function LocationDialog({ uid, run, onClose }: { uid: string; run: Run; onClose: () => void }) {
+function LocationDialog({
+  uid,
+  teamId,
+  run,
+  onClose,
+}: {
+  uid: string;
+  teamId: number | null;
+  run: Run;
+  onClose: () => void;
+}) {
   const t = useT();
-  const options = locationOptions(useConferencingApps(), t).filter((option) => option.type !== "phone");
+  const options = locationOptions(useConferencingApps(teamId), t).filter((option) => option.type !== "phone");
   const [location, setLocation] = useState<EventLocation>({ type: "inPerson", address: "" });
   const [invalid, setInvalid] = useState(false);
   return (
@@ -178,7 +188,7 @@ function RescheduleDialog({ uid, run, onClose }: { uid: string; run: Run; onClos
 }
 
 /** Cal's "Edit" menu on an upcoming booking: move it, add guests, or ask for a new time. */
-export function BookingEditMenu({ uid, run }: { uid: string; run: Run }) {
+export function BookingEditMenu({ uid, teamId, run }: { uid: string; teamId: number | null; run: Run }) {
   const t = useT();
   const [open, setOpen] = useState<Action | null>(null);
   const close = () => setOpen(null);
@@ -192,7 +202,7 @@ export function BookingEditMenu({ uid, run }: { uid: string; run: Run }) {
           <MenuItem onClick={() => setOpen("reschedule")}>{t("send_reschedule_request")}</MenuItem>
         </MenuPopup>
       </Menu>
-      {open === "location" && <LocationDialog uid={uid} run={run} onClose={close} />}
+      {open === "location" && <LocationDialog uid={uid} teamId={teamId} run={run} onClose={close} />}
       {open === "guests" && <GuestsDialog uid={uid} run={run} onClose={close} />}
       {open === "reschedule" && <RescheduleDialog uid={uid} run={run} onClose={close} />}
     </>

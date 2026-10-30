@@ -4856,5 +4856,8 @@
   "install_for_team": "Install for {{team}}",
   "installed_for_team": "Installed for {{team}}",
   "webhook_url_not_allowed": "Webhooks can't be sent to this server's own network. An administrator can allow it with ALLOW_PRIVATE_WEBHOOK_URLS=true.",
+  "too_many_occurrences": "This event can be booked at most {{max}} times in a row.",
+  "invalid_slots_range": "Ask for slots from a start before the end, at most {{days}} days apart.",
+  "unsupported_locale": "This language isn't supported.",
   "ADD_NEW_STRINGS_ABOVE_THIS_LINE_TO_PREVENT_MERGE_CONFLICTS": "↑↑↑↑↑↑↑↑↑↑↑↑↑ Add your new strings above here ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑"
 }

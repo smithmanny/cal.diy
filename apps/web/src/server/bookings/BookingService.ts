@@ -152,7 +152,7 @@ function paidPrice(metadata: unknown): PublicEventDto["eventType"]["price"] {
 /** The booker may book fewer occurrences than the event offers, never more. */
 function recurringCount(max: number, requested: number | undefined): number {
   if (requested === undefined) return max;
-  if (requested > max) throw new AppError("something_went_wrong");
+  if (requested > max) throw new AppError("too_many_occurrences", 400, { max });
   return requested;
 }
 
@@ -386,7 +386,7 @@ export class BookingService {
     const from = new Date(query.from);
     const to = new Date(query.to);
     if (!(from < to) || to.getTime() - from.getTime() > MAX_RANGE_MS)
-      throw new AppError("something_went_wrong");
+      throw new AppError("invalid_slots_range", 400, { days: Math.round(MAX_RANGE_MS / 86_400_000) });
     if (!isValidTimeZone(query.timeZone)) throw new AppError("invalid_timezone");
     const { host, eventType, coHosts, roundRobin } = await this.loadEvent(query.username, query.slug);
     const { slots, outOfOffice, seatsTaken, seatBookingUids } = await this.computeSlots(
@@ -474,7 +474,9 @@ export class BookingService {
     const location = this.resolveLocation(locations, locationResponse);
     const attendeePhone =
       (locationResponse?.value === "phone" ? locationResponse.optionValue : undefined) ||
-      (typeof responses.attendeePhoneNumber === "string" ? responses.attendeePhoneNumber : null);
+      (typeof responses.attendeePhoneNumber === "string" ? responses.attendeePhoneNumber : null) ||
+      input.attendeePhoneNumber ||
+      null;
     const notes = typeof responses.notes === "string" ? responses.notes : null;
     const title = await this.bookingTitle({ host, eventType, responses, name, location, length });
     const statusOnceDecided = this.needsConfirmation(eventType, start, now) ? "PENDING" : "ACCEPTED";
@@ -523,6 +525,8 @@ export class BookingService {
     const [firstBooking, ...rest] = bookings;
     const created = await this.deps.bookingRepo.insertSeriesIfFirstSlotFree([firstBooking, ...rest], {
       replacesUid: original?.uid,
+      rescheduledBy:
+        input.rescheduledBy?.toLowerCase() ?? (actorUserId && actorUserId === host.id ? host.email : email),
     });
     if (!created) throw new AppError("booking_conflict_error", 409);
     const { uid } = firstBooking;
@@ -1098,7 +1102,7 @@ export class BookingService {
   async decide(hostId: number, uid: string, accept: boolean, reason: string | null): Promise<void> {
     const found = await this.deps.bookingRepo.findByUid(uid);
     if (!found || found.userId !== hostId) throw new AppError("booking_not_found", 404);
-    if (found.status !== "PENDING") throw new AppError("something_went_wrong", 409);
+    if (found.status !== "PENDING") throw new AppError("booking_already_accepted_rejected", 409);
     // Like Cal, a recurring request is confirmed or rejected as a whole.
     const uids = found.recurringEventId
       ? (await this.deps.bookingRepo.findSeries(found.recurringEventId))

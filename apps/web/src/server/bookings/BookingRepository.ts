@@ -167,7 +167,10 @@ export class BookingRepository {
    * transaction open; the attendee insert in the same batch finds the booking by its pre-generated
    * uid. Returns false when the slot was taken in the meantime.
    */
-  async insertIfSlotFree(data: NewBooking, options: { replacesUid?: string } = {}): Promise<boolean> {
+  async insertIfSlotFree(
+    data: NewBooking,
+    options: { replacesUid?: string; rescheduledBy?: string } = {}
+  ): Promise<boolean> {
     return this.insertSeriesIfFirstSlotFree([data], options);
   }
 
@@ -177,7 +180,7 @@ export class BookingRepository {
    */
   async insertSeriesIfFirstSlotFree(
     bookings: [NewBooking, ...NewBooking[]],
-    options: { replacesUid?: string } = {}
+    options: { replacesUid?: string; rescheduledBy?: string } = {}
   ): Promise<boolean> {
     const [first] = bookings;
     const slotIsFree = notExists(
@@ -237,7 +240,7 @@ export class BookingRepository {
       // Cancelling the original in the same batch means a reschedule never leaves two live bookings.
       this.db
         .update(booking)
-        .set({ status: "CANCELLED", rescheduled: true })
+        .set({ status: "CANCELLED", rescheduled: true, rescheduledBy: options.rescheduledBy ?? null })
         .where(and(eq(booking.uid, options.replacesUid ?? ""), exists(firstInserted))),
     ]);
     const [created] = await firstInserted.limit(1);
@@ -647,6 +650,7 @@ export class BookingRepository {
         location: booking.location,
         eventTypeTitle: eventType.title,
         eventTypeColor: eventType.eventTypeColor,
+        teamId: eventType.teamId,
         recurringEventId: booking.recurringEventId,
         recurringEvent: eventType.recurringEvent,
         userId: booking.userId,

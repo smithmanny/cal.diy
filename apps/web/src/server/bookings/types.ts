@@ -27,6 +27,13 @@ export const createBookingSchema = z.object({
     message: "something_went_wrong",
   }),
   rescheduleUid: z.string().max(100).optional(),
+  /** Who moved the booking (Cal's rescheduledBy); the booker unless the host did it or someone is named. */
+  rescheduledBy: z.string().trim().email().max(320).optional(),
+  /**
+   * The booker's phone for their attendee record, apart from the form: API v2 takes it on the
+   * attendee, and the phone question is hidden by default.
+   */
+  attendeePhoneNumber: z.string().trim().max(30).optional(),
   duration: z.number().int().min(1).max(1440).optional(),
   /** The private link the booker came through, which counts one use. */
   hashedLink: z.string().max(64).optional(),

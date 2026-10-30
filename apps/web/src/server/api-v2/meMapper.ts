@@ -7,7 +7,12 @@ const updateMeInputSchema = z
   .object({
     name: z.string().trim().min(1).max(200),
     bio: z.string().max(5000).nullable(),
-    avatarUrl: z.string().url().max(2000).nullable(),
+    avatarUrl: z
+      .string()
+      .url()
+      .max(2000)
+      .refine((url) => /^https?:\/\//i.test(url), "avatarUrl must be an http(s) URL")
+      .nullable(),
     timeFormat: z.union([z.literal(12), z.literal(24)]),
     defaultScheduleId: z.number().int().positive(),
     weekStart: z.enum(WEEK_DAY_NAMES),

@@ -6,6 +6,16 @@ const EVENT_TYPES_API_VERSION = "2024-06-14";
 
 const FREQUENCIES = ["yearly", "monthly", "weekly"] as const;
 const LAYOUTS = { month: "month_view", week: "week_view", column: "column_view" } as const;
+type ApiLayout = keyof typeof LAYOUTS;
+const API_LAYOUTS = Object.fromEntries(Object.entries(LAYOUTS).map(([api, app]) => [app, api])) as Record<
+  string,
+  ApiLayout | undefined
+>;
+// Responses used to carry the stored names (month_view); those are still read back, so a fetched
+// event type can be sent as it was.
+const layoutSchema = z
+  .enum(["month", "week", "column", "month_view", "week_view", "column_view"])
+  .transform((layout): ApiLayout => API_LAYOUTS[layout] ?? (layout as ApiLayout));
 const disabled = z.object({ disabled: z.literal(true) }).strict();
 const minutes = z.number().int().min(0).max(525_600);
 
@@ -82,8 +92,8 @@ const eventTypeFieldsSchema = z
     onlyShowFirstAvailableSlot: z.boolean(),
     bookingWindow: bookingWindowSchema,
     bookerLayouts: z.object({
-      defaultLayout: z.enum(["month", "week", "column"]),
-      enabledLayouts: z.array(z.enum(["month", "week", "column"])).min(1),
+      defaultLayout: layoutSchema,
+      enabledLayouts: z.array(layoutSchema).min(1),
     }),
     confirmationPolicy: z.union([
       disabled,
@@ -204,6 +214,11 @@ function toBookingWindow(window: z.infer<typeof bookingWindowSchema>): Partial<E
 
 /** Everything the output shows; private links aren't part of Cal's event type output. */
 type EventTypeOutputSource = Omit<EventTypeDto, "privateLinks">;
+
+function toApiLayouts(layouts: { defaultLayout: string; enabledLayouts: string[] }) {
+  const api = (layout: string): ApiLayout => API_LAYOUTS[layout] ?? "month";
+  return { defaultLayout: api(layouts.defaultLayout), enabledLayouts: layouts.enabledLayouts.map(api) };
+}
 
 function fromBookingWindow(dto: EventTypeOutputSource) {
   if (dto.periodType === "RANGE")
@@ -342,7 +357,7 @@ function optionalOutputs(dto: EventTypeOutputSource) {
         }
       : undefined,
     bookingWindow: fromBookingWindow(dto),
-    bookerLayouts: dto.bookerLayouts ? dto.bookerLayouts : undefined,
+    bookerLayouts: dto.bookerLayouts ? toApiLayouts(dto.bookerLayouts) : undefined,
     confirmationPolicy: dto.requiresConfirmation
       ? {
           type: dto.requiresConfirmationThreshold ? "time" : "always",

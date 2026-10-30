@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { BookingActionsService } from "../bookings/BookingActionsService";
 import type { BookingService } from "../bookings/BookingService";
 import type { EventTypeRepository } from "../event-types/EventTypeRepository";
+import type { TeamRepository } from "../teams/TeamRepository";
 import type { ApiBookingRepository } from "./ApiBookingRepository";
 import { ApiBookingService } from "./ApiBookingService";
 import type { ApiUserRepository } from "./ApiUserRepository";
@@ -20,6 +21,7 @@ function setup() {
     apiBookings: { findByUid: vi.fn(async () => null) } as unknown as ApiBookingRepository,
     eventTypeRepo: {} as EventTypeRepository,
     users: {} as ApiUserRepository,
+    teams: {} as TeamRepository,
   });
   // The booking read back after each action isn't what these tests are about.
   vi.spyOn(service, "get").mockResolvedValue({} as Awaited<ReturnType<ApiBookingService["get"]>>);
@@ -42,11 +44,18 @@ describe("ApiBookingService booking actions", () => {
     expect(actions.markNoShow).toHaveBeenCalledTimes(1);
   });
 
-  it("adds guests by email", async () => {
+  it("adds guests with the details given, and rejects an unknown time zone", async () => {
     const { service, actions } = setup();
-    const input = addGuestsInputSchema.parse({ guests: [{ email: "g@example.com", name: "G" }] });
+    const input = addGuestsInputSchema.parse({
+      guests: [{ email: "g@example.com", name: "G", timeZone: "Asia/Tokyo", language: "ja" }],
+    });
     await service.addGuests("uid", host, input);
-    expect(actions.addGuests).toHaveBeenCalledWith(1, "uid", ["g@example.com"]);
+    expect(actions.addGuests).toHaveBeenCalledWith(1, "uid", [
+      { email: "g@example.com", name: "G", timeZone: "Asia/Tokyo", locale: "ja" },
+    ]);
+    expect(
+      addGuestsInputSchema.safeParse({ guests: [{ email: "g@example.com", timeZone: "Mars/Base" }] }).success
+    ).toBe(false);
   });
 
   it("maps Cal's location types onto the app's, and rejects the rest", async () => {
@@ -66,5 +75,21 @@ describe("ApiBookingService booking actions", () => {
     expect(
       updateLocationInputSchema.safeParse({ location: { type: "integration", integration: "zoom" } }).success
     ).toBe(false);
+  });
+});
+
+describe("ApiBookingService.eventTypeLink", () => {
+  it("books a team's event type through its team page", async () => {
+    const service = new ApiBookingService({
+      bookings: {} as BookingService,
+      actions: {} as BookingActionsService,
+      apiBookings: {} as ApiBookingRepository,
+      eventTypeRepo: {
+        findById: vi.fn(async () => ({ id: 9, slug: "demo", userId: null, teamId: 3 })),
+      } as unknown as EventTypeRepository,
+      users: {} as ApiUserRepository,
+      teams: { findById: vi.fn(async () => ({ slug: "crew" })) } as unknown as TeamRepository,
+    });
+    expect(await service.eventTypeLink({ eventTypeId: 9 })).toEqual({ username: "team:crew", slug: "demo" });
   });
 });

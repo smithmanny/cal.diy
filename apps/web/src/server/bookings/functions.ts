@@ -138,7 +138,11 @@ export const addBookingGuests = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator(uidSchema.extend({ emails: z.array(z.string().trim().email().max(320)).min(1).max(10) }))
   .handler(async ({ context, data }) =>
-    (await getBookingActionsService()).addGuests(context.userId, data.uid, data.emails)
+    (await getBookingActionsService()).addGuests(
+      context.userId,
+      data.uid,
+      data.emails.map((email) => ({ email }))
+    )
   );
 
 export const editBookingLocation = createServerFn({ method: "POST" })

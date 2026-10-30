@@ -134,7 +134,7 @@ function HostActions({
   if (status !== "upcoming" && status !== "recurring") return null;
   return (
     <>
-      <BookingEditMenu uid={booking.uid} run={run} />
+      <BookingEditMenu uid={booking.uid} teamId={booking.teamId} run={run} />
       <Button size="sm" variant="outline" onClick={cancel}>
         {t("cancel_event")}
       </Button>

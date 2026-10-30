@@ -29,7 +29,8 @@ function oauthScopeFor(method: string, pathname: string): AccessScope | null {
 }
 
 async function authenticateOAuthToken(request: Request, token: string): Promise<ApiUser> {
-  const claims = await (await getOAuthService()).verifyAccessToken(token);
+  // Without CALENDSO_ENCRYPTION_KEY no token can be valid; that's a 401, not a server error.
+  const claims = await (await getOAuthService()).verifyAccessToken(token).catch(() => null);
   if (!claims) throw new AppError("unauthorized", 401);
   const needed = oauthScopeFor(request.method, new URL(request.url).pathname);
   if (!needed || !claims.scope.includes(needed)) throw new AppError("unauthorized", 403);

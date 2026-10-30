@@ -21,7 +21,7 @@ export const Route = createFileRoute("/api/v2/me")({
         const { defaultScheduleId, locale, ...input } = await parseBody(request, updateMeInputSchema);
         if (input.timeZone && !isValidTimeZone(input.timeZone)) throw new AppError("invalid_timezone");
         const matchedLocale = locale === undefined ? undefined : matchLocale(locale);
-        if (matchedLocale === null) throw new AppError("something_went_wrong");
+        if (matchedLocale === null) throw new AppError("unsupported_locale");
         // Through the schedule service, which checks the schedule is the user's own.
         if (defaultScheduleId) await (await getScheduleService()).setDefault(user.id, defaultScheduleId);
         await (await getApiUserRepository()).update(user.id, {

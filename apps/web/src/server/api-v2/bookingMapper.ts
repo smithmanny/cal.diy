@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { LocationResponse } from "~/lib/booking-fields";
 import type { EditableLocation } from "../event-types/types";
+import { isValidTimeZone } from "../schedules/scheduleMapper";
 import type { ApiBookingRow } from "./ApiBookingRepository";
 
 const BOOKINGS_API_VERSION = "2024-08-13";
@@ -108,7 +109,7 @@ const addGuestsInputSchema = z.object({
       z.object({
         email: z.string().trim().email().max(320),
         name: z.string().max(200).optional(),
-        timeZone: z.string().max(100).optional(),
+        timeZone: z.string().max(100).refine(isValidTimeZone, "invalid time zone").optional(),
         phoneNumber: z.string().max(30).optional(),
         language: z.string().max(20).optional(),
       })

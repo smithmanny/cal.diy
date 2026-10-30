@@ -8,8 +8,14 @@ import {
   toBookingOutput,
   toResponses,
 } from "./bookingMapper";
-import { applyEventTypeInput, createEventTypeInputSchema, toEventTypeOutput } from "./eventTypeMapper";
+import {
+  applyEventTypeInput,
+  createEventTypeInputSchema,
+  toEventTypeOutput,
+  updateEventTypeInputSchema,
+} from "./eventTypeMapper";
 import { pagination } from "./http";
+import { updateMeInputSchema } from "./meMapper";
 import { applyScheduleInput, toScheduleOutput } from "./scheduleMapper";
 import { isoInTimeZone, slotsQuerySchema, slotsRange, toSlotsOutput } from "./slotsMapper";
 import { applyWebhookInput, toWebhookOutput } from "./webhookMapper";
@@ -284,6 +290,37 @@ describe("event types", () => {
     });
   });
 
+  it("answers with the layout names it accepts, and still reads the stored ones", () => {
+    const { id: _id, ...current } = eventTypeDto();
+    const stored = {
+      defaultLayout: "week_view" as const,
+      enabledLayouts: ["week_view" as const, "month_view" as const],
+    };
+    const owner = {
+      id: 1,
+      name: "Host",
+      username: "host",
+      avatarUrl: null,
+      weekStart: "Monday",
+      brandColor: null,
+      darkBrandColor: null,
+      metadata: null,
+      timeZone: "UTC",
+    };
+    const output = toEventTypeOutput(
+      { ...eventTypeDto(), bookerLayouts: stored },
+      owner,
+      "https://cal.example.com"
+    );
+    expect(output).toMatchObject({
+      bookerLayouts: { defaultLayout: "week", enabledLayouts: ["week", "month"] },
+    });
+    const sentBack = updateEventTypeInputSchema.parse({
+      bookerLayouts: { defaultLayout: "week_view", enabledLayouts: ["week_view", "month_view"] },
+    });
+    expect(applyEventTypeInput(current, sentBack).bookerLayouts).toEqual(stored);
+  });
+
   it("resets a setting given as { disabled: true } and rejects fields it doesn't support", () => {
     const { id: _id, ...current } = { ...eventTypeDto(), seatsPerTimeSlot: 4 };
     expect(applyEventTypeInput(current, { seats: { disabled: true } }).seatsPerTimeSlot).toBeNull();
@@ -431,5 +468,13 @@ describe("webhooks", () => {
       active: true,
       payloadTemplate: null,
     });
+  });
+});
+
+describe("updateMeInputSchema", () => {
+  it("only takes http(s) avatar URLs", () => {
+    expect(updateMeInputSchema.safeParse({ avatarUrl: "https://cdn.example.com/a.png" }).success).toBe(true);
+    expect(updateMeInputSchema.safeParse({ avatarUrl: "javascript:alert(1)" }).success).toBe(false);
+    expect(updateMeInputSchema.safeParse({ avatarUrl: "data:image/png;base64,AAAA" }).success).toBe(false);
   });
 });

@@ -5,6 +5,7 @@ import { getDb } from "../db";
 import { getEventTypeService } from "../event-types/container";
 import { EventTypeRepository } from "../event-types/EventTypeRepository";
 import { getScheduleService } from "../schedules/container";
+import { TeamRepository } from "../teams/TeamRepository";
 import { UserRepository } from "../users/UserRepository";
 import { ApiBookingRepository } from "./ApiBookingRepository";
 import { ApiBookingService } from "./ApiBookingService";
@@ -24,6 +25,7 @@ async function getApiBookingService(): Promise<ApiBookingService> {
     apiBookings: new ApiBookingRepository(db),
     eventTypeRepo: new EventTypeRepository(db),
     users: new ApiUserRepository(db),
+    teams: new TeamRepository(db),
   });
 }
 
@@ -33,6 +35,7 @@ async function getApiEventTypeService(): Promise<ApiEventTypeService> {
     eventTypes: await getEventTypeService(),
     users: new ApiUserRepository(db),
     userRepo: new UserRepository(db),
+    eventTypeRepo: new EventTypeRepository(db),
   });
 }
 
