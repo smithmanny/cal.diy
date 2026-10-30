@@ -292,15 +292,18 @@ export const Route = createFileRoute("/_authed/event-types/$eventTypeId")({
     stringify: ({ eventTypeId }) => ({ eventTypeId: String(eventTypeId) }),
   },
   loader: async ({ context, params }) => {
+    const loadAssignment = getEventTypeAssignment({ data: { id: params.eventTypeId } });
     const [messages, eventType, schedules, conferencing, assignment, apps] = await Promise.all([
       loadMessages(context, MESSAGE_KEYS),
       getEventType({ data: { id: params.eventTypeId } }),
       listSchedules(),
-      getConferencingSettings(),
-      getEventTypeAssignment({ data: { id: params.eventTypeId } }),
+      // A team's event type can also use the apps installed for the team.
+      loadAssignment.then((found) => getConferencingSettings({ data: { teamId: found?.teamId ?? null } })),
+      loadAssignment,
       getApps(),
     ]);
     const stripe = apps.find((app) => app.slug === "stripe");
+    const teamStripe = stripe?.teamInstalls.some((install) => install.teamId === assignment?.teamId);
     return {
       messages,
       eventType,
@@ -308,7 +311,7 @@ export const Route = createFileRoute("/_authed/event-types/$eventTypeId")({
       conferencing,
       assignment,
       teamSlug: assignment?.teamSlug ?? null,
-      stripeConnected: Boolean(stripe?.available && stripe.credentialIds.length),
+      stripeConnected: Boolean(stripe?.available && (stripe.credentialIds.length || teamStripe)),
     };
   },
   component: EventTypeEditorPage,

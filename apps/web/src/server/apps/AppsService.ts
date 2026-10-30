@@ -13,13 +13,16 @@ import type { CalendarService } from "../calendars/CalendarService";
 import { AppError } from "../errors";
 import { type EventLocation, eventLocationSchema } from "../event-types/types";
 import { mergeMetadata, parseMetadata } from "../metadata";
+import type { TeamRepository } from "../teams/TeamRepository";
+import { canManage } from "../teams/TeamService";
 import type { UserRepository } from "../users/UserRepository";
 import type { VideoService } from "../video/VideoService";
-import type { CredentialRepository } from "./CredentialRepository";
+import type { CredentialOwner, CredentialRepository, CredentialRow } from "./CredentialRepository";
 
 type Deps = {
   credentials: CredentialRepository;
   users: Pick<UserRepository, "findMetadata" | "updateMetadata">;
+  teams: Pick<TeamRepository, "findManyForUser" | "findRole">;
   calendars: CalendarService | null;
   video: VideoService | null;
   /** Whether Stripe is configured, so hosts can connect it for paid events. */
@@ -51,8 +54,16 @@ export type AppDto = {
   install: AppInstallFlow;
   /** Whether this instance is set up for the app (its OAuth client or API key is configured). */
   available: boolean;
+  /** The user's own installs. */
   credentialIds: number[];
+  /** Whether a team can install it for its event types (calendars stay personal, as in Cal). */
+  teamInstallable: boolean;
+  /** Installs on teams the user belongs to. */
+  teamInstalls: { credentialId: number; teamId: number; teamName: string }[];
 };
+
+/** A team the user manages, which apps can be installed for. */
+export type AppInstallTeamDto = { id: number; name: string };
 
 export type ConferencingAppDto = {
   slug: string;
@@ -71,12 +82,21 @@ export type ConferencingSettingsDto = {
 
 export type CalDavInput = { url?: string; username: string; password: string };
 
+function isTeamInstallable(app: AppDefinition): boolean {
+  return app.category !== "calendar" && (app.install === "oauth" || app.install === "simple");
+}
+
 /** Lists, installs and removes apps, and keeps the user's default conferencing app (Cal's users.metadata). */
 export class AppsService {
   constructor(private readonly deps: Deps) {}
 
   async listApps(userId: number): Promise<AppDto[]> {
-    const rows = await this.deps.credentials.findByUserId(userId);
+    const teams = await this.deps.teams.findManyForUser(userId);
+    const teamNames = new Map(teams.map((team) => [team.id, team.name]));
+    const [rows, teamRows] = await Promise.all([
+      this.deps.credentials.findByUserId(userId),
+      this.deps.credentials.findByTeamIds([...teamNames.keys()]),
+    ]);
     return APPS.map((app) => ({
       slug: app.slug,
       dirName: app.dirName,
@@ -86,16 +106,38 @@ export class AppsService {
       install: app.install,
       available: this.isAvailable(app),
       credentialIds: rows.filter((row) => row.type === app.credentialType).map((row) => row.id),
+      teamInstallable: isTeamInstallable(app),
+      teamInstalls: teamRows.flatMap(({ id, type, teamId }) =>
+        type === app.credentialType && teamId !== null
+          ? [{ credentialId: id, teamId, teamName: teamNames.get(teamId) ?? "" }]
+          : []
+      ),
     }));
   }
 
-  /** Apps that need nothing but a click: Jitsi and the static-link apps. */
-  async install(userId: number, slug: string): Promise<void> {
+  async installTeams(userId: number): Promise<AppInstallTeamDto[]> {
+    const teams = await this.deps.teams.findManyForUser(userId);
+    return teams.filter((team) => canManage(team.role)).map(({ id, name }) => ({ id, name }));
+  }
+
+  /** Throws unless the user manages the team and the app (by Cal's folder name) can go on a team. */
+  async assertTeamInstall(userId: number, teamId: number, dirName: string): Promise<void> {
+    const app = APPS.find((candidate) => candidate.dirName === dirName);
+    if (!app || !isTeamInstallable(app)) throw new AppError("not_found", 404);
+    if (!canManage(await this.deps.teams.findRole(teamId, userId))) throw new AppError("not_found", 404);
+  }
+
+  /** Apps that need nothing but a click: Jitsi and the static-link apps, for the user or a team. */
+  async install(userId: number, slug: string, teamId: number | null = null): Promise<void> {
     const app = findApp(slug);
     if (!app || app.install !== "simple" || !this.isAvailable(app)) throw new AppError("not_found", 404);
-    const existing = await this.deps.credentials.findByUserId(userId, [app.credentialType]);
+    if (teamId) await this.assertTeamInstall(userId, teamId, app.dirName);
+    const owner: CredentialOwner = teamId ? { teamId } : { userId };
+    const existing = teamId
+      ? await this.deps.credentials.findByTeamId(teamId, [app.credentialType])
+      : await this.deps.credentials.findByUserId(userId, [app.credentialType]);
     if (existing.length) return;
-    await this.deps.credentials.create(userId, app.credentialType, null);
+    await this.deps.credentials.create(owner, app.credentialType, null);
   }
 
   /** CalDAV servers and iCloud: the credentials are checked by listing calendars before they're kept. */
@@ -116,7 +158,14 @@ export class AppsService {
   async uninstall(userId: number, credentialId: number): Promise<void> {
     const row = await this.deps.credentials.findById(credentialId);
     const app = row && APPS.find((candidate) => candidate.credentialType === row.type);
-    if (!row || row.userId !== userId || !app) throw new AppError("not_found", 404);
+    if (!row || !app) throw new AppError("not_found", 404);
+    if (row.teamId !== null) {
+      if (!canManage(await this.deps.teams.findRole(row.teamId, userId)))
+        throw new AppError("not_found", 404);
+      await this.deps.credentials.delete(row.id);
+      return;
+    }
+    if (row.userId !== userId) throw new AppError("not_found", 404);
     if (app.category === "calendar" && this.deps.calendars)
       await this.deps.calendars.disconnect(userId, row.id);
     else await this.deps.credentials.delete(row.id);
@@ -125,10 +174,13 @@ export class AppsService {
       await this.deps.users.updateMetadata(userId, mergeMetadata(metadata, { defaultConferencingApp: null }));
   }
 
-  /** Installed conferencing apps, plus Cal Video when the instance has it. */
-  async conferencing(userId: number): Promise<ConferencingSettingsDto> {
+  /**
+   * Installed conferencing apps, plus Cal Video when the instance has it. For a team's event type,
+   * the team's installs count too.
+   */
+  async conferencing(userId: number, teamId: number | null = null): Promise<ConferencingSettingsDto> {
     const [rows, metadata] = await Promise.all([
-      this.deps.credentials.findByUserId(userId),
+      this.installedFor(userId, teamId),
       this.deps.users.findMetadata(userId),
     ]);
     const apps = APPS.flatMap((app): ConferencingAppDto[] => {
@@ -170,6 +222,12 @@ export class AppsService {
       app.linkPattern ? { type: app.locationType, link: defaultApp.appLink } : { type: app.locationType }
     );
     return parsed.success ? parsed.data : null;
+  }
+
+  private async installedFor(userId: number, teamId: number | null): Promise<CredentialRow[]> {
+    const own = await this.deps.credentials.findByUserId(userId);
+    if (!teamId || !(await this.deps.teams.findRole(teamId, userId))) return own;
+    return [...own, ...(await this.deps.credentials.findByTeamId(teamId))];
   }
 
   private isAvailable(app: AppDefinition): boolean {

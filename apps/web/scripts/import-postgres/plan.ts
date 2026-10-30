@@ -37,8 +37,8 @@ import {
   twoFactorFromUser,
 } from "./mappers";
 
-// Teams, their members and event types come over; what a team owns that the new app has no team
-// feature for (installed apps, webhooks, verified emails) is left out.
+// Teams, their members, event types and installed apps come over; what a team owns that the new
+// app has no team feature for (webhooks, verified emails) is left out.
 const TEAM_OWNED = ["teamId"];
 
 /** What gets imported, in an order where every row's references are already in place. */
@@ -58,7 +58,8 @@ export function importPlan(crypto: TwoFactorCrypto): ImportStep[] {
       map: (row, context) => twoFactorFromUser(row, crypto, context.warn),
     },
     { source: "Schedule", target: schedule },
-    { source: "Credential", target: credential, skipWhenSet: TEAM_OWNED },
+    // Team installs serve the team's event types (conferencing and payments).
+    { source: "Credential", target: credential },
     { source: "EventType", target: eventType, map: mapEventType },
     { source: "DestinationCalendar", target: destinationCalendar },
     { source: "SelectedCalendar", target: selectedCalendar },

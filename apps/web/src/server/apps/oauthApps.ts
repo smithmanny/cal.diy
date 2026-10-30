@@ -10,6 +10,7 @@ import {
 import { createStripeClient, getPaymentService } from "../payments/container";
 import { getVideoService } from "../video/container";
 import { TEAMS_SCOPES, TEAMS_VIDEO_TYPE, ZOOM_VIDEO_TYPE } from "../video/providers";
+import type { CredentialOwner } from "./CredentialRepository";
 import { integrationRedirectUri, outlookCalendarOAuth, teamsOAuth, zoomOAuth } from "./config";
 import { buildOAuthAuthorizeUrl, type OAuthClientConfig } from "./oauth";
 
@@ -17,7 +18,7 @@ import { buildOAuthAuthorizeUrl, type OAuthClientConfig } from "./oauth";
 type OAuthApp = {
   /** `user` prefills Stripe's account form; other providers ignore it. */
   authorizeUrl(state: string, user: { email: string; name: string | null }): string;
-  connect(userId: number, code: string): Promise<void>;
+  connect(owner: CredentialOwner, code: string): Promise<void>;
   /** Where the user lands afterwards. */
   returnTo: string;
 };
@@ -31,7 +32,7 @@ async function stripeApp(): Promise<OAuthApp | null> {
   if (!stripe || !payments) return null;
   return {
     authorizeUrl: (state, user) => stripe.authorizeUrl(state, integrationRedirectUri("stripepayment"), user),
-    connect: async (userId, code) => payments.connect(userId, await stripe.connect(code)),
+    connect: async (owner, code) => payments.connect(owner, await stripe.connect(code)),
     returnTo: "/apps",
   };
 }
@@ -44,7 +45,11 @@ async function calendarApp(
   if (!authorizeUrl || !service?.hasProvider(type)) return null;
   return {
     authorizeUrl,
-    connect: (userId, code) => service.connectOAuth(userId, type, code),
+    // Calendars are personal; the add route refuses team installs for them.
+    connect: (owner, code) => {
+      if (!("userId" in owner)) throw new Error("Calendars can't be installed for a team");
+      return service.connectOAuth(owner.userId, type, code);
+    },
     returnTo: CALENDARS_PAGE,
   };
 }
@@ -54,7 +59,7 @@ async function videoApp(type: string, oauth: OAuthClientConfig | null): Promise<
   if (!oauth || !service?.hasProvider(type)) return null;
   return {
     authorizeUrl: (state) => buildOAuthAuthorizeUrl(oauth, state),
-    connect: (userId, code) => service.connectOAuth(userId, type, code),
+    connect: (owner, code) => service.connectOAuth(owner, type, code),
     returnTo: CONFERENCING_PAGE,
   };
 }

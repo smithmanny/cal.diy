@@ -496,6 +496,7 @@ export class BookingRepository {
               slug: eventType.slug,
               length: eventType.length,
               teamSlug: team.slug,
+              teamId: eventType.teamId,
               bookingFields: eventType.bookingFields,
               disableGuests: eventType.disableGuests,
               disableCancelling: eventType.disableCancelling,

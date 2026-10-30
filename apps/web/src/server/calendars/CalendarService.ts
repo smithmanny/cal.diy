@@ -60,7 +60,7 @@ export class CalendarService {
       console.error(`Connecting a ${type} credential failed`, error);
       throw new AppError("calendar_connection_fail", 400);
     }
-    const credentialId = await this.credentials.create(userId, type, await this.config.vault.seal(key));
+    const credentialId = await this.credentials.create({ userId }, type, await this.config.vault.seal(key));
     const primary = calendars.find((calendar) => calendar.primary) ?? calendars[0];
     if (!primary) return credentialId;
     const credential = { id: credentialId, type };

@@ -1,6 +1,6 @@
 import "@tanstack/react-start/server-only";
 
-import type { CredentialRepository, CredentialRow } from "../apps/CredentialRepository";
+import type { CredentialOwner, CredentialRepository, CredentialRow } from "../apps/CredentialRepository";
 import type { CredentialVault } from "../apps/CredentialVault";
 import type { BookingEvent, BookingSnapshot } from "../bookings/events";
 import { AppError } from "../errors";
@@ -31,11 +31,11 @@ export class VideoService {
     return this.byType.has(type);
   }
 
-  async connectOAuth(userId: number, type: string, code: string): Promise<void> {
+  async connectOAuth(owner: CredentialOwner, type: string, code: string): Promise<void> {
     const exchange = this.byType.get(type)?.exchangeCode;
     if (!exchange) throw new AppError("not_found", 404);
     const key = await exchange(code);
-    await this.credentials.create(userId, type, await this.config.vault.seal(key));
+    await this.credentials.create(owner, type, await this.config.vault.seal(key));
   }
 
   roomUrl(bookingUid: string, type: string): Promise<string | null> {
@@ -76,11 +76,11 @@ export class VideoService {
     const provider = booking.location ? this.byLocation.get(booking.location) : undefined;
     if (!provider) return;
     if ((await this.repo.findReferences(booking.uid, [provider.type])).length) return;
-    const row = provider.needsCredential
-      ? (await this.credentials.findByUserId(booking.organizer.id, [provider.type]))[0]
-      : undefined;
+    const row = provider.needsCredential ? await this.hostCredential(booking, provider.type) : undefined;
     if (provider.needsCredential && !row) {
-      console.error(`Booking ${booking.uid} asks for ${provider.type}, which its host hasn't installed`);
+      console.error(
+        `Booking ${booking.uid} asks for ${provider.type}, which neither its host nor team installed`
+      );
       return;
     }
     const client = await this.clientFor(provider, row);
@@ -105,6 +105,14 @@ export class VideoService {
     await this.repo.setBookingVideoUrl(booking.uid, link);
     // Listeners run in order; calendar sync, webhooks and emails should see the real link.
     booking.location = link;
+  }
+
+  /** The host's own install comes first, as in Cal; a team's event falls back to the team's. */
+  private async hostCredential(booking: BookingSnapshot, type: string): Promise<CredentialRow | undefined> {
+    const [own] = await this.credentials.findByUserId(booking.organizer.id, [type]);
+    const teamId = booking.eventType?.teamId;
+    if (own || !teamId) return own;
+    return (await this.credentials.findByTeamId(teamId, [type]))[0];
   }
 
   private async deleteMeetings(bookingUid: string): Promise<void> {

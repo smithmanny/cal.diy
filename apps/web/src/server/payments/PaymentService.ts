@@ -1,7 +1,7 @@
 import "@tanstack/react-start/server-only";
 
 import type { JsonValue } from "@calcom/db/ids";
-import type { CredentialRepository } from "../apps/CredentialRepository";
+import type { CredentialOwner, CredentialRepository } from "../apps/CredentialRepository";
 import type { CredentialVault } from "../apps/CredentialVault";
 import type { BookingEvent } from "../bookings/events";
 import { AppError } from "../errors";
@@ -57,6 +57,8 @@ type PaymentPageDto = {
 type StartPaymentInput = {
   bookingUid: string;
   hostId: number;
+  /** A team's event type is paid into the team's Stripe account when the team connected one. */
+  teamId?: number | null;
   productName: string;
   bookerEmail: string;
   payment: EventPayment;
@@ -82,16 +84,19 @@ function paymentData(value: unknown): PaymentData | null {
 class PaymentService {
   constructor(private readonly deps: Deps) {}
 
-  async connect(userId: number, key: StripeConnectKey): Promise<void> {
-    // One Stripe account per host, as Cal's payment apps allow.
-    for (const row of await this.deps.credentials.findByUserId(userId, [STRIPE_PAYMENT_TYPE]))
-      await this.deps.credentials.delete(row.id);
-    await this.deps.credentials.create(userId, STRIPE_PAYMENT_TYPE, await this.deps.vault.seal(key));
+  async connect(owner: CredentialOwner, key: StripeConnectKey): Promise<void> {
+    // One Stripe account per host or team, as Cal's payment apps allow.
+    const existing =
+      "teamId" in owner
+        ? await this.deps.credentials.findByTeamId(owner.teamId, [STRIPE_PAYMENT_TYPE])
+        : await this.deps.credentials.findByUserId(owner.userId, [STRIPE_PAYMENT_TYPE]);
+    for (const row of existing) await this.deps.credentials.delete(row.id);
+    await this.deps.credentials.create(owner, STRIPE_PAYMENT_TYPE, await this.deps.vault.seal(key));
   }
 
   /** Creates the Payment and its checkout session; the booker pays at /payment/<uid>. */
   async startPayment(input: StartPaymentInput): Promise<string> {
-    const account = await this.hostAccount(input.hostId);
+    const account = await this.hostAccount(input.hostId, input.teamId ?? null);
     if (!account) throw new AppError("payment_not_created_error", 400);
     const uid = crypto.randomUUID();
     const session = await this.checkout(uid, account, input);
@@ -216,8 +221,9 @@ class PaymentService {
     }
   }
 
-  private async hostAccount(hostId: number): Promise<string | null> {
-    const [row] = await this.deps.credentials.findByUserId(hostId, [STRIPE_PAYMENT_TYPE]);
+  private async hostAccount(hostId: number, teamId: number | null): Promise<string | null> {
+    const [teamRow] = teamId ? await this.deps.credentials.findByTeamId(teamId, [STRIPE_PAYMENT_TYPE]) : [];
+    const row = teamRow ?? (await this.deps.credentials.findByUserId(hostId, [STRIPE_PAYMENT_TYPE]))[0];
     if (!row) return null;
     const key = (await this.deps.vault.open(row)) as Partial<StripeConnectKey> | null;
     return key?.stripe_user_id ?? null;

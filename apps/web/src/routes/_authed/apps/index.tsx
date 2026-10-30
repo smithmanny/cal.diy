@@ -10,8 +10,14 @@ import { errorMessageKey } from "~/lib/errors";
 import type { TFunction } from "~/lib/i18n";
 import { useT } from "~/lib/i18n";
 import { loadMessages } from "~/lib/messages";
-import type { AppDto } from "~/server/apps/AppsService";
-import { connectCalDavApp, getApps, installApp, uninstallApp } from "~/server/apps/functions";
+import type { AppDto, AppInstallTeamDto } from "~/server/apps/AppsService";
+import {
+  connectCalDavApp,
+  getAppInstallTeams,
+  getApps,
+  installApp,
+  uninstallApp,
+} from "~/server/apps/functions";
 
 const MESSAGE_KEYS = [
   "apps",
@@ -21,6 +27,8 @@ const MESSAGE_KEYS = [
   "payments",
   "install",
   "installed",
+  "installed_for_team",
+  "install_for_team",
   "remove_app",
   "app_not_configured",
   "connect",
@@ -109,7 +117,7 @@ function AppActions({ app, run, onSetup, t }: { app: AppDto; run: Run; onSetup: 
             {t("remove_app")}
           </Button>
         ))}
-      {app.install === "oauth" && !installed && <InstallLink app={app} t={t} />}
+      {app.install === "oauth" && !installed && <InstallLink app={app} label={t("install")} />}
       {app.install === "simple" && !installed && (
         <Button size="sm" onClick={() => run(() => installApp({ data: { slug: app.slug } }))}>
           {t("install")}
@@ -124,23 +132,84 @@ function AppActions({ app, run, onSetup, t }: { app: AppDto; run: Run; onSetup: 
   );
 }
 
-function InstallLink({ app, t }: { app: AppDto; t: TFunction }) {
+function InstallLink({ app, teamId, label }: { app: AppDto; teamId?: number; label: string }) {
+  const query = teamId ? `?teamId=${teamId}` : "";
   // A full page navigation: the OAuth flow leaves the app for the provider and comes back.
   return (
-    <Button size="sm" render={<a href={`/api/integrations/${app.dirName}/add`} />}>
-      {t("install")}
+    <Button
+      size="sm"
+      variant={teamId ? "outline" : "default"}
+      render={<a href={`/api/integrations/${app.dirName}/add${query}`} />}>
+      {label}
     </Button>
+  );
+}
+
+/** Installs on the user's teams, and installing for the teams they manage that don't have it yet. */
+function TeamInstalls({
+  app,
+  teams,
+  run,
+  t,
+}: {
+  app: AppDto;
+  teams: AppInstallTeamDto[];
+  run: Run;
+  t: TFunction;
+}) {
+  const managed = new Set(teams.map((team) => team.id));
+  const missing = teams.filter((team) => !app.teamInstalls.some((install) => install.teamId === team.id));
+  if (!app.available || !app.teamInstallable || (!app.teamInstalls.length && !missing.length)) return null;
+  return (
+    <div className="flex w-full flex-wrap items-center gap-2 border-t pt-3">
+      {app.teamInstalls.map((install) => (
+        <span key={install.credentialId} className="flex items-center gap-2 text-sm">
+          <span className="rounded bg-muted px-2 py-0.5 text-xs">
+            {t("installed_for_team", { team: install.teamName })}
+          </span>
+          {managed.has(install.teamId) && (
+            <Button
+              variant="outline"
+              size="sm"
+              aria-label={`${t("remove_app")}: ${app.name} (${install.teamName})`}
+              onClick={() => run(() => uninstallApp({ data: { credentialId: install.credentialId } }))}>
+              {t("remove_app")}
+            </Button>
+          )}
+        </span>
+      ))}
+      {missing.map((team) =>
+        app.install === "oauth" ? (
+          <InstallLink
+            key={team.id}
+            app={app}
+            teamId={team.id}
+            label={t("install_for_team", { team: team.name })}
+          />
+        ) : (
+          <Button
+            key={team.id}
+            size="sm"
+            variant="outline"
+            onClick={() => run(() => installApp({ data: { slug: app.slug, teamId: team.id } }))}>
+            {t("install_for_team", { team: team.name })}
+          </Button>
+        )
+      )}
+    </div>
   );
 }
 
 function AppCard({
   app,
+  teams,
   run,
   setupOpen,
   onSetup,
   t,
 }: {
   app: AppDto;
+  teams: AppInstallTeamDto[];
   run: Run;
   setupOpen: boolean;
   onSetup: (open: boolean) => void;
@@ -155,12 +224,13 @@ function AppCard({
       )}
       <AppActions app={app} run={run} onSetup={() => onSetup(true)} t={t} />
       {setupOpen && <CalDavForm app={app} run={run} onDone={() => onSetup(false)} t={t} />}
+      <TeamInstalls app={app} teams={teams} run={run} t={t} />
     </li>
   );
 }
 
 function AppsPage() {
-  const { apps } = Route.useLoaderData();
+  const { apps, teams } = Route.useLoaderData();
   const { setup } = Route.useSearch();
   const t = useT();
   const router = useRouter();
@@ -193,6 +263,7 @@ function AppsPage() {
                 <AppCard
                   key={app.slug}
                   app={app}
+                  teams={teams}
                   run={run}
                   setupOpen={openSetup === app.slug}
                   onSetup={(open) => setOpenSetup(open ? app.slug : null)}
@@ -211,8 +282,12 @@ export const Route = createFileRoute("/_authed/apps/")({
     setup: typeof search.setup === "string" && /^[a-z0-9-]+$/.test(search.setup) ? search.setup : undefined,
   }),
   loader: async ({ context }) => {
-    const [messages, apps] = await Promise.all([loadMessages(context, MESSAGE_KEYS), getApps()]);
-    return { messages, apps };
+    const [messages, apps, teams] = await Promise.all([
+      loadMessages(context, MESSAGE_KEYS),
+      getApps(),
+      getAppInstallTeams(),
+    ]);
+    return { messages, apps, teams };
   },
   component: AppsPage,
 });

@@ -1,11 +1,12 @@
 import type { Database } from "@calcom/db/database";
-import { credential, user } from "@calcom/db/schema";
+import { credential, membership, team, user } from "@calcom/db/schema";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createTestDb } from "../../test/testDb";
 import { CalendarRepository } from "../calendars/CalendarRepository";
 import { CalendarService } from "../calendars/CalendarService";
 import { calDavProvider } from "../calendars/caldav/CalDavClient";
 import { createFakeCalDavState, FAKE_CALDAV_USER, fakeCalDavFetch } from "../calendars/caldav/fakeCalDav";
+import { TeamRepository } from "../teams/TeamRepository";
 import { UserRepository } from "../users/UserRepository";
 import { dailyProvider, jitsiProvider } from "../video/providers";
 import { VideoRepository } from "../video/VideoRepository";
@@ -25,6 +26,7 @@ function service(withDaily: boolean) {
   return new AppsService({
     credentials,
     users: new UserRepository(db),
+    teams: new TeamRepository(db),
     calendars: new CalendarService(new CalendarRepository(db), credentials, {
       providers: [calDavProvider(fakeCalDavFetch(createFakeCalDavState()))],
       vault,
@@ -72,6 +74,51 @@ describe("AppsService", () => {
     expect(await db.select({ type: credential.type }).from(credential)).toEqual([{ type: "jitsi_video" }]);
     await expect(apps.install(userId, "caldav-calendar")).rejects.toMatchObject({ code: "not_found" });
     await expect(apps.install(userId, "nope")).rejects.toMatchObject({ code: "not_found" });
+  });
+
+  it("installs apps for teams the user manages, and lists them for the team's members", async () => {
+    const [{ id: teamId }] = await db
+      .insert(team)
+      .values({ name: "Sales", slug: "sales" })
+      .returning({ id: team.id });
+    const [{ id: memberId }] = await db
+      .insert(user)
+      .values({ email: "member@example.com", username: "member", timeZone: "UTC" })
+      .returning({ id: user.id });
+    await db.insert(membership).values([
+      { teamId, userId, role: "ADMIN", accepted: true },
+      { teamId, userId: memberId, role: "MEMBER", accepted: true },
+    ]);
+
+    expect(await apps.installTeams(userId)).toEqual([{ id: teamId, name: "Sales" }]);
+    expect(await apps.installTeams(memberId)).toEqual([]);
+    await expect(apps.install(memberId, "whereby", teamId)).rejects.toMatchObject({ code: "not_found" });
+    await expect(apps.assertTeamInstall(userId, teamId, "googlecalendar")).rejects.toMatchObject({
+      code: "not_found",
+    });
+
+    await apps.install(userId, "whereby", teamId);
+    await apps.install(userId, "whereby", teamId);
+    const [row] = await db
+      .select({ id: credential.id, userId: credential.userId, teamId: credential.teamId })
+      .from(credential);
+    expect(row).toMatchObject({ userId: null, teamId });
+    const whereby = (await apps.listApps(memberId)).find((app) => app.slug === "whereby");
+    expect(whereby).toMatchObject({
+      credentialIds: [],
+      teamInstallable: true,
+      teamInstalls: [{ credentialId: row.id, teamId, teamName: "Sales" }],
+    });
+    // A team's event type offers the team's apps to its members.
+    expect((await apps.conferencing(memberId)).apps.map((app) => app.slug)).toEqual(["daily-video"]);
+    expect((await apps.conferencing(memberId, teamId)).apps.map((app) => app.slug)).toEqual([
+      "daily-video",
+      "whereby",
+    ]);
+
+    await expect(apps.uninstall(memberId, row.id)).rejects.toMatchObject({ code: "not_found" });
+    await apps.uninstall(userId, row.id);
+    expect(await db.select().from(credential)).toEqual([]);
   });
 
   it("connects CalDAV only with a working login and an http(s) URL", async () => {

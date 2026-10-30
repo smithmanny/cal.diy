@@ -4,6 +4,7 @@ import type { Database } from "@calcom/db/database";
 import { createCalendarService } from "../calendars/container";
 import { getDb } from "../db";
 import { createStripeClient } from "../payments/container";
+import { TeamRepository } from "../teams/TeamRepository";
 import { UserRepository } from "../users/UserRepository";
 import { createVideoService } from "../video/container";
 import { AppsService } from "./AppsService";
@@ -13,6 +14,7 @@ export function createAppsService(db: Database): AppsService {
   return new AppsService({
     credentials: new CredentialRepository(db),
     users: new UserRepository(db),
+    teams: new TeamRepository(db),
     calendars: createCalendarService(db),
     video: createVideoService(db),
     paymentsConfigured: createStripeClient() !== null,

@@ -247,6 +247,10 @@ mapped onto Cal's own tables so existing data stays readable:
   it, and "fixed" hosts always attend). Hosts are Cal's `Host` rows, or everyone on the team with
   "Assign all team members". They're booked at `/team/<slug>/<type>`, and listed on `/team/<slug>`.
 - Out of office entries can name a teammate; the booking page then offers their page instead.
+- Owners and admins can install conferencing and payment apps for the team from `/apps` (a
+  `Credential` with `teamId`, as in Cal). The team's event types offer its conferencing apps, a
+  booking uses the host's own install of an app first and the team's otherwise, and paid team
+  events go to the team's Stripe account when it has one. Calendars stay personal.
 
 Not ported: managed event types, routing forms, org subdomains and org-scoped usernames, team
 billing, SCIM/directory sync.
@@ -378,8 +382,9 @@ What comes across, with ids unchanged:
 What doesn't:
 
 - Sessions: everyone signs in again.
-- What teams own that the new app has no team feature for: team-installed apps, team webhooks,
-  team API keys. Teams, organizations, memberships, team event types and their hosts do come over.
+- What teams own that the new app has no team feature for: team webhooks and team API keys.
+  Teams, organizations, memberships, team event types with their hosts, and apps installed for a
+  team do come over.
 - Organization-scoped usernames: organization members keep their username as an ordinary one.
 - Managed event types: the team's template is skipped; each member's copy becomes their own.
 - Tables the new app has no feature for yet (workflows, routing forms, insights, payments, …).

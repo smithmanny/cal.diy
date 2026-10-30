@@ -24,6 +24,8 @@ export type BookingSnapshot = {
     length: number;
     /** Set for a team's event type: its booking page is /team/<teamSlug>/<slug>. */
     teamSlug?: string | null;
+    /** The team's installed apps (conferencing, payments) serve its event types. */
+    teamId?: number | null;
     /** Keep notes and answers out of calendar events. */
     hideCalendarNotes?: boolean;
     /** Calendar events are private on shared calendars. */

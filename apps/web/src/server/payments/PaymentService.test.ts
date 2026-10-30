@@ -1,5 +1,5 @@
 import type { Database } from "@calcom/db/database";
-import { booking, eventType, payment, user } from "@calcom/db/schema";
+import { booking, eventType, payment, team, user } from "@calcom/db/schema";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createTestDb } from "../../test/testDb";
@@ -28,6 +28,7 @@ const KEY = "0123456789abcdef0123456789abcdef";
 const SECRET = "whsec_unit";
 let db: Database;
 let stripe: FakeStripeState;
+let stripeClient: StripeClient;
 let payments: PaymentService;
 let bookings: BookingService;
 let events: BookingEvent[];
@@ -69,7 +70,7 @@ beforeEach(async () => {
   events = [];
   pending = [];
   stripe = createFakeStripeState("https://cal.test/api/integrations/stripepayment/webhook", SECRET);
-  const client = new StripeClient(
+  stripeClient = new StripeClient(
     {
       secretKey: "sk_test_platform",
       clientId: "ca_test",
@@ -78,6 +79,7 @@ beforeEach(async () => {
     },
     fakeStripeFetch(stripe)
   );
+  const client = stripeClient;
   const bookingRepo = new BookingRepository(db);
   payments = new PaymentService({
     repo: new PaymentRepository(db),
@@ -116,7 +118,7 @@ beforeEach(async () => {
       }),
     },
   });
-  await payments.connect(hostId, await client.connect("ac_fake"));
+  await payments.connect({ userId: hostId }, await client.connect("ac_fake"));
   bookings = new BookingService({
     userRepo,
     eventTypeRepo: new EventTypeRepository(db),
@@ -154,6 +156,38 @@ describe("paid bookings", () => {
     const [stored] = await db.select({ status: booking.status, paid: booking.paid }).from(booking);
     expect(stored).toEqual({ status: "ACCEPTED", paid: true });
     expect(events.map((event) => event.type)).toEqual(["BOOKING_CREATED"]);
+  });
+
+  it("pays a team's event into the team's Stripe account when the team connected one", async () => {
+    const created = await book();
+    const [{ id: teamId }] = await db
+      .insert(team)
+      .values({ name: "Sales", slug: "sales" })
+      .returning({ id: team.id });
+    const input = {
+      bookingUid: created.uid,
+      hostId,
+      productName: "Team intro",
+      bookerEmail: "greta@example.com",
+      payment: {
+        price: 1000,
+        currency: "usd",
+        refundPolicy: "never" as const,
+        refundDaysCount: null,
+        refundCountCalendarDays: false,
+      },
+      statusAfterPayment: "ACCEPTED" as const,
+    };
+    await payments.startPayment({ ...input, teamId });
+    await payments.connect({ teamId }, await stripeClient.connect("ac_team"));
+    await payments.startPayment({ ...input, teamId });
+    const [personal, beforeTeamConnected, afterTeamConnected] = [...stripe.sessions.values()].map(
+      (session) => session.account
+    );
+    // Until the team connects Stripe, its events fall back to the host's account.
+    expect(beforeTeamConnected).toBe(personal);
+    expect(afterTeamConnected).toMatch(/^acct_fake_/);
+    expect(afterTeamConnected).not.toBe(personal);
   });
 
   it("ignores unsigned and repeated webhooks", async () => {

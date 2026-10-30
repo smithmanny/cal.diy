@@ -1,6 +1,15 @@
 import { createHash } from "node:crypto";
 import type { Database } from "@calcom/db/database";
-import { account, booking, eventType, host, membership, twoFactor, user } from "@calcom/db/schema";
+import {
+  account,
+  booking,
+  credential,
+  eventType,
+  host,
+  membership,
+  twoFactor,
+  user,
+} from "@calcom/db/schema";
 import { symmetricEncrypt as betterAuthEncrypt } from "better-auth/crypto";
 import { eq, sql } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -62,6 +71,8 @@ async function calDatabase(): Promise<Record<string, SourceRow[]>> {
       { id: 4, title: "Managed", slug: "managed", length: 15, teamId: 3, schedulingType: "managed" },
     ],
     Membership: [{ id: 7, teamId: 3, userId: 1, role: "OWNER", accepted: true }],
+    // The team's Zoom install.
+    Credential: [{ id: 5, type: "zoom_video", key: {}, encryptedKey: "sealed", userId: null, teamId: 3 }],
     Host: [{ userId: 1, eventTypeId: 3, isFixed: false }],
     Booking: [
       {
@@ -157,6 +168,11 @@ describe("runImport", () => {
       await db.select({ role: membership.role, accepted: membership.accepted }).from(membership)
     ).toEqual([{ role: "OWNER", accepted: true }]);
     expect(await db.select({ eventTypeId: booking.eventTypeId }).from(booking)).toEqual([{ eventTypeId: 3 }]);
+    expect(
+      await db
+        .select({ type: credential.type, userId: credential.userId, teamId: credential.teamId })
+        .from(credential)
+    ).toEqual([{ type: "zoom_video", userId: null, teamId: 3 }]);
     expect(await db.select({ userId: host.userId, eventTypeId: host.eventTypeId }).from(host)).toEqual([
       { userId: 1, eventTypeId: 3 },
     ]);

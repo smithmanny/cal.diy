@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { oauthStateSecret } from "~/server/apps/config";
+import { getAppsService } from "~/server/apps/container";
 import { getOAuthApp } from "~/server/apps/oauthApps";
 import { signState } from "~/server/apps/oauthState";
 import { getAuth } from "~/server/auth/auth";
@@ -18,7 +19,17 @@ export const Route = createFileRoute("/api/integrations/$app/add")({
             new URL(`/auth/login?callbackUrl=${encodeURIComponent(app.returnTo)}`, request.url),
             302
           );
-        const authorizeUrl = app.authorizeUrl(await signState(Number(session.user.id), oauthStateSecret()), {
+        const userId = Number(session.user.id);
+        // ?teamId=<id> installs the app for a team the user manages, for the team's event types.
+        const teamId = Number(new URL(request.url).searchParams.get("teamId")) || null;
+        if (teamId) {
+          try {
+            await (await getAppsService()).assertTeamInstall(userId, teamId, params.app);
+          } catch {
+            return new Response("You can't install this app for that team", { status: 404 });
+          }
+        }
+        const authorizeUrl = app.authorizeUrl(await signState({ userId, teamId }, oauthStateSecret()), {
           email: session.user.email,
           name: session.user.name || null,
         });

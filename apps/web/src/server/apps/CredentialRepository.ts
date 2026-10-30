@@ -8,6 +8,7 @@ type CredentialRow = {
   id: number;
   type: string;
   userId: number | null;
+  teamId: number | null;
   key: unknown;
   encryptedKey: string | null;
   invalid: boolean | null;
@@ -17,12 +18,16 @@ const columns = {
   id: credential.id,
   type: credential.type,
   userId: credential.userId,
+  teamId: credential.teamId,
   key: credential.key,
   encryptedKey: credential.encryptedKey,
   invalid: credential.invalid,
 };
 
-export type { CredentialRow };
+/** Apps are installed for a person, or for a team so its event types can use them. */
+type CredentialOwner = { userId: number } | { teamId: number };
+
+export type { CredentialOwner, CredentialRow };
 
 export class CredentialRepository {
   constructor(private readonly db: Database) {}
@@ -39,16 +44,38 @@ export class CredentialRepository {
       .orderBy(credential.id);
   }
 
+  findByTeamId(teamId: number, types?: string[]): Promise<CredentialRow[]> {
+    return this.db
+      .select(columns)
+      .from(credential)
+      .where(
+        types
+          ? and(eq(credential.teamId, teamId), inArray(credential.type, types))
+          : eq(credential.teamId, teamId)
+      )
+      .orderBy(credential.id);
+  }
+
+  findByTeamIds(teamIds: number[]): Promise<CredentialRow[]> {
+    if (!teamIds.length) return Promise.resolve([]);
+    return this.db
+      .select(columns)
+      .from(credential)
+      .where(inArray(credential.teamId, teamIds))
+      .orderBy(credential.id);
+  }
+
   async findById(id: number): Promise<CredentialRow | null> {
     const [found] = await this.db.select(columns).from(credential).where(eq(credential.id, id)).limit(1);
     return found ?? null;
   }
 
-  async create(userId: number, type: string, encryptedKey: string | null): Promise<number> {
+  async create(owner: CredentialOwner, type: string, encryptedKey: string | null): Promise<number> {
+    const ownerColumns = "teamId" in owner ? { teamId: owner.teamId } : { userId: owner.userId };
     const [created] = await this.db
       .insert(credential)
       // The real key lives in encryptedKey; `key` is NOT NULL in Cal's schema.
-      .values({ userId, type, key: {}, encryptedKey })
+      .values({ ...ownerColumns, type, key: {}, encryptedKey })
       .returning({ id: credential.id });
     return created.id;
   }

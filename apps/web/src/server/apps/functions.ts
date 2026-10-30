@@ -5,15 +5,22 @@ import { authMiddleware } from "../middleware";
 import { getAppsService } from "./container";
 
 const slugSchema = z.object({ slug: z.string().min(1).max(100) });
+const teamIdSchema = z.number().int().positive().nullable();
 
 export const getApps = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => (await getAppsService()).listApps(context.userId));
 
+export const getAppInstallTeams = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => (await getAppsService()).installTeams(context.userId));
+
 export const installApp = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator(slugSchema)
-  .handler(async ({ context, data }) => (await getAppsService()).install(context.userId, data.slug));
+  .validator(slugSchema.extend({ teamId: teamIdSchema.optional() }))
+  .handler(async ({ context, data }) =>
+    (await getAppsService()).install(context.userId, data.slug, data.teamId ?? null)
+  );
 
 export const connectCalDavApp = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
@@ -38,7 +45,10 @@ export const uninstallApp = createServerFn({ method: "POST" })
 
 export const getConferencingSettings = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .handler(async ({ context }) => (await getAppsService()).conferencing(context.userId));
+  .validator(z.object({ teamId: teamIdSchema }).optional())
+  .handler(async ({ context, data }) =>
+    (await getAppsService()).conferencing(context.userId, data?.teamId ?? null)
+  );
 
 export const setDefaultConferencingApp = createServerFn({ method: "POST" })
   .middleware([authMiddleware])

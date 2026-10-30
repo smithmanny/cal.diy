@@ -735,6 +735,7 @@ export class BookingService {
       return await this.deps.payments.startPayment({
         bookingUid: uid,
         hostId: booking.host.id,
+        teamId: booking.eventType.teamId,
         productName: booking.eventType.title,
         bookerEmail: booking.email,
         payment: booking.price,
@@ -1129,6 +1130,7 @@ export class BookingService {
             slug: found.eventType.slug,
             length: found.eventType.length,
             teamSlug: found.eventType.teamSlug,
+            teamId: found.eventType.teamId,
             hideCalendarNotes: found.eventType.hideCalendarNotes,
             hideCalendarEventDetails: found.eventType.hideCalendarEventDetails,
             hideOrganizerEmail: found.eventType.hideOrganizerEmail,

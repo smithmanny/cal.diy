@@ -4853,5 +4853,7 @@
   "image_upload_error": "The image couldn't be uploaded. Try a smaller PNG, JPEG or WebP image.",
   "push_notifications_new_bookings_description": "Get a browser notification when someone books time with you.",
   "push_notifications_not_configured": "Push notifications aren't set up on this server. An administrator can turn them on with VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY.",
+  "install_for_team": "Install for {{team}}",
+  "installed_for_team": "Installed for {{team}}",
   "ADD_NEW_STRINGS_ABOVE_THIS_LINE_TO_PREVENT_MERGE_CONFLICTS": "↑↑↑↑↑↑↑↑↑↑↑↑↑ Add your new strings above here ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑"
 }

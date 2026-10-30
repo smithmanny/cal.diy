@@ -26,8 +26,11 @@ describe("Google OAuth helpers", () => {
 
   it("verifies its own state and rejects tampering and expiry", async () => {
     const now = 1_000_000;
-    const state = await signState(42, "k", now);
-    expect(await verifyState(state, "k", now)).toBe(42);
+    const state = await signState({ userId: 42, teamId: null }, "k", now);
+    expect(await verifyState(state, "k", now)).toEqual({ userId: 42, teamId: null });
+    const forTeam = await signState({ userId: 42, teamId: 7 }, "k", now);
+    expect(await verifyState(forTeam, "k", now)).toEqual({ userId: 42, teamId: 7 });
+    expect(await verifyState(forTeam.replace(/^42\.7\./, "42.8."), "k", now)).toBeNull();
     expect(await verifyState(state, "other-key", now)).toBeNull();
     expect(await verifyState(state.replace(/^42\./, "43."), "k", now)).toBeNull();
     expect(await verifyState(state, "k", now + 11 * 60_000)).toBeNull();

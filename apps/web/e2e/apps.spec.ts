@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { bookFirstSlot, hasFakes, signUp } from "./support/helpers";
+import { bookFirstSlot, hasFakes, signUp, uniqueName } from "./support/helpers";
 import { FAKE_APPS_PORT } from "./support/ports";
 import { expect, newClientContext, test } from "./support/test";
 
@@ -76,6 +76,48 @@ test("Zoom connects through OAuth and gives bookings a Zoom link", async ({ page
   await addLocation(page, "integrations:zoom");
   const guest = await (await newClientContext(browser)).newPage();
   await bookFirstSlot(guest, username, "30min");
+  await expectMeetingLink(guest, /zoom\.us\/j\//);
+});
+
+test("a team admin installs Zoom for the team, and the team's bookings get Zoom links", async ({
+  page,
+  browser,
+}) => {
+  await signUp(page);
+  const slug = uniqueName("crew");
+  await page.goto("/teams/new");
+  await page.getByLabel("Team name").fill("Crew");
+  await page.getByLabel("Team URL").fill(slug);
+  await page.getByRole("button", { name: "Create team" }).click();
+  await expect(page.getByRole("heading", { name: "Crew" })).toBeVisible();
+
+  await page.goto("/apps");
+  const zoom = page.getByRole("listitem", { name: "Zoom Video" });
+  await zoom.getByRole("link", { name: "Install for Crew" }).click();
+  await expect(page).toHaveURL(/\/apps$/);
+  await expect(zoom.getByText("Installed for Crew")).toBeVisible();
+  // The admin's own Zoom is a separate install.
+  await expect(zoom.getByRole("link", { name: "Install", exact: true })).toBeVisible();
+
+  await page.goto("/event-types");
+  const section = page.getByRole("region", { name: "Crew" });
+  await section.getByRole("button", { name: "New team event type" }).click();
+  await section.getByLabel("Title").fill("Panel");
+  await section.getByRole("button", { name: "Create" }).click();
+  await expect(page.getByRole("heading", { name: "Assignment" })).toBeVisible();
+  await page.getByLabel("Add a location").selectOption("integrations:zoom");
+  await page.getByRole("button", { name: "Save" }).first().click();
+  await expect(page.getByRole("status").first()).toBeVisible();
+
+  const guest = await (await newClientContext(browser)).newPage();
+  await guest.goto(`/team/${slug}/panel`);
+  await guest.getByRole("button", { name: "View next month" }).click();
+  await guest.locator("td button:not([disabled])").first().click();
+  await guest.locator("ul li button").first().click();
+  await guest.getByLabel("Your name").fill("Gail Guest");
+  await guest.getByLabel("Email address").fill("gail@example.com");
+  await guest.getByRole("button", { name: "Confirm" }).click();
+  await expect(guest.getByRole("heading", { level: 1 })).toHaveText("This meeting is scheduled");
   await expectMeetingLink(guest, /zoom\.us\/j\//);
 });
 

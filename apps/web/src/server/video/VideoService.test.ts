@@ -1,5 +1,5 @@
 import type { Database } from "@calcom/db/database";
-import { booking, bookingReference, user } from "@calcom/db/schema";
+import { booking, bookingReference, team, user } from "@calcom/db/schema";
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createTestDb } from "../../test/testDb";
@@ -94,7 +94,7 @@ beforeEach(async () => {
 
 describe("VideoService", () => {
   it("creates a Zoom meeting with the host's credential and puts its link on the booking", async () => {
-    await video.connectOAuth(hostId, "zoom_video", "code");
+    await video.connectOAuth({ userId: hostId }, "zoom_video", "code");
     const event: BookingEvent = {
       type: "BOOKING_CREATED",
       booking: await insertBooking("b-1", "integrations:zoom"),
@@ -124,6 +124,23 @@ describe("VideoService", () => {
     );
   });
 
+  it("uses the team's Zoom for a team event when the host hasn't installed their own", async () => {
+    const [{ id: teamId }] = await db
+      .insert(team)
+      .values({ name: "Sales", slug: "sales" })
+      .returning({ id: team.id });
+    await video.connectOAuth({ teamId }, "zoom_video", "code");
+    const created = await insertBooking("b-team", "integrations:zoom");
+    const personal = { ...created, eventType: null };
+    await video.onBookingEvent({ type: "BOOKING_CREATED", booking: personal });
+    expect(fake.meetings.size).toBe(0);
+
+    const teamEvent = { ...created, eventType: { id: 1, title: "Intro", slug: "intro", length: 30, teamId } };
+    await video.onBookingEvent({ type: "BOOKING_CREATED", booking: teamEvent });
+    expect(teamEvent.location).toMatch(/^https:\/\/zoom\.us\/j\/\d+/);
+    expect(fake.meetings.size).toBe(1);
+  });
+
   it("skips a Zoom location when the host hasn't installed Zoom", async () => {
     const event: BookingEvent = {
       type: "BOOKING_CREATED",
@@ -150,7 +167,7 @@ describe("VideoService", () => {
 
   it("moves the meeting when the booking is rescheduled", async () => {
     const first = await insertBooking("b-4", "integrations:jitsi");
-    await new CredentialRepository(db).create(hostId, "jitsi_video", null);
+    await new CredentialRepository(db).create({ userId: hostId }, "jitsi_video", null);
     await video.onBookingEvent({ type: "BOOKING_CREATED", booking: first });
     const moved = await insertBooking("b-5", "integrations:jitsi");
     await video.onBookingEvent({ type: "BOOKING_RESCHEDULED", booking: moved, rescheduledFrom: first });
@@ -162,7 +179,7 @@ describe("VideoService", () => {
   });
 
   it("replaces the meeting when the host changes the location, and removes it when moved off video", async () => {
-    await new CredentialRepository(db).create(hostId, "jitsi_video", null);
+    await new CredentialRepository(db).create({ userId: hostId }, "jitsi_video", null);
     const created = await insertBooking("b-7", "integrations:daily");
     await video.onBookingEvent({ type: "BOOKING_CREATED", booking: created });
     const toJitsi = snapshot("b-7", "integrations:jitsi");

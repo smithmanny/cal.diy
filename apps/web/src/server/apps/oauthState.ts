@@ -17,17 +17,24 @@ function timingSafeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
+/** Who an install is for: the user who started it, and the team when they install for one. */
+export type StateOwner = { userId: number; teamId: number | null };
+
 /** HMAC-signed OAuth state binding the callback to the user who started it, valid for 10 minutes. */
-export async function signState(userId: number, secret: string, now = Date.now()): Promise<string> {
-  const payload = `${userId}.${now + 10 * 60_000}.${crypto.randomUUID()}`;
+export async function signState(owner: StateOwner, secret: string, now = Date.now()): Promise<string> {
+  const payload = `${owner.userId}.${owner.teamId ?? 0}.${now + 10 * 60_000}.${crypto.randomUUID()}`;
   return `${payload}.${await hmac(secret, payload)}`;
 }
 
-export async function verifyState(state: string, secret: string, now = Date.now()): Promise<number | null> {
+export async function verifyState(
+  state: string,
+  secret: string,
+  now = Date.now()
+): Promise<StateOwner | null> {
   const parts = state.split(".");
-  if (parts.length !== 4) return null;
-  const [userId, expires, nonce, signature] = parts;
-  const expected = await hmac(secret, `${userId}.${expires}.${nonce}`);
+  if (parts.length !== 5) return null;
+  const [userId, teamId, expires, nonce, signature] = parts;
+  const expected = await hmac(secret, `${userId}.${teamId}.${expires}.${nonce}`);
   if (!timingSafeEqual(signature, expected) || Number(expires) < now) return null;
-  return Number(userId);
+  return { userId: Number(userId), teamId: Number(teamId) || null };
 }
