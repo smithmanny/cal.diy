@@ -1,336 +1,285 @@
-# Webhooks API Reference
+# Webhooks
 
-> **Cal.diy:** all five endpoints are served under `https://<your-cal-diy-host>/api/v2` (no
-> `cal-api-version` needed), for the key owner's webhooks. Triggers sent: `BOOKING_CREATED`,
-> `BOOKING_REQUESTED`, `BOOKING_RESCHEDULED`, `BOOKING_CANCELLED`, `BOOKING_REJECTED`,
-> `BOOKING_NO_SHOW_UPDATED`; other triggers in this file are Cal.com-only. Payloads are signed with
-> `X-Cal-Signature-256`; custom templates support `{{variable}}` only.
+Webhooks send an HTTP `POST` to your URL when something happens to a booking you host. The
+endpoints need an API key (`GET` also accepts an OAuth token with `READ_PROFILE`) and no version
+header. You only see your own webhooks; anyone else's answer 404.
 
-Detailed documentation for webhook management endpoints in the Cal.diy API v2.
+## Triggers
 
-## Endpoints Overview
+| Trigger | Sent when |
+| --- | --- |
+| `BOOKING_CREATED` | A booking is made and doesn't need confirmation, or the host confirms a pending one. For a recurring booking, once per occurrence |
+| `BOOKING_REQUESTED` | A booking is made that needs the host's confirmation |
+| `BOOKING_RESCHEDULED` | A booking (or a seat) is moved to a new time |
+| `BOOKING_CANCELLED` | A booking is cancelled, a seat is given up, or the host asks the attendees to pick a new time |
+| `BOOKING_REJECTED` | The host declines a pending booking |
+| `BOOKING_NO_SHOW_UPDATED` | The host marks attendees absent or present |
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | /v2/webhooks | List webhooks |
-| POST | /v2/webhooks | Create a webhook |
-| GET | /v2/webhooks/{webhookId} | Get a webhook |
-| PATCH | /v2/webhooks/{webhookId} | Update a webhook |
-| DELETE | /v2/webhooks/{webhookId} | Delete a webhook |
+These are the only values `triggers` accepts. Other Cal.com triggers (`MEETING_ENDED`,
+`FORM_SUBMITTED`, `RECORDING_READY`, ...) are rejected with 400.
 
-## List Webhooks
-
-```http
-GET /v2/webhooks
-```
-
-### Response
+## The webhook object
 
 ```json
 {
-  "status": "success",
-  "data": [
-    {
-      "id": "webhook-id-123",
-      "subscriberUrl": "https://your-app.com/webhook",
-      "triggers": ["BOOKING_CREATED", "BOOKING_CANCELLED"],
-      "active": true,
-      "payloadTemplate": null,
-      "secret": "whsec_..."
-    }
-  ]
-}
-```
-
-## Create a Webhook
-
-```http
-POST /v2/webhooks
-```
-
-### Request Body
-
-```json
-{
-  "subscriberUrl": "https://your-app.com/webhook",
-  "triggers": ["BOOKING_CREATED", "BOOKING_CANCELLED", "BOOKING_RESCHEDULED"],
+  "id": "060a558f-fa98-4722-91a4-005d641930f0",
+  "userId": 1,
+  "subscriberUrl": "https://example.com/cal-hook",
+  "triggers": ["BOOKING_CREATED", "BOOKING_CANCELLED"],
   "active": true,
-  "payloadTemplate": null,
-  "secret": "your-webhook-secret"
+  "payloadTemplate": null
 }
 ```
 
-### Fields
+The secret is never returned.
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| subscriberUrl | string | Yes | URL to receive webhook payloads |
-| triggers | array | Yes | Events that trigger the webhook |
-| active | boolean | No | Enable/disable webhook (default: true) |
-| payloadTemplate | string | No | Custom payload template |
-| secret | string | No | Secret for signature verification |
+## Input fields
 
-## Webhook Triggers
+| Field | Type | Constraints |
+| --- | --- | --- |
+| `subscriberUrl` | string | Trimmed `http://` or `https://` URL, up to 2000 characters. Unique among your webhooks |
+| `triggers` | string[] | At least one trigger from the table above |
+| `active` | boolean | Inactive webhooks receive nothing |
+| `payloadTemplate` | string or null | Up to 10000 characters. See [Custom payloads](#custom-payloads); `null` or `""` sends the default payload |
+| `secret` | string | Up to 500 characters. Signs deliveries. On update, leave it out to keep the current one, or send `""` to remove it |
 
-| Trigger | Description |
-|---------|-------------|
-| BOOKING_CREATED | New booking created |
-| BOOKING_CANCELLED | Booking cancelled |
-| BOOKING_RESCHEDULED | Booking rescheduled |
-| BOOKING_CONFIRMED | Pending booking confirmed |
-| BOOKING_REJECTED | Booking rejected |
-| BOOKING_REQUESTED | Booking request received (requires confirmation) |
-| BOOKING_PAYMENT_INITIATED | Payment started |
-| BOOKING_NO_SHOW_UPDATED | Attendee marked as no-show |
-| MEETING_STARTED | Video meeting started |
-| MEETING_ENDED | Video meeting ended |
-| RECORDING_READY | Meeting recording available |
-| INSTANT_MEETING | Instant meeting created |
-| RECORDING_TRANSCRIPTION_GENERATED | Transcription ready |
-| FORM_SUBMITTED | Routing form submitted |
+Unknown fields are rejected.
 
-## Webhook Payload
+---
 
-### BOOKING_CREATED Payload
+## List webhooks
+
+`GET /webhooks` — all your webhooks, not paginated.
+
+```bash
+curl http://localhost:3000/api/v2/webhooks \
+  -H "Authorization: Bearer cal_5ffe1dc373bcc67c5780edb0cc510066"
+```
 
 ```json
-{
-  "triggerEvent": "BOOKING_CREATED",
-  "createdAt": "2024-01-15T10:00:00.000Z",
-  "payload": {
-    "type": "30min",
-    "title": "30 Minute Meeting",
-    "description": "Meeting description",
-    "startTime": "2024-01-15T10:00:00.000Z",
-    "endTime": "2024-01-15T10:30:00.000Z",
-    "organizer": {
-      "id": 123,
-      "name": "Jane Smith",
-      "email": "jane@company.com",
-      "timeZone": "America/New_York"
-    },
-    "attendees": [
-      {
-        "name": "John Doe",
-        "email": "john@example.com",
-        "timeZone": "America/New_York"
-      }
-    ],
-    "location": "https://cal.com/video/abc123",
-    "destinationCalendar": {
-      "integration": "google_calendar",
-      "externalId": "calendar-id"
-    },
-    "uid": "booking-uid-123",
-    "metadata": {},
-    "responses": {
-      "name": "John Doe",
-      "email": "john@example.com"
-    }
-  }
-}
+{ "status": "success", "data": [ { "id": "060a558f-fa98-4722-91a4-005d641930f0", "...": "..." } ] }
 ```
 
-### BOOKING_CANCELLED Payload
+## Create a webhook
+
+`POST /webhooks` — answers **201** with the webhook. `subscriberUrl`, `triggers` and `active` are
+required.
+
+```bash
+curl -X POST http://localhost:3000/api/v2/webhooks \
+  -H "Authorization: Bearer cal_5ffe1dc373bcc67c5780edb0cc510066" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "subscriberUrl": "https://example.com/cal-hook",
+    "triggers": ["BOOKING_CREATED", "BOOKING_CANCELLED"],
+    "active": true,
+    "secret": "whsec_test"
+  }'
+```
+
+## Get a webhook
+
+`GET /webhooks/{webhookId}` — `webhookId` is the uuid from `id`.
+
+## Update a webhook
+
+`PATCH /webhooks/{webhookId}` — every field optional; others keep their value. Returns the updated
+webhook.
+
+```bash
+curl -X PATCH http://localhost:3000/api/v2/webhooks/060a558f-fa98-4722-91a4-005d641930f0 \
+  -H "Authorization: Bearer cal_5ffe1dc373bcc67c5780edb0cc510066" \
+  -H "Content-Type: application/json" \
+  -d '{"active":false}'
+```
+
+## Delete a webhook
+
+`DELETE /webhooks/{webhookId}` — returns the deleted webhook.
+
+## Errors
+
+| Status | Message | When |
+| --- | --- | --- |
+| 400 | `active - Required` | Missing required field on create |
+| 400 | `triggers.0 - Invalid enum value. Expected 'BOOKING_CREATED' \| ... , received 'MEETING_ENDED'` | Unsupported trigger |
+| 400 | `subscriberUrl - Invalid url` / `subscriberUrl - Invalid input` | Not a URL / not `http(s)` |
+| 400 | `body - Unrecognized key(s) in object: '<field>'` | Unknown field |
+| 404 | `Not found` | Unknown id, not a uuid, or not yours |
+| 409 | `Webhook subscriber url is already defined` | You already have a webhook for that URL |
+
+---
+
+## Deliveries
+
+Each delivery is a `POST` with these headers:
+
+| Header | Value |
+| --- | --- |
+| `Content-Type` | `application/json` (or `application/x-www-form-urlencoded` for a non-JSON template) |
+| `X-Cal-Signature-256` | Hex HMAC-SHA256 of the raw body, keyed with the webhook's secret. `no-secret-provided` when the webhook has no secret |
+| `X-Cal-Webhook-Version` | `2021-10-20` |
+
+Deliveries time out after 10 seconds, don't follow redirects and are not retried. Answer with a
+2xx quickly.
+
+### Default body
 
 ```json
 {
   "triggerEvent": "BOOKING_CANCELLED",
-  "createdAt": "2024-01-15T12:00:00.000Z",
-  "payload": {
-    "uid": "booking-uid-123",
-    "title": "30 Minute Meeting",
-    "startTime": "2024-01-15T10:00:00.000Z",
-    "endTime": "2024-01-15T10:30:00.000Z",
-    "cancellationReason": "Schedule conflict",
-    "organizer": {...},
-    "attendees": [...]
-  }
+  "createdAt": "2026-10-30T11:54:00.512Z",
+  "payload": { }
 }
 ```
 
-### BOOKING_RESCHEDULED Payload
+For every trigger except `BOOKING_NO_SHOW_UPDATED`, `payload` describes the booking:
 
 ```json
 {
-  "triggerEvent": "BOOKING_RESCHEDULED",
-  "createdAt": "2024-01-15T11:00:00.000Z",
+  "type": "intro",
+  "title": "Intro call between Ada Host and Bob Booker",
+  "description": "Looking forward",
+  "additionalNotes": "Looking forward",
+  "customInputs": {},
+  "startTime": "2026-11-02T10:00:00.000Z",
+  "endTime": "2026-11-02T10:30:00.000Z",
+  "organizer": {
+    "id": 1,
+    "name": "Ada Host",
+    "email": "ada@example.com",
+    "username": "ada",
+    "timeZone": "Europe/London",
+    "language": { "locale": "en" },
+    "utcOffset": 0
+  },
+  "responses": {
+    "name": { "label": "your_name", "value": "Bob Booker", "isHidden": false },
+    "email": { "label": "email_address", "value": "bob@example.com", "isHidden": false },
+    "location": { "label": "location", "value": { "value": "link", "optionValue": "" }, "isHidden": false },
+    "notes": { "label": "additional_notes", "value": "Looking forward", "isHidden": false },
+    "guests": { "label": "additional_guests", "value": ["carol@example.com"], "isHidden": false }
+  },
+  "userFieldsResponses": {},
+  "attendees": [
+    {
+      "name": "Bob Booker",
+      "email": "bob@example.com",
+      "timeZone": "America/New_York",
+      "phoneNumber": null,
+      "language": { "locale": "en" },
+      "utcOffset": -300
+    }
+  ],
+  "location": "https://example.com/room",
+  "uid": "cmvuwy62t00025m2s5a3z2m6j",
+  "eventTitle": "Intro call",
+  "eventDescription": null,
+  "requiresConfirmation": false,
+  "price": 0,
+  "currency": "usd",
+  "length": 30,
+  "status": "CANCELLED",
+  "cancellationReason": "Can no longer make it",
+  "metadata": {}
+}
+```
+
+| Field | Notes |
+| --- | --- |
+| `type` | The event type's slug, or null |
+| `description` | The booking's description, else the attendee's notes |
+| `startTime`, `endTime` | ISO 8601, UTC |
+| `organizer.utcOffset`, `attendees[].utcOffset` | Minutes from UTC at the start time |
+| `responses` | Every booking question, keyed by field slug: `label`, `value` (absent if unanswered), `isHidden` |
+| `userFieldsResponses` | The same, for custom (non built-in) questions only |
+| `requiresConfirmation` | `true` while the booking is pending |
+| `status` | Upper case: `ACCEPTED`, `PENDING`, `CANCELLED`, `REJECTED`, `AWAITING_HOST` |
+| `cancellationReason` | null unless cancelled with a reason |
+
+Extra fields:
+
+- Seat changes add `attendeeSeatId`, the seat's uid.
+- `BOOKING_RESCHEDULED` adds `rescheduleUid`, `rescheduleStartTime` and `rescheduleEndTime` (the old
+  booking's uid and times). `uid` is the new booking's.
+
+`BOOKING_NO_SHOW_UPDATED` sends only the change:
+
+```json
+{
+  "triggerEvent": "BOOKING_NO_SHOW_UPDATED",
+  "createdAt": "2026-11-02T11:00:00.000Z",
   "payload": {
-    "uid": "new-booking-uid",
-    "rescheduleUid": "original-booking-uid",
-    "title": "30 Minute Meeting",
-    "startTime": "2024-01-16T14:00:00.000Z",
-    "endTime": "2024-01-16T14:30:00.000Z",
-    "reschedulingReason": "Conflict with another meeting",
-    "organizer": {...},
-    "attendees": [...]
+    "message": "bob@example.com marked as no-show",
+    "attendees": [{ "email": "bob@example.com", "noShow": true }],
+    "bookingUid": "cmvuwy62t00025m2s5a3z2m6j",
+    "bookingId": 2
   }
 }
 ```
 
-## Signature Verification
+`message` is in the organizer's language: `"<email> marked as no-show"`, `"<email> unmarked as no-show"`,
+or `"No-show status updated for attendees"` when several attendees changed.
 
-Webhooks include a signature header for verification:
+### Custom payloads
 
+With `payloadTemplate` set, the body is the template with `{{path}}` placeholders replaced by
+values from the booking payload, plus `triggerEvent` and `createdAt`. Dotted paths reach into
+objects (`{{organizer.name}}`). Missing values become empty; objects are inserted as JSON. Only
+plain placeholders work, not Handlebars blocks or helpers.
+
+If the template (with placeholders emptied) is valid JSON, values are escaped as JSON string
+content and the body is sent as `application/json`. Otherwise it's sent as
+`application/x-www-form-urlencoded`, unescaped.
+
+```json
+{"event":"{{triggerEvent}}","uid":"{{uid}}","who":"{{organizer.name}}"}
 ```
-X-Cal-Signature-256: sha256=<signature>
+
+delivers
+
+```json
+{"event":"BOOKING_RESCHEDULED","uid":"cmvuwzpgq00055t23604u2u2j","who":"Ada Host"}
 ```
 
-### Verification Example (Node.js)
+The signature is computed over the rendered body.
 
-```javascript
-const crypto = require('crypto');
+### Verifying the signature
 
-function verifyWebhookSignature(payload, signature, secret) {
-  const expectedSignature = crypto
-    .createHmac('sha256', secret)
-    .update(payload)
-    .digest('hex');
-  
-  return `sha256=${expectedSignature}` === signature;
-}
+Compute the HMAC over the exact bytes you received, before parsing them.
 
-// In your webhook handler
-app.post('/webhook', (req, res) => {
-  const signature = req.headers['x-cal-signature-256'];
-  const payload = JSON.stringify(req.body);
-  
-  if (!verifyWebhookSignature(payload, signature, process.env.WEBHOOK_SECRET)) {
-    return res.status(401).send('Invalid signature');
-  }
-  
-  // Process webhook
-  const { triggerEvent, payload: data } = req.body;
-  // ...
-  
-  res.status(200).send('OK');
+Node.js:
+
+```js
+import crypto from "node:crypto";
+import express from "express";
+
+const app = express();
+
+app.post("/cal-hook", express.raw({ type: "*/*" }), (req, res) => {
+  const expected = crypto
+    .createHmac("sha256", process.env.CAL_WEBHOOK_SECRET)
+    .update(req.body)
+    .digest("hex");
+  const received = req.get("X-Cal-Signature-256") ?? "";
+  const valid =
+    received.length === expected.length &&
+    crypto.timingSafeEqual(Buffer.from(received), Buffer.from(expected));
+  if (!valid) return res.status(401).end();
+
+  const { triggerEvent, payload } = JSON.parse(req.body.toString("utf8"));
+  // handle triggerEvent ...
+  res.status(200).end();
 });
 ```
 
-## Get a Webhook
+Python:
 
-```http
-GET /v2/webhooks/{webhookId}
+```python
+import hashlib
+import hmac
+
+def is_valid(raw_body: bytes, signature: str, secret: str) -> bool:
+    expected = hmac.new(secret.encode(), raw_body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected, signature)
 ```
-
-## Update a Webhook
-
-```http
-PATCH /v2/webhooks/{webhookId}
-```
-
-### Request Body
-
-```json
-{
-  "active": false,
-  "triggers": ["BOOKING_CREATED"]
-}
-```
-
-## Delete a Webhook
-
-```http
-DELETE /v2/webhooks/{webhookId}
-```
-
-## Event Type Webhooks
-
-Create webhooks specific to an event type:
-
-### List Event Type Webhooks
-
-```http
-GET /v2/event-types/{eventTypeId}/webhooks
-```
-
-### Create Event Type Webhook
-
-```http
-POST /v2/event-types/{eventTypeId}/webhooks
-```
-
-```json
-{
-  "subscriberUrl": "https://your-app.com/webhook",
-  "triggers": ["BOOKING_CREATED"],
-  "active": true
-}
-```
-
-## Organization Webhooks
-
-For organization-wide webhooks:
-
-### List Organization Webhooks
-
-```http
-GET /v2/organizations/{orgId}/webhooks
-```
-
-### Create Organization Webhook
-
-```http
-POST /v2/organizations/{orgId}/webhooks
-```
-
-## OAuth Client Webhooks
-
-For platform integrations:
-
-### List OAuth Client Webhooks
-
-```http
-GET /v2/oauth-clients/{clientId}/webhooks
-```
-
-### Create OAuth Client Webhook
-
-```http
-POST /v2/oauth-clients/{clientId}/webhooks
-```
-
-## Custom Payload Templates
-
-Customize webhook payloads using templates:
-
-```json
-{
-  "subscriberUrl": "https://your-app.com/webhook",
-  "triggers": ["BOOKING_CREATED"],
-  "payloadTemplate": "{\"event\": \"{{triggerEvent}}\", \"booking_id\": \"{{payload.uid}}\", \"attendee\": \"{{payload.attendees[0].email}}\"}"
-}
-```
-
-### Available Template Variables
-
-- `{{triggerEvent}}` - Event type
-- `{{payload.uid}}` - Booking UID
-- `{{payload.title}}` - Event title
-- `{{payload.startTime}}` - Start time
-- `{{payload.endTime}}` - End time
-- `{{payload.organizer.name}}` - Organizer name
-- `{{payload.organizer.email}}` - Organizer email
-- `{{payload.attendees[0].name}}` - First attendee name
-- `{{payload.attendees[0].email}}` - First attendee email
-
-## Best Practices
-
-1. **Always verify signatures**: Use the webhook secret to verify payloads
-2. **Respond quickly**: Return 200 within 5 seconds, process async if needed
-3. **Handle retries**: Webhooks are retried on failure, implement idempotency
-4. **Use HTTPS**: Always use HTTPS endpoints for security
-5. **Log payloads**: Store webhook payloads for debugging
-6. **Monitor failures**: Track webhook delivery failures
-
-## Retry Policy
-
-Failed webhook deliveries are retried with exponential backoff:
-
-- 1st retry: 1 minute
-- 2nd retry: 5 minutes
-- 3rd retry: 30 minutes
-- 4th retry: 2 hours
-- 5th retry: 24 hours
-
-After 5 failed attempts, the webhook is marked as failed.

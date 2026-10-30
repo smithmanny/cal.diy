@@ -1,38 +1,66 @@
-# Schedules API Reference
+# Schedules
 
-> **Cal.diy:** the six endpoints in the overview are served under `https://<your-cal-diy-host>/api/v2`
-> with `cal-api-version: 2024-06-11`, for the key owner's own schedules. The organization and team
-> schedule endpoints are not served.
+Every schedules endpoint needs the header `cal-api-version: 2024-06-11` and an API key (`GET`
+requests also accept an OAuth token with `READ_PROFILE`). You only see and change your own
+schedules; anyone else's answer 404.
 
-Detailed documentation for schedule management endpoints in the Cal.diy API v2.
+A schedule is a set of weekly hours plus date overrides, in one time zone. Each user has one
+default schedule, which event types without a `scheduleId` use.
 
-## Endpoints Overview
+## The schedule object
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | /v2/schedules | List all schedules |
-| POST | /v2/schedules | Create a schedule |
-| GET | /v2/schedules/default | Get default schedule |
-| GET | /v2/schedules/{scheduleId} | Get a schedule |
-| PATCH | /v2/schedules/{scheduleId} | Update a schedule |
-| DELETE | /v2/schedules/{scheduleId} | Delete a schedule |
-
-## Understanding Schedules
-
-Schedules define when a user is available for bookings. Key concepts:
-
-- **Working Hours**: Regular weekly availability (e.g., Mon-Fri 9am-5pm)
-- **Date Overrides**: Exceptions to regular hours (e.g., holiday, special hours)
-- **Timezone**: The timezone in which availability is defined
-- **Default Schedule**: The primary schedule used when no specific schedule is assigned
-
-## List Schedules
-
-```http
-GET /v2/schedules
+```json
+{
+  "id": 2,
+  "ownerId": 1,
+  "name": "Evenings",
+  "timeZone": "America/New_York",
+  "availability": [
+    { "days": ["Monday", "Wednesday"], "startTime": "18:00", "endTime": "21:00" }
+  ],
+  "isDefault": false,
+  "overrides": [
+    { "date": "2030-01-07", "startTime": "00:00", "endTime": "00:00" },
+    { "date": "2030-01-08", "startTime": "10:00", "endTime": "12:00" }
+  ]
+}
 ```
 
-### Response
+| Field | Type | Notes |
+| --- | --- | --- |
+| `id` | number | |
+| `ownerId` | number | Your user id |
+| `name` | string | |
+| `timeZone` | string | IANA name |
+| `availability` | array | Weekly hours. Days with the same hours are grouped into one entry |
+| `availability[].days` | string[] | `Sunday` ... `Saturday` |
+| `availability[].startTime`, `endTime` | string | `HH:mm`, 24-hour |
+| `isDefault` | boolean | |
+| `overrides` | array | One entry per range on a date. `00:00`-`00:00` means unavailable all day |
+
+## Input fields
+
+| Field | Type | Constraints |
+| --- | --- | --- |
+| `name` | string | Trimmed, 1-100 characters |
+| `timeZone` | string | 1-100 characters |
+| `isDefault` | boolean | `true` makes this the default schedule |
+| `availability` | array | Up to 50 entries of `{ days, startTime, endTime }`; `days` has at least one weekday name; times are `HH:mm` (`00:00`-`23:59`) |
+| `overrides` | array | Up to 500 entries of `{ date, startTime, endTime }`; `date` is `YYYY-MM-DD`. Use `00:00`-`00:00` for a day off; several entries on the same date add ranges |
+
+Sending `availability` or `overrides` replaces the whole list.
+
+---
+
+## List schedules
+
+`GET /schedules`
+
+```bash
+curl http://localhost:3000/api/v2/schedules \
+  -H "Authorization: Bearer cal_5ffe1dc373bcc67c5780edb0cc510066" \
+  -H "cal-api-version: 2024-06-11"
+```
 
 ```json
 {
@@ -40,324 +68,87 @@ GET /v2/schedules
   "data": [
     {
       "id": 1,
-      "name": "Working Hours",
-      "isDefault": true,
-      "timeZone": "America/New_York",
-      "workingHours": [
-        {
-          "days": [1, 2, 3, 4, 5],
-          "startTime": 540,
-          "endTime": 1020
-        }
-      ],
+      "ownerId": 1,
+      "name": "Working hours",
+      "timeZone": "Europe/London",
       "availability": [
-        {
-          "id": 1,
-          "days": [1, 2, 3, 4, 5],
-          "startTime": "1970-01-01T09:00:00.000Z",
-          "endTime": "1970-01-01T17:00:00.000Z"
-        }
+        { "days": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], "startTime": "09:00", "endTime": "17:00" }
       ],
-      "dateOverrides": [],
-      "isManaged": false,
-      "readOnly": false,
-      "isLastSchedule": false
+      "isDefault": true,
+      "overrides": []
     }
   ]
 }
 ```
 
-## Create a Schedule
+## Get the default schedule
 
-```http
-POST /v2/schedules
+`GET /schedules/default` — returns your default schedule, or `"data": null` if you have none.
+
+## Get a schedule
+
+`GET /schedules/{scheduleId}`
+
+Errors: 400 `scheduleId must be a positive integer.`; 404 `Not found`.
+
+## Create a schedule
+
+`POST /schedules` — answers **201**. `name`, `timeZone` and `isDefault` are required;
+`availability` defaults to Monday to Friday, 09:00-17:00, and `overrides` to none. Your first
+schedule becomes the default whatever `isDefault` says.
+
+```bash
+curl -X POST http://localhost:3000/api/v2/schedules \
+  -H "Authorization: Bearer cal_5ffe1dc373bcc67c5780edb0cc510066" \
+  -H "cal-api-version: 2024-06-11" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Evenings",
+    "timeZone": "America/New_York",
+    "isDefault": false,
+    "availability": [{ "days": ["Monday", "Wednesday"], "startTime": "18:00", "endTime": "21:00" }],
+    "overrides": [
+      { "date": "2030-01-07", "startTime": "00:00", "endTime": "00:00" },
+      { "date": "2030-01-08", "startTime": "10:00", "endTime": "12:00" }
+    ]
+  }'
 ```
 
-### Request Body
+The response is the schedule object shown at the top.
 
-```json
-{
-  "name": "Working Hours",
-  "timeZone": "America/New_York",
-  "isDefault": true,
-  "availability": [
-    {
-      "days": [1, 2, 3, 4, 5],
-      "startTime": "09:00",
-      "endTime": "17:00"
-    }
-  ],
-  "dateOverrides": [
-    {
-      "date": "2024-12-25",
-      "startTime": null,
-      "endTime": null
-    }
-  ]
-}
+## Update a schedule
+
+`PATCH /schedules/{scheduleId}` — every field optional; others keep their value. Returns the
+updated schedule. `isDefault: true` makes it the default; `isDefault: false` is ignored (make
+another schedule the default instead).
+
+```bash
+curl -X PATCH http://localhost:3000/api/v2/schedules/2 \
+  -H "Authorization: Bearer cal_5ffe1dc373bcc67c5780edb0cc510066" \
+  -H "cal-api-version: 2024-06-11" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Evenings v2","isDefault":true}'
 ```
 
-### Fields
+## Delete a schedule
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| name | string | Yes | Schedule name |
-| timeZone | string | Yes | IANA timezone identifier |
-| isDefault | boolean | No | Set as default schedule |
-| availability | array | Yes | Weekly availability rules |
-| dateOverrides | array | No | Date-specific overrides |
+`DELETE /schedules/{scheduleId}` — returns `{"status":"success","data":null}`.
 
-### Availability Object
-
-| Field | Type | Description |
-|-------|------|-------------|
-| days | array | Days of week (0=Sunday, 1=Monday, ..., 6=Saturday) |
-| startTime | string | Start time in HH:MM format |
-| endTime | string | End time in HH:MM format |
-
-### Date Override Object
-
-| Field | Type | Description |
-|-------|------|-------------|
-| date | string | Date in YYYY-MM-DD format |
-| startTime | string/null | Start time (null = unavailable) |
-| endTime | string/null | End time (null = unavailable) |
-
-## Get Default Schedule
-
-```http
-GET /v2/schedules/default
+```bash
+curl -X DELETE http://localhost:3000/api/v2/schedules/2 \
+  -H "Authorization: Bearer cal_5ffe1dc373bcc67c5780edb0cc510066" \
+  -H "cal-api-version: 2024-06-11"
 ```
 
-Returns the user's default schedule.
+## Errors
 
-## Get a Schedule
-
-```http
-GET /v2/schedules/{scheduleId}
-```
-
-### Path Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| scheduleId | number | Schedule ID |
-
-## Update a Schedule
-
-```http
-PATCH /v2/schedules/{scheduleId}
-```
-
-### Request Body
-
-Only include fields you want to update:
-
-```json
-{
-  "name": "Updated Schedule Name",
-  "availability": [
-    {
-      "days": [1, 2, 3, 4, 5],
-      "startTime": "08:00",
-      "endTime": "18:00"
-    }
-  ]
-}
-```
-
-## Delete a Schedule
-
-```http
-DELETE /v2/schedules/{scheduleId}
-```
-
-Note: You cannot delete your last schedule. At least one schedule must exist.
-
-## Common Schedule Patterns
-
-### Standard Business Hours (Mon-Fri 9-5)
-
-```json
-{
-  "name": "Business Hours",
-  "timeZone": "America/New_York",
-  "availability": [
-    {
-      "days": [1, 2, 3, 4, 5],
-      "startTime": "09:00",
-      "endTime": "17:00"
-    }
-  ]
-}
-```
-
-### Split Schedule (Morning and Afternoon)
-
-```json
-{
-  "name": "Split Hours",
-  "timeZone": "America/New_York",
-  "availability": [
-    {
-      "days": [1, 2, 3, 4, 5],
-      "startTime": "09:00",
-      "endTime": "12:00"
-    },
-    {
-      "days": [1, 2, 3, 4, 5],
-      "startTime": "14:00",
-      "endTime": "18:00"
-    }
-  ]
-}
-```
-
-### Different Hours Per Day
-
-```json
-{
-  "name": "Variable Hours",
-  "timeZone": "America/New_York",
-  "availability": [
-    {
-      "days": [1, 3, 5],
-      "startTime": "09:00",
-      "endTime": "17:00"
-    },
-    {
-      "days": [2, 4],
-      "startTime": "10:00",
-      "endTime": "19:00"
-    }
-  ]
-}
-```
-
-### Weekend Availability
-
-```json
-{
-  "name": "Weekend Support",
-  "timeZone": "America/New_York",
-  "availability": [
-    {
-      "days": [0, 6],
-      "startTime": "10:00",
-      "endTime": "14:00"
-    }
-  ]
-}
-```
-
-### Holiday Override (Unavailable)
-
-```json
-{
-  "dateOverrides": [
-    {
-      "date": "2024-12-25",
-      "startTime": null,
-      "endTime": null
-    },
-    {
-      "date": "2024-01-01",
-      "startTime": null,
-      "endTime": null
-    }
-  ]
-}
-```
-
-### Special Hours Override
-
-```json
-{
-  "dateOverrides": [
-    {
-      "date": "2024-12-24",
-      "startTime": "09:00",
-      "endTime": "12:00"
-    }
-  ]
-}
-```
-
-## Organization/Team Schedules
-
-For organization-level schedule management:
-
-### List Organization Schedules
-
-```http
-GET /v2/organizations/{orgId}/schedules
-```
-
-### List User Schedules in Organization
-
-```http
-GET /v2/organizations/{orgId}/users/{userId}/schedules
-```
-
-### Create User Schedule in Organization
-
-```http
-POST /v2/organizations/{orgId}/users/{userId}/schedules
-```
-
-### Team Member Schedules
-
-```http
-GET /v2/organizations/{orgId}/teams/{teamId}/users/{userId}/schedules
-```
-
-## Working Hours Format
-
-The API returns working hours in two formats:
-
-### Minutes from Midnight
-
-```json
-{
-  "workingHours": [
-    {
-      "days": [1, 2, 3, 4, 5],
-      "startTime": 540,
-      "endTime": 1020
-    }
-  ]
-}
-```
-
-- `540` = 9:00 AM (9 * 60 minutes)
-- `1020` = 5:00 PM (17 * 60 minutes)
-
-### ISO Time Format
-
-```json
-{
-  "availability": [
-    {
-      "days": [1, 2, 3, 4, 5],
-      "startTime": "1970-01-01T09:00:00.000Z",
-      "endTime": "1970-01-01T17:00:00.000Z"
-    }
-  ]
-}
-```
-
-When creating/updating, use HH:MM format:
-
-```json
-{
-  "startTime": "09:00",
-  "endTime": "17:00"
-}
-```
-
-## Best Practices
-
-1. **Always specify timezone**: Schedules are timezone-aware
-2. **Use date overrides sparingly**: For recurring patterns, create separate schedules
-3. **Test availability**: After creating a schedule, verify with the slots endpoint
-4. **Consider buffer times**: Set buffers on event types, not schedules
+| Status | Message | When |
+| --- | --- | --- |
+| 400 | `timeZone - Required, isDefault - Required` | Missing required fields on create |
+| 400 | `availability.0.startTime - must be HH:mm` | Bad time format |
+| 400 | `overrides.0.date - must be YYYY-MM-DD` | Bad date format |
+| 400 | `Invalid time on Monday` | A weekly range that ends before it starts |
+| 400 | `Time ranges can't overlap` / `End time cannot be before start time` | Overlapping ranges, or a bad override range |
+| 400 | `Please choose a valid time zone` | Unknown time zone |
+| 404 | `Not found` | Unknown schedule, or not yours |
+| 409 | `You can't delete your default schedule. Make another schedule the default first.` | Deleting the default |
