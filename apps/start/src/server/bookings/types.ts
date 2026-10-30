@@ -130,6 +130,7 @@ export type BookingDetailsDto = {
   } | null;
   eventType: { title: string; slug: string; length: number } | null;
   attendees: { name: string; email: string; timeZone: string }[];
+  bookerUsername: string | null;
 };
 
 /**

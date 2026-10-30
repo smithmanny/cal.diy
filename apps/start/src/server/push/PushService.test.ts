@@ -67,7 +67,8 @@ describe("PushService", () => {
   it("pushes new bookings to each of the organizer's browsers", async () => {
     const { service, fetchImpl } = await setup();
     await service.onBookingEvent({ type: "BOOKING_CREATED", booking });
-    expect(fetchImpl.mock.calls.map(([url]) => url)).toEqual([
+    // Each browser is sent to in parallel, so the order varies.
+    expect(fetchImpl.mock.calls.map(([url]) => url).sort()).toEqual([
       "https://push.example.com/a",
       "https://push.example.com/b",
     ]);
@@ -85,6 +86,9 @@ describe("PushService", () => {
   it("forgets subscriptions the push service says are gone", async () => {
     const { service, repo } = await setup(410);
     await service.notify(7, { title: "t", body: "b", url: "https://cal.test" });
-    expect(repo.removeById.mock.calls).toEqual([[1], [2]]);
+    // Sends run in parallel, so the removals may come in either order.
+    expect(repo.removeById).toHaveBeenCalledTimes(2);
+    expect(repo.removeById).toHaveBeenCalledWith(1);
+    expect(repo.removeById).toHaveBeenCalledWith(2);
   });
 });

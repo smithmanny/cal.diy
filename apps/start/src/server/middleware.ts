@@ -11,6 +11,7 @@ export const authMiddleware = createMiddleware({ type: "function" }).server(asyn
   return next({
     context: {
       userId: Number(session.user.id),
+      userEmail: session.user.email,
       userTimeZone: session.user.timeZone ?? "Europe/London",
     },
   });

@@ -14,6 +14,7 @@ import { type TFunction, useT } from "~/lib/i18n";
 import { LOCATION_LABEL_KEYS } from "~/lib/location-labels";
 import { loadMessages } from "~/lib/messages";
 import { RECURRING_MESSAGE_KEYS, recurringSummary } from "~/lib/recurring";
+import { bookerPath } from "~/lib/team-target";
 import { cancelBookingByUid, getBookingByUid } from "~/server/bookings/functions";
 
 const MESSAGE_KEYS = [
@@ -143,13 +144,11 @@ function ManageFooter({
         <p>
           {t("need_to_reschedule_or_cancel")}{" "}
           {booking.canReschedule && (
-            <Link
-              to="/$username/$slug"
-              params={{ username: username, slug: slug }}
-              search={{ rescheduleUid: booking.uid }}
+            <a
+              href={`${bookerPath(username, slug)}?rescheduleUid=${encodeURIComponent(booking.uid)}`}
               className="font-medium underline">
               {t("reschedule")}
-            </Link>
+            </a>
           )}
           {booking.canReschedule && booking.canCancel && " · "}
           {booking.canCancel && (
@@ -270,11 +269,11 @@ function BookingPage() {
           {!isCancelled &&
             !isPast &&
             (booking.canCancel || booking.canReschedule) &&
-            booking.host?.username &&
+            booking.bookerUsername &&
             booking.eventType && (
               <ManageFooter
                 booking={booking}
-                username={booking.host.username}
+                username={booking.bookerUsername}
                 slug={booking.eventType.slug}
                 t={t}
               />

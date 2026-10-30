@@ -12,10 +12,19 @@ export type OutOfOfficeInput = {
   reasonId: number;
   notes: string | null;
   showNotePublicly: boolean;
+  /** A teammate whose booking page the booker is offered instead. */
+  toUserId?: number | null;
 };
 
 export class OutOfOfficeService {
-  constructor(private readonly deps: { oooRepo: OutOfOfficeRepository; newUuid: () => string }) {}
+  constructor(
+    private readonly deps: {
+      oooRepo: OutOfOfficeRepository;
+      newUuid: () => string;
+      /** Cal only forwards to someone on one of the user's teams. */
+      isTeammate?: (userId: number, otherId: number) => Promise<boolean>;
+    }
+  ) {}
 
   /**
    * Like Cal, an entry covers whole days stored in UTC: from midnight of the first day to the end of
@@ -26,6 +35,9 @@ export class OutOfOfficeService {
     const end = dayjs.utc(input.endDate).endOf("day").toDate();
     if (start > end) throw new AppError("start_date_must_be_before_end_date");
     if (!(await this.deps.oooRepo.reasonExists(input.reasonId, userId))) throw new AppError("not_found", 404);
+    const toUserId = input.toUserId ?? null;
+    if (toUserId === userId) throw new AppError("cannot_redirect_to_self");
+    if (toUserId && !(await this.deps.isTeammate?.(userId, toUserId))) throw new AppError("not_found", 404);
     if (await this.deps.oooRepo.existsWithSameRange(userId, start, end, input.uuid)) {
       throw new AppError("out_of_office_entry_already_exists", 409);
     }
@@ -35,6 +47,7 @@ export class OutOfOfficeService {
       reasonId: input.reasonId,
       notes: input.notes?.trim() || null,
       showNotePublicly: input.showNotePublicly,
+      toUserId,
     };
     if (input.uuid) {
       const updated = await this.deps.oooRepo.updateByUuidAndUserId(input.uuid, userId, data);

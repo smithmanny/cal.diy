@@ -3,7 +3,7 @@ import { conditionalInsert } from "@calcom/db/conditional-insert";
 import type { Database } from "@calcom/db/database";
 import type { BookingStatus } from "@calcom/db/enums";
 import type { JsonValue } from "@calcom/db/ids";
-import { attendee, booking, bookingSeat, eventType, user } from "@calcom/db/schema";
+import { attendee, booking, bookingSeat, eventType, team, user } from "@calcom/db/schema";
 import {
   and,
   asc,
@@ -495,6 +495,7 @@ export class BookingRepository {
               title: eventType.title,
               slug: eventType.slug,
               length: eventType.length,
+              teamSlug: team.slug,
               bookingFields: eventType.bookingFields,
               disableGuests: eventType.disableGuests,
               disableCancelling: eventType.disableCancelling,
@@ -509,6 +510,7 @@ export class BookingRepository {
               metadata: eventType.metadata,
             })
             .from(eventType)
+            .leftJoin(team, eq(team.id, eventType.teamId))
             .where(eq(eventType.id, found.eventTypeId))
             .limit(1)
         : [],
@@ -551,6 +553,25 @@ export class BookingRepository {
     }
   ) {
     if (uids.length) await this.db.update(booking).set(data).where(inArray(booking.uid, uids));
+  }
+
+  /** When each user last took a live booking of this event type (when it was made, as Cal ranks). */
+  async findLastBookedAt(eventTypeId: number, userIds: number[]): Promise<Map<number, Date>> {
+    if (!userIds.length) return new Map();
+    const rows = await this.db
+      .select({ userId: booking.userId, last: sql<number>`max(${booking.createdAt})` })
+      .from(booking)
+      .where(
+        and(
+          eq(booking.eventTypeId, eventTypeId),
+          inArray(booking.userId, userIds),
+          inArray(booking.status, ["ACCEPTED", "PENDING"])
+        )
+      )
+      .groupBy(booking.userId);
+    return new Map(
+      rows.flatMap((row) => (row.userId === null ? [] : [[row.userId, new Date(Number(row.last))]]))
+    );
   }
 
   async hasReplacement(uid: string): Promise<boolean> {

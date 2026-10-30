@@ -6,6 +6,7 @@ import { HashedLinkRepository } from "../event-types/HashedLinkRepository";
 import { createHolidayService } from "../holidays/container";
 import { OutOfOfficeRepository } from "../out-of-office/OutOfOfficeRepository";
 import { ScheduleRepository } from "../schedules/ScheduleRepository";
+import { TeamRepository } from "../teams/TeamRepository";
 import { TravelScheduleRepository } from "../users/TravelScheduleRepository";
 import { UserRepository } from "../users/UserRepository";
 import { createBookerVerification } from "../verification/container";
@@ -14,6 +15,7 @@ import { BookingAuditRepository } from "./BookingAuditRepository";
 import { BookingRepository } from "./BookingRepository";
 import { BookingService } from "./BookingService";
 import { getBookingListeners, getBusyTimesProviders } from "./integrations";
+import { TeamEventLoader } from "./teamEvents";
 import { runInBackground } from "#runtime";
 
 export async function getBookingService(): Promise<BookingService> {
@@ -28,6 +30,12 @@ export async function getBookingService(): Promise<BookingService> {
     holidayService: createHolidayService(db),
     bookerVerification: createBookerVerification(db),
     hashedLinkRepo: new HashedLinkRepository(db),
+    teamRepo: new TeamRepository(db),
+    teamEvents: new TeamEventLoader({
+      teamRepo: new TeamRepository(db),
+      eventTypeRepo: new EventTypeRepository(db),
+      userRepo: new UserRepository(db),
+    }),
     busyTimesProviders: getBusyTimesProviders(db),
     listeners: getBookingListeners(db),
     runInBackground,

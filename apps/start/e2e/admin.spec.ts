@@ -13,7 +13,7 @@ test("admins find, edit, lock and impersonate users", async ({ browser, page }) 
 
   // Members don't get the admin pages at all.
   await memberPage.goto("/settings/admin/users");
-  await expect(memberPage.getByText("Not Found")).toBeVisible();
+  await expect(memberPage.getByRole("heading", { name: "This page does not exist." })).toBeVisible();
 
   const rows = page.locator("main ul > li");
   await page.goto("/settings/admin/users");

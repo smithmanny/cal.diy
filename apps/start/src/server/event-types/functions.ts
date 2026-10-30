@@ -2,8 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "../middleware";
 // Only referenced inside handlers, so this server-only module stays out of the client bundle.
-import { getEventTypeService } from "./container";
-import { eventTypeInputSchema, newEventTypeSchema } from "./types";
+import { getEventTypeService, getTeamEventTypeService } from "./container";
+import { eventTypeInputSchema, newEventTypeSchema, teamAssignmentSchema, teamEventTypeSchema } from "./types";
 
 const idSchema = z.object({ id: z.number().int().positive() });
 
@@ -41,3 +41,26 @@ export const deleteEventType = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator(idSchema)
   .handler(async ({ context, data }) => (await getEventTypeService()).delete(context.userId, data.id));
+
+export const listTeamEventTypes = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => (await getTeamEventTypeService()).listForUser(context.userId));
+
+export const createTeamEventType = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(teamEventTypeSchema)
+  .handler(async ({ context, data }) => (await getTeamEventTypeService()).create(context.userId, data));
+
+export const getEventTypeAssignment = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .validator(idSchema)
+  .handler(async ({ context, data }) =>
+    (await getTeamEventTypeService()).getAssignment(context.userId, data.id)
+  );
+
+export const updateEventTypeAssignment = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(idSchema.extend({ assignment: teamAssignmentSchema }))
+  .handler(async ({ context, data }) =>
+    (await getTeamEventTypeService()).setAssignment(context.userId, data.id, data.assignment)
+  );

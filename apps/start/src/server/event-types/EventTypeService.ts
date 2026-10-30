@@ -43,6 +43,8 @@ type Deps = {
   >;
   /** Where new event types meet: the user's default conferencing app, as in Cal. */
   defaultLocation?: (userId: number) => Promise<EventLocation | null>;
+  /** Team event types are changed by the team's owners and admins. */
+  canManageTeam?: (userId: number, teamId: number) => Promise<boolean>;
 };
 
 function parseLocations(value: unknown): EventLocation[] {
@@ -217,7 +219,11 @@ export class EventTypeService {
 
   async update(userId: number, id: number, input: EventTypeInput, timeZone = "UTC"): Promise<void> {
     const row = await this.findOwned(userId, id);
-    const slug = await this.assertSlugAvailable(userId, input.slug, id);
+    const slug = row.teamId
+      ? await this.assertTeamSlugAvailable(row.teamId, input.slug, id)
+      : await this.assertSlugAvailable(userId, input.slug, id);
+    // Team event types follow each host's own availability.
+    if (row.teamId) input = { ...input, scheduleId: null };
     if (
       input.scheduleId !== null &&
       !(await this.deps.scheduleRepo.existsForUser(input.scheduleId, userId))
@@ -304,8 +310,20 @@ export class EventTypeService {
 
   private async findOwned(userId: number, id: number): Promise<EventTypeRow> {
     const found = await this.deps.eventTypeRepo.findById(id);
-    if (!found || found.userId !== userId) throw new AppError("not_found", 404);
+    if (!found) throw new AppError("not_found", 404);
+    const allowed = found.teamId
+      ? Boolean(await this.deps.canManageTeam?.(userId, found.teamId))
+      : found.userId === userId;
+    if (!allowed) throw new AppError("not_found", 404);
     return found;
+  }
+
+  private async assertTeamSlugAvailable(teamId: number, raw: string, excludeId?: number): Promise<string> {
+    const slug = slugify(raw);
+    if (!slug) throw new AppError("url_taken");
+    if (await this.deps.eventTypeRepo.slugExistsForTeam(teamId, slug, excludeId))
+      throw new AppError("url_taken", 409);
+    return slug;
   }
 
   private async assertSlugAvailable(userId: number, raw: string, excludeId?: number): Promise<string> {

@@ -224,6 +224,22 @@ export const newEventTypeSchema = eventTypeFields.pick({
 
 export type NewEventTypeInput = z.infer<typeof newEventTypeSchema>;
 
+export const teamEventTypeSchema = newEventTypeSchema.extend({
+  teamId: z.number().int().positive(),
+  schedulingType: z.enum(["COLLECTIVE", "ROUND_ROBIN"]),
+});
+
+export type TeamEventTypeInput = z.infer<typeof teamEventTypeSchema>;
+
+/** Who takes a team event type's bookings: everyone on the team, or the hosts picked. */
+export const teamAssignmentSchema = z.object({
+  schedulingType: z.enum(["COLLECTIVE", "ROUND_ROBIN"]),
+  assignAllTeamMembers: z.boolean(),
+  hosts: z.array(z.object({ userId: z.number().int().positive(), isFixed: z.boolean() })).max(500),
+});
+
+export type TeamAssignmentInput = z.infer<typeof teamAssignmentSchema>;
+
 export type EventTypeDto = EventTypeInput & { id: number };
 
 export type EventTypeSummaryDto = Pick<

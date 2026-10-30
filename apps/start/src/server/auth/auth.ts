@@ -12,7 +12,7 @@ let authPromise: Promise<Auth> | undefined;
 
 function authEmailSender(): AuthEmailSender | null {
   const emails = createEmailService();
-  return emails ? (kind, recipient, url) => emails.sendAuthEmail(kind, recipient, url) : null;
+  return emails ? (kind, recipient, url, values) => emails.sendAuthEmail(kind, recipient, url, values) : null;
 }
 
 async function init(): Promise<Auth> {

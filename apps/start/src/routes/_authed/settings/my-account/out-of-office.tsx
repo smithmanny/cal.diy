@@ -41,6 +41,9 @@ const MESSAGE_KEYS = [
   "ooo_reasons_travel",
   "ooo_reasons_sick_leave",
   "ooo_reasons_public_holiday",
+  "redirect_team_enabled",
+  "select_team_member",
+  "cannot_redirect_to_self",
   "something_went_wrong",
   ...HOLIDAY_MESSAGE_KEYS,
 ];
@@ -51,11 +54,13 @@ type Entry = Data["entries"][number];
 function EntryForm({
   entry,
   reasons,
+  teammates,
   onDone,
   onCancel,
 }: {
   entry: Entry | null;
   reasons: Data["reasons"];
+  teammates: Data["teammates"];
   onDone: (messageKey: string) => void;
   onCancel: () => void;
 }) {
@@ -76,6 +81,7 @@ function EntryForm({
           reasonId: Number(form.get("reasonId")),
           notes: String(form.get("notes") ?? "") || null,
           showNotePublicly,
+          toUserId: Number(form.get("toUserId")) || null,
         },
       });
       onDone(entry ? "success_edited_entry_out_of_office" : "success_entry_created");
@@ -111,6 +117,19 @@ function EntryForm({
         {t("notes")}
         <Textarea name="notes" rows={3} maxLength={1000} defaultValue={entry?.notes ?? ""} />
       </label>
+      {teammates.length > 0 && (
+        <label className="flex flex-col gap-1.5 font-medium text-sm">
+          {t("redirect_team_enabled")}
+          <select name="toUserId" className={selectClass} defaultValue={entry?.toUserId ?? ""}>
+            <option value="">{t("select_team_member")}</option>
+            {teammates.map((teammate) => (
+              <option key={teammate.id} value={teammate.id}>
+                {teammate.name || teammate.email}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <label className="flex items-center gap-2 text-sm">
         <Switch checked={showNotePublicly} onCheckedChange={setShowNotePublicly} />
         {t("show_note_publicly_description")}
@@ -163,6 +182,7 @@ function OutOfOfficePage() {
           key={editing === "new" ? "new" : editing.uuid}
           entry={editing === "new" ? null : editing}
           reasons={data.reasons}
+          teammates={data.teammates}
           onDone={finish}
           onCancel={() => setEditing(null)}
         />

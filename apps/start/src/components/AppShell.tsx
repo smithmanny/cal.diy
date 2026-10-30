@@ -8,6 +8,7 @@ import {
   LogOutIcon,
   SettingsIcon,
   ShieldIcon,
+  UsersIcon,
   WebhookIcon,
 } from "lucide-react";
 import { type ComponentType, type ReactNode, useState } from "react";
@@ -24,6 +25,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: "/event-types", labelKey: "event_types_page_title", icon: LinkIcon },
   { to: "/bookings/upcoming", labelKey: "bookings", icon: CalendarDaysIcon },
   { to: "/availability", labelKey: "availability", icon: ClockIcon },
+  { to: "/teams", labelKey: "teams", icon: UsersIcon },
   { to: "/apps", labelKey: "apps", icon: BlocksIcon },
   { to: "/settings/developer/webhooks", labelKey: "webhooks", icon: WebhookIcon },
   { to: "/settings/my-account/profile", labelKey: "settings", icon: SettingsIcon },
@@ -90,6 +92,7 @@ export const APP_SHELL_MESSAGE_KEYS = [
   "event_types_page_title",
   "bookings",
   "availability",
+  "teams",
   "apps",
   "webhooks",
   "settings",
