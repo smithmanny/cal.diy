@@ -57,6 +57,9 @@
       "!!coverage",
       "!!lint-results",
       "!!test-results",
+    "!!**/test-results",
+    "!!**/.wrangler",
+    "!!apps/web/data",
       "!!packages/lib/raqb/resolveQueryValue.test.ts",
       "!!packages/embeds/embed-core/src/lib/domUtils.ts"
     ],

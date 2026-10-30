@@ -11,6 +11,7 @@ test("owners create a team, invite by email, and manage what members can do", as
   const slug = uniqueName("sales");
   await page.goto("/teams");
   await page.getByRole("link", { name: "New team" }).click();
+  await expect(page.getByRole("heading", { name: "Create a new team" })).toBeVisible();
   await page.getByLabel("Team name").fill("Sales");
   await page.getByLabel("Team URL").fill(slug);
   await page.getByRole("button", { name: "Create team" }).click();
@@ -37,7 +38,10 @@ test("owners create a team, invite by email, and manage what members can do", as
   await expect(member.getByLabel("Invitee email")).toHaveCount(0);
 
   await page.reload();
+  // The role saves without a message, so wait for the save before the member looks again.
+  const saved = page.waitForResponse((response) => response.url().includes("/_serverFn/"));
   await page.getByLabel(`Role: ${email}`).selectOption({ label: "Admin" });
+  await saved;
   await member.reload();
   await expect(member.getByLabel("Invitee email")).toBeVisible();
 
@@ -56,6 +60,8 @@ test("organizations hold teams created by those who manage them", async ({ page 
   await expect(page.getByRole("heading", { name: "Acme" })).toBeVisible();
 
   await page.getByRole("link", { name: "New team" }).click();
+  // The organization's page has its own "Team name" field, so wait for the new team form.
+  await expect(page.getByRole("heading", { name: "Create a new team" })).toBeVisible();
   await page.getByLabel("Team name").fill("Support");
   await page.getByLabel("Team URL").fill(uniqueName("support"));
   await page.getByRole("button", { name: "Create team" }).click();

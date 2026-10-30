@@ -16,8 +16,7 @@ describe("app registry", () => {
   it("has unique slugs and credential types, and a logo in public/app-store for each", () => {
     expect(new Set(APPS.map((app) => app.slug)).size).toBe(APPS.length);
     expect(new Set(APPS.map((app) => app.credentialType)).size).toBe(APPS.length);
-    for (const app of APPS)
-      expect(existsSync(`${LOGOS}${app.dirName}/${app.logo}`), app.slug).toBe(true);
+    for (const app of APPS) expect(existsSync(`${LOGOS}${app.dirName}/${app.logo}`), app.slug).toBe(true);
   });
 
   it("matches the location types event types accept", () => {
