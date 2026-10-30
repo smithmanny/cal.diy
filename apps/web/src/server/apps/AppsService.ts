@@ -45,6 +45,10 @@ function defaultAppOf(metadata: unknown): ConferencingSettingsDto["defaultApp"] 
   return { appSlug, appLink: typeof appLink === "string" ? appLink : null };
 }
 
+function isTeamInstallable(app: AppDefinition): boolean {
+  return app.category !== "calendar" && (app.install === "oauth" || app.install === "simple");
+}
+
 export type AppDto = {
   slug: string;
   dirName: string;
@@ -81,10 +85,6 @@ export type ConferencingSettingsDto = {
 };
 
 export type CalDavInput = { url?: string; username: string; password: string };
-
-function isTeamInstallable(app: AppDefinition): boolean {
-  return app.category !== "calendar" && (app.install === "oauth" || app.install === "simple");
-}
 
 /** Lists, installs and removes apps, and keeps the user's default conferencing app (Cal's users.metadata). */
 export class AppsService {
