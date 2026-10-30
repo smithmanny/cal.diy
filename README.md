@@ -170,6 +170,9 @@ URIs keep Cal's paths, so an OAuth app registered for an earlier install keeps w
 
 CalDAV, Apple Calendar and the static-link video apps need no settings.
 
+Webhooks can't target this server's own network (localhost, private addresses, Docker service
+names) unless `ALLOW_PRIVATE_WEBHOOK_URLS=true` is set, for example to post to n8n on the same host.
+
 ## License
 
 Cal.diy is fully open source, licensed under the [MIT License](https://opensource.org/license/mit).

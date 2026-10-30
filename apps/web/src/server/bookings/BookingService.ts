@@ -681,9 +681,10 @@ export class BookingService {
   }
 
   /** A booker gives up their seat; the booking goes on for everyone else. */
-  async cancelSeat(referenceUid: string, reason: string | null): Promise<void> {
+  /** `bookingUid`, when the caller names the booking too, must be the seat's own booking. */
+  async cancelSeat(referenceUid: string, reason: string | null, bookingUid?: string): Promise<void> {
     const seat = await this.deps.bookingRepo.findSeat(referenceUid);
-    if (!seat) throw new AppError("booking_not_found", 404);
+    if (!seat || (bookingUid && seat.bookingUid !== bookingUid)) throw new AppError("booking_not_found", 404);
     const found = await this.deps.bookingRepo.findByUid(seat.bookingUid);
     if (!found) throw new AppError("booking_not_found", 404);
     if (found.eventType?.disableCancelling) throw new AppError("cannot_cancel_booking", 403);
@@ -981,6 +982,10 @@ export class BookingService {
     const found = await this.deps.bookingRepo.findByUid(uid);
     if (!found) throw new AppError("booking_not_found", 404);
     if (found.eventType?.disableCancelling) throw new AppError("cannot_cancel_booking", 403);
+    // Every seat holder knows a seated booking's uid; they give up their own seat (cancelSeat),
+    // and only the host cancels the booking for everyone.
+    const byHost = Boolean(actor && "userId" in actor && actor.userId === found.userId);
+    if (found.eventType?.seatsPerTimeSlot && !byHost) throw new AppError("cannot_cancel_booking", 403);
     await this.cancelFound(
       found,
       reason,
@@ -1008,7 +1013,12 @@ export class BookingService {
       allRemaining && found.recurringEventId
         ? (await this.deps.bookingRepo.findSeries(found.recurringEventId))
             .filter((occurrence) => occurrence.status !== "CANCELLED" && occurrence.status !== "REJECTED")
-            .filter((occurrence) => occurrence.uid === found.uid || occurrence.startTime >= now)
+            // This occurrence and the later ones that haven't started; earlier ones stay as they are.
+            .filter(
+              (occurrence) =>
+                occurrence.uid === found.uid ||
+                (occurrence.startTime > found.startTime && occurrence.startTime >= now)
+            )
             .map((occurrence) => occurrence.uid)
         : [found.uid];
     await this.deps.bookingRepo.updateStatusMany(remaining, {

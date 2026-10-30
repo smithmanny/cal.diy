@@ -9,5 +9,10 @@ describe("oauthScopeFor", () => {
     expect(oauthScopeFor("GET", "/api/v2/event-types")).toBe("READ_PROFILE");
     expect(oauthScopeFor("POST", "/api/v2/bookings")).toBeNull();
     expect(oauthScopeFor("PATCH", "/api/v2/me")).toBeNull();
+    expect(oauthScopeFor("GET", "/api/v2/schedules/default")).toBe("READ_PROFILE");
+    // Webhook URLs and templates aren't readable with any OAuth scope.
+    expect(oauthScopeFor("GET", "/api/v2/webhooks")).toBeNull();
+    expect(oauthScopeFor("GET", "/api/v2/webhooks/1")).toBeNull();
+    expect(oauthScopeFor("GET", "/api/v2/bookingsx")).toBeNull();
   });
 });

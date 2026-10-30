@@ -19,3 +19,8 @@ STRIPE_CLIENT_ID=
 STRIPE_WEBHOOK_SECRET=
 VAPID_PUBLIC_KEY=
 VAPID_PRIVATE_KEY=
+
+# Webhooks to this server's own network (localhost, private and link-local addresses, names without
+# a dot such as Docker service names) are refused, so users can't reach internal services through
+# them. Set to true if you post webhooks to something on the same machine or network, like n8n.
+ALLOW_PRIVATE_WEBHOOK_URLS=

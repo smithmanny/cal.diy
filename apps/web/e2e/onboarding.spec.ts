@@ -69,6 +69,8 @@ test("a taken username keeps the user on the first step", async ({ page, browser
     await target.getByLabel("Password").fill(PASSWORD);
     await target.getByRole("button", { name: "Create account" }).click();
     await expect(target).toHaveURL(/\/getting-started\/user-settings$/);
+    // The signup form has a Username field too; wait for the step's own before filling it.
+    await expect(target.getByRole("heading", { name: /^Welcome to/ })).toBeVisible();
   }
   await page.getByLabel("Username").fill(taken);
   await page.getByRole("button", { name: "Next step" }).click();

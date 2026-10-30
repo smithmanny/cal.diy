@@ -4855,5 +4855,6 @@
   "push_notifications_not_configured": "Push notifications aren't set up on this server. An administrator can turn them on with VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY.",
   "install_for_team": "Install for {{team}}",
   "installed_for_team": "Installed for {{team}}",
+  "webhook_url_not_allowed": "Webhooks can't be sent to this server's own network. An administrator can allow it with ALLOW_PRIVATE_WEBHOOK_URLS=true.",
   "ADD_NEW_STRINGS_ABOVE_THIS_LINE_TO_PREVENT_MERGE_CONFLICTS": "↑↑↑↑↑↑↑↑↑↑↑↑↑ Add your new strings above here ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑"
 }

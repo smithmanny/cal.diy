@@ -11,13 +11,21 @@ type ApiUser = { id: number };
 const BEARER = /^Bearer\s+(\S+)$/i;
 const JWT = /^[\w-]+\.[\w-]+\.[\w-]+$/;
 
+/** What READ_PROFILE covers. Webhooks aren't on it: their URLs and templates are the user's own config. */
+const PROFILE_PATHS = ["/api/v2/me", "/api/v2/event-types", "/api/v2/schedules", "/api/v2/slots"];
+
+function under(pathname: string, prefix: string): boolean {
+  return pathname === prefix || pathname.startsWith(`${prefix}/`);
+}
+
 /**
- * Cal's OAuth scopes only grant reading: bookings with READ_BOOKING, everything else (profile,
- * event types, schedules, slots) with READ_PROFILE.
+ * Cal's OAuth scopes only grant reading: bookings with READ_BOOKING, the profile, event types,
+ * schedules and slots with READ_PROFILE, and nothing else.
  */
 function oauthScopeFor(method: string, pathname: string): AccessScope | null {
   if (method !== "GET") return null;
-  return pathname.startsWith("/api/v2/bookings") ? "READ_BOOKING" : "READ_PROFILE";
+  if (under(pathname, "/api/v2/bookings")) return "READ_BOOKING";
+  return PROFILE_PATHS.some((prefix) => under(pathname, prefix)) ? "READ_PROFILE" : null;
 }
 
 async function authenticateOAuthToken(request: Request, token: string): Promise<ApiUser> {

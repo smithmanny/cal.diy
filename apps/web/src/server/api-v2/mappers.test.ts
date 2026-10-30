@@ -41,6 +41,8 @@ function bookingRow(overrides: Partial<ApiBookingRow> = {}): ApiBookingRow {
     userId: 1,
     eventTypeId: 3,
     eventTypeSlug: "intro",
+    seatsPerTimeSlot: null,
+    seatsShowAttendees: false,
     hostName: "Host",
     hostEmail: "host@example.com",
     hostUsername: "host",

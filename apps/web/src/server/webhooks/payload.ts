@@ -1,6 +1,7 @@
 import dayjs from "@calcom/dayjs";
 import { calEventResponses } from "~/lib/booking-fields";
 import type { BookingEvent, BookingSnapshot } from "../bookings/events";
+import { isAllowedWebhookUrl } from "./urlPolicy";
 
 function utcOffset(timeZone: string, at: Date): number {
   try {
@@ -162,6 +163,9 @@ export async function deliverWebhook(
   payload: Record<string, unknown>,
   fetchImpl: typeof fetch = fetch
 ): Promise<{ ok: boolean; status: number }> {
+  // Checked here too, not only on save: the setting may have changed since, and pings aren't saved.
+  if (!isAllowedWebhookUrl(subscriber.subscriberUrl))
+    throw new Error(`Webhook URL ${subscriber.subscriberUrl} points at a private address`);
   const request = await buildWebhookRequest(subscriber, triggerEvent, payload);
   const response = await fetchImpl(request, { signal: AbortSignal.timeout(10_000) });
   return { ok: response.ok, status: response.status };

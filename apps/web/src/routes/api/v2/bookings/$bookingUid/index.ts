@@ -7,9 +7,12 @@ export const Route = createFileRoute("/api/v2/bookings/$bookingUid/")({
   server: {
     handlers: {
       // The uid is an unguessable token handed to the attendee and host, as in Cal.
-      GET: publicApiRoute(async ({ params }) => (await getApiBookingService()).get(params.bookingUid), {
-        version: BOOKINGS_API_VERSION,
-      }),
+      GET: publicApiRoute(
+        async ({ params, user }) => (await getApiBookingService()).get(params.bookingUid, user),
+        {
+          version: BOOKINGS_API_VERSION,
+        }
+      ),
     },
   },
 });

@@ -381,6 +381,16 @@ describe("BookingService", () => {
     it("cancels one seat at a time, and the booking with the last one", async () => {
       const first = await seatFor("a@example.com");
       const second = await seatFor("b@example.com");
+      // Seat holders all know the booking's uid, but can only give up their own seat.
+      await expect(service.cancel(first.uid, null, null)).rejects.toMatchObject({
+        code: "cannot_cancel_booking",
+      });
+      await expect(
+        service.cancel(first.uid, null, null, { email: "a@example.com", name: null })
+      ).rejects.toMatchObject({ code: "cannot_cancel_booking" });
+      await expect(
+        service.cancelSeat(first.seatReferenceUid ?? "", null, "another-booking")
+      ).rejects.toMatchObject({ code: "booking_not_found" });
       await service.cancelSeat(first.seatReferenceUid ?? "", "Can't make it");
       expect((await service.getBooking(first.uid)).status).toBe("ACCEPTED");
       expect(await slots()).toContain(at("10:00"));
@@ -468,6 +478,15 @@ describe("BookingService", () => {
         "CANCELLED",
         "ACCEPTED",
         "ACCEPTED",
+      ]);
+      // Cancelling the rest from one occurrence leaves the earlier ones alone.
+      const [, , third] = (await service.getBooking(uid)).recurring?.occurrences ?? [];
+      await service.cancelAsHost(hostId, third.uid, null, true);
+      expect((await service.getBooking(uid)).recurring?.occurrences.map((o) => o.status)).toEqual([
+        "ACCEPTED",
+        "CANCELLED",
+        "CANCELLED",
+        "CANCELLED",
       ]);
       await service.cancel(uid, "Done", null);
       expect(

@@ -71,6 +71,8 @@ export default defineConfig({
           DATABASE_URL: process.env.E2E_DATABASE_URL,
           BETTER_AUTH_URL: `http://localhost:${PORT}`,
           BETTER_AUTH_SECRET: "e2e-secret-e2e-secret-e2e-secret-00",
+          // The specs' webhook receiver listens on localhost.
+          ALLOW_PRIVATE_WEBHOOK_URLS: "true",
           GOOGLE_CLIENT_ID: "fake-client",
           GOOGLE_CLIENT_SECRET: "fake-secret",
           GOOGLE_OAUTH_AUTHORIZE_URL: `http://localhost:${FAKE_GOOGLE_PORT}/auth`,

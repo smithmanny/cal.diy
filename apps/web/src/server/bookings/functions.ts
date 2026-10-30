@@ -65,7 +65,8 @@ export const cancelBookingByUid = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const service = await getBookingService();
     // On a seated booking a booker cancels only their own seat.
-    if (data.seatReferenceUid) return service.cancelSeat(data.seatReferenceUid, data.reason ?? null);
+    if (data.seatReferenceUid)
+      return service.cancelSeat(data.seatReferenceUid, data.reason ?? null, data.uid);
     const userId = await optionalUserId();
     return service.cancel(
       data.uid,

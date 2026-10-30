@@ -62,13 +62,17 @@ class ApiBookingService {
       actor?.id ?? null
     );
     const row = await this.find(created.uid);
-    if (created.seatReferenceUid) return { ...toBookingOutput(row), seatUid: created.seatReferenceUid };
+    if (created.seatReferenceUid)
+      return {
+        ...toBookingOutput(this.visibleTo(row, actor, input.attendee.email)),
+        seatUid: created.seatReferenceUid,
+      };
     if (!row.recurringEventId) return toBookingOutput(row);
     return (await this.deps.apiBookings.findSeries(row.recurringEventId)).map(toBookingOutput);
   }
 
-  async get(uid: string): Promise<BookingOutput> {
-    return toBookingOutput(await this.find(uid));
+  async get(uid: string, actor: ApiUser | null = null): Promise<BookingOutput> {
+    return toBookingOutput(this.visibleTo(await this.find(uid), actor));
   }
 
   async list(actor: ApiUser, query: ListBookingsApiQuery): Promise<Paginated<BookingOutput>> {
@@ -95,7 +99,7 @@ class ApiBookingService {
       take: query.take,
       skip: query.skip,
     });
-    const items = bookings.map(toBookingOutput);
+    const items = bookings.map((row) => toBookingOutput(this.visibleTo(row, actor, me.email)));
     return new Paginated(items, pagination(total, query.take, query.skip, items.length));
   }
 
@@ -108,9 +112,9 @@ class ApiBookingService {
     const reason = input.cancellationReason ?? null;
     if (actor && row.userId === actor.id)
       await this.deps.bookings.cancelAsHost(actor.id, uid, reason, input.cancelSubsequentBookings ?? false);
-    else if (input.seatUid) await this.deps.bookings.cancelSeat(input.seatUid, reason);
-    else await this.deps.bookings.cancel(uid, reason, null);
-    return this.get(uid);
+    else if (input.seatUid) await this.deps.bookings.cancelSeat(input.seatUid, reason, uid);
+    else await this.deps.bookings.cancel(uid, reason, null, actor ? { userId: actor.id } : undefined);
+    return this.get(uid, actor);
   }
 
   /** Books the new time with the original answers; the old booking is marked rescheduled. */
@@ -136,13 +140,13 @@ class ApiBookingService {
       },
       actor?.id ?? null
     );
-    return this.get(created.uid);
+    return this.get(created.uid, actor);
   }
 
   /** Host-only, for bookings that require confirmation. */
   async decide(uid: string, actor: ApiUser, accept: boolean, reason: string | null): Promise<BookingOutput> {
     await this.deps.bookings.decide(actor.id, uid, accept, reason);
-    return this.get(uid);
+    return this.get(uid, actor);
   }
 
   /** Host-only. The app tracks attendees' no-shows; a host no-show can't be recorded here. */
@@ -150,7 +154,7 @@ class ApiBookingService {
     if (input.host) throw new ApiInputError("host - marking the host absent is not supported");
     const attendees = (input.attendees ?? []).map(({ email, absent }) => ({ email, noShow: absent }));
     if (attendees.length) await this.deps.actions.markNoShow(actor.id, uid, attendees);
-    return this.get(uid);
+    return this.get(uid, actor);
   }
 
   /** Host-only; the service takes only the guests' emails, as the app's add guests dialog does. */
@@ -164,7 +168,7 @@ class ApiBookingService {
       uid,
       input.guests.map((guest) => guest.email)
     );
-    return this.get(uid);
+    return this.get(uid, actor);
   }
 
   async updateLocation(
@@ -173,7 +177,17 @@ class ApiBookingService {
     input: z.infer<typeof updateLocationInputSchema>
   ): Promise<BookingOutput> {
     await this.deps.actions.editLocation(actor.id, uid, toEditableLocation(input.location));
-    return this.get(uid);
+    return this.get(uid, actor);
+  }
+
+  /**
+   * On a seated event that keeps attendees private, only the host sees everyone who holds a seat;
+   * an attendee sees their own seat, and anyone else with the uid sees none.
+   */
+  private visibleTo(row: ApiBookingRow, actor: ApiUser | null, actorEmail?: string): ApiBookingRow {
+    if (!row.seatsPerTimeSlot || row.seatsShowAttendees || (actor && actor.id === row.userId)) return row;
+    const email = actorEmail?.toLowerCase();
+    return { ...row, attendees: row.attendees.filter((attendee) => email && attendee.email === email) };
   }
 
   private async find(uid: string): Promise<ApiBookingRow> {

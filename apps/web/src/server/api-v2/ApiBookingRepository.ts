@@ -71,6 +71,8 @@ const bookingColumns = {
   userId: booking.userId,
   eventTypeId: booking.eventTypeId,
   eventTypeSlug: eventType.slug,
+  seatsPerTimeSlot: eventType.seatsPerTimeSlot,
+  seatsShowAttendees: eventType.seatsShowAttendees,
   hostName: user.name,
   hostEmail: user.email,
   hostUsername: user.username,

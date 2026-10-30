@@ -3,6 +3,7 @@ import "@tanstack/react-start/server-only";
 import { AppError } from "../errors";
 import { deliverWebhook } from "./payload";
 import { SUPPORTED_TRIGGERS, type SupportedTrigger, type WebhookDto, type WebhookInput } from "./types";
+import { isAllowedWebhookUrl } from "./urlPolicy";
 import type { WebhookRepository, WebhookRow } from "./WebhookRepository";
 
 function toDto(row: WebhookRow): WebhookDto {
@@ -20,6 +21,10 @@ function toDto(row: WebhookRow): WebhookDto {
   };
 }
 
+function assertAllowedUrl(url: string): void {
+  if (!isAllowedWebhookUrl(url)) throw new AppError("webhook_url_not_allowed", 400);
+}
+
 export class WebhookService {
   constructor(
     private readonly repo: WebhookRepository,
@@ -35,6 +40,7 @@ export class WebhookService {
   }
 
   async create(userId: number, input: WebhookInput): Promise<{ id: string }> {
+    assertAllowedUrl(input.subscriberUrl);
     if (await this.repo.findByUserIdAndUrl(userId, input.subscriberUrl))
       throw new AppError("webhook_subscriber_url_reserved", 409);
     const id = crypto.randomUUID();
@@ -52,6 +58,7 @@ export class WebhookService {
 
   async update(userId: number, id: string, input: WebhookInput): Promise<void> {
     const current = await this.findOwned(userId, id);
+    assertAllowedUrl(input.subscriberUrl);
     if (input.subscriberUrl !== current.subscriberUrl) {
       const clash = await this.repo.findByUserIdAndUrl(userId, input.subscriberUrl);
       if (clash) throw new AppError("webhook_subscriber_url_reserved", 409);
@@ -72,6 +79,7 @@ export class WebhookService {
 
   /** Cal's "Ping test": sends a PING to the URL being configured, before or after saving. */
   async ping(subscriberUrl: string, secret: string | null): Promise<{ ok: boolean; status: number }> {
+    assertAllowedUrl(subscriberUrl);
     try {
       return await deliverWebhook(
         { subscriberUrl, secret, payloadTemplate: null },

@@ -228,6 +228,63 @@ async function changeThroughApi(api: ApiClient, anonymous: ApiClient, uid: strin
   expect((await api.post(`/bookings/${uid}/mark-absent`, { host: true }, "2024-08-13")).status()).toBe(400);
 }
 
+test("API v2: seat holders can't see or cancel each other's seats", async ({ page, request }) => {
+  await signUp(page);
+  const api = client(request, await createApiKey(page));
+  const anonymous = client(request, null);
+  const created = await api.post(
+    "/event-types",
+    {
+      title: "Workshop",
+      slug: uniqueName("seats-"),
+      lengthInMinutes: 30,
+      seats: { seatsPerTimeSlot: 3, showAttendeeInfo: false, showAvailabilityCount: true },
+    },
+    "2024-06-14"
+  );
+  expect(created.status()).toBe(201);
+  const eventTypeId = (await created.json()).data.id;
+  const slots = await (
+    await anonymous.get(
+      `/slots?eventTypeId=${eventTypeId}&start=${dateKey(2)}&end=${dateKey(9)}`,
+      "2024-09-04"
+    )
+  ).json();
+  const [start] = Object.values(slots.data as Record<string, { start: string }[]>)[0];
+  const seat = async (name: string, email: string) => {
+    const response = await anonymous.post(
+      "/bookings",
+      { start: start.start, eventTypeId, attendee: { name, email, timeZone: "Europe/London" } },
+      "2024-08-13"
+    );
+    expect(response.status()).toBe(201);
+    return (await response.json()).data;
+  };
+  const ada = await seat("Ada", "ada.seat@example.com");
+  const bo = await seat("Bo", "bo.seat@example.com");
+  expect(bo.uid).toBe(ada.uid);
+  // Seats share the booking uid, so the booker only sees their own seat.
+  expect(bo.attendees.map((attendee: { email: string }) => attendee.email)).toEqual(["bo.seat@example.com"]);
+  const view = await (await anonymous.get(`/bookings/${ada.uid}`, "2024-08-13")).json();
+  expect(view.data.attendees).toEqual([]);
+  const hostView = await (await api.get(`/bookings/${ada.uid}`, "2024-08-13")).json();
+  expect(hostView.data.attendees).toHaveLength(2);
+
+  // Holding the uid doesn't let a seat holder cancel everyone, or someone else's seat elsewhere.
+  expect((await anonymous.post(`/bookings/${ada.uid}/cancel`, {}, "2024-08-13")).status()).toBe(403);
+  expect(
+    (await anonymous.post(`/bookings/not-this-one/cancel`, { seatUid: ada.seatUid }, "2024-08-13")).status()
+  ).toBe(404);
+  expect(
+    (await anonymous.post(`/bookings/${ada.uid}/cancel`, { seatUid: ada.seatUid }, "2024-08-13")).status()
+  ).toBe(200);
+  const remaining = await (await api.get(`/bookings/${ada.uid}`, "2024-08-13")).json();
+  expect(remaining.data).toMatchObject({ status: "accepted" });
+  expect(remaining.data.attendees.map((attendee: { email: string }) => attendee.email)).toEqual([
+    "bo.seat@example.com",
+  ]);
+});
+
 test("API v2: webhooks can be created, changed, listed and deleted", async ({ page, request }) => {
   await signUp(page);
   const api = client(request, await createApiKey(page));
