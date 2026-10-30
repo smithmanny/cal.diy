@@ -14,6 +14,7 @@ import {
   AdvancedEditor,
   seatsErrorKey,
 } from "~/components/event-types/AdvancedEditor";
+import { ASSIGNMENT_MESSAGE_KEYS, AssignmentEditor } from "~/components/event-types/AssignmentEditor";
 import {
   BOOKING_QUESTIONS_MESSAGE_KEYS,
   BookingQuestionsEditor,
@@ -31,11 +32,17 @@ import { errorMessageKey } from "~/lib/errors";
 import { useT } from "~/lib/i18n";
 import { loadMessages } from "~/lib/messages";
 import { getApps, getConferencingSettings } from "~/server/apps/functions";
-import { deleteEventType, getEventType, updateEventType } from "~/server/event-types/functions";
+import {
+  deleteEventType,
+  getEventType,
+  getEventTypeAssignment,
+  updateEventType,
+} from "~/server/event-types/functions";
 import type { EventTypeInput } from "~/server/event-types/types";
 import { listSchedules } from "~/server/schedules/functions";
 
 const MESSAGE_KEYS = [
+  ...ASSIGNMENT_MESSAGE_KEYS,
   ...BOOKER_LAYOUT_MESSAGE_KEYS,
   "layout",
   "bookerlayout_override",
@@ -73,7 +80,7 @@ const MESSAGE_KEYS = [
 ];
 
 function EventTypeEditorPage() {
-  const { eventType, schedules, conferencing, stripeConnected } = Route.useLoaderData();
+  const { eventType, schedules, conferencing, assignment, teamSlug, stripeConnected } = Route.useLoaderData();
   const { user, origin } = Route.useRouteContext();
   const t = useT();
   const router = useRouter();
@@ -84,7 +91,8 @@ function EventTypeEditorPage() {
   const [pending, setPending] = useState(false);
   const set = <K extends keyof EventTypeInput>(key: K, value: EventTypeInput[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
-  const bookingUrl = `${origin}/${user.username}/${eventType.slug}`;
+  const pathPrefix = teamSlug ? `/team/${teamSlug}/` : `/${user.username}/`;
+  const bookingUrl = `${origin}${pathPrefix}${eventType.slug}`;
 
   async function save() {
     const redirect = form.successRedirectUrl?.trim() || null;
@@ -171,7 +179,7 @@ function EventTypeEditorPage() {
           </Field>
           <Field label={t("url")}>
             <div className="flex items-center gap-1">
-              <span className="truncate text-muted-foreground text-xs">/{user.username}/</span>
+              <span className="truncate text-muted-foreground text-xs">{pathPrefix}</span>
               <Input value={form.slug} onChange={(e) => set("slug", slugify(e.target.value, true))} />
             </div>
           </Field>
@@ -196,6 +204,12 @@ function EventTypeEditorPage() {
           />
         </Field>
       </Section>
+
+      {assignment && (
+        <Section title={t("assignment")}>
+          <AssignmentEditor eventTypeId={id} assignment={assignment} />
+        </Section>
+      )}
 
       <Section title={t("availability")}>
         <select
@@ -278,16 +292,24 @@ export const Route = createFileRoute("/_authed/event-types/$eventTypeId")({
     stringify: ({ eventTypeId }) => ({ eventTypeId: String(eventTypeId) }),
   },
   loader: async ({ context, params }) => {
-    const [messages, eventType, schedules, conferencing, apps] = await Promise.all([
+    const [messages, eventType, schedules, conferencing, assignment, apps] = await Promise.all([
       loadMessages(context, MESSAGE_KEYS),
       getEventType({ data: { id: params.eventTypeId } }),
       listSchedules(),
       getConferencingSettings(),
+      getEventTypeAssignment({ data: { id: params.eventTypeId } }),
       getApps(),
     ]);
     const stripe = apps.find((app) => app.slug === "stripe");
-    const stripeConnected = Boolean(stripe?.available && stripe.credentialIds.length);
-    return { messages, eventType, schedules, conferencing, stripeConnected };
+    return {
+      messages,
+      eventType,
+      schedules,
+      conferencing,
+      assignment,
+      teamSlug: assignment?.teamSlug ?? null,
+      stripeConnected: Boolean(stripe?.available && stripe.credentialIds.length),
+    };
   },
   component: EventTypeEditorPage,
 });

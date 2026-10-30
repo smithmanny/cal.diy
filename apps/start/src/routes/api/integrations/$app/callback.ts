@@ -3,11 +3,12 @@ import { oauthStateSecret } from "~/server/apps/config";
 import { getOAuthApp } from "~/server/apps/oauthApps";
 import { verifyState } from "~/server/apps/oauthState";
 import { getAuth } from "~/server/auth/auth";
+import { clearReturnCookie, redirectResponse, returnPath } from "~/server/calendars/connectReturn";
 
 function back(request: Request, path: string, error?: string) {
-  const url = new URL(path, request.url);
+  const url = new URL(returnPath(request.headers.get("cookie"), path), request.url);
   if (error) url.searchParams.set("error", error);
-  return Response.redirect(url, 302);
+  return redirectResponse(url.toString(), clearReturnCookie());
 }
 
 export const Route = createFileRoute("/api/integrations/$app/callback")({

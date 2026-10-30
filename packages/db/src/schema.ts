@@ -534,6 +534,9 @@ export const user = sqliteTable(
       onUpdate: "cascade",
     }),
     locked: integer("locked", { mode: "boolean" }).notNull().default(false),
+    // Better Auth's admin plugin: why and until when a user is locked (its `banned` is `locked`).
+    banReason: text("banReason"),
+    banExpires: integer("banExpires", { mode: "timestamp_ms" }),
     movedToProfileId: integer("movedToProfileId")
       .unique("users_movedToProfileId_key")
       .references((): AnySQLiteColumn => profile.id, { onDelete: "set null", onUpdate: "cascade" }),
@@ -1281,6 +1284,28 @@ export const apiKey = sqliteTable(
   (t) => [index("ApiKey_referenceId_idx").on(t.referenceId), index("ApiKey_configId_idx").on(t.configId)]
 );
 
+/** Better Auth's organization invitations; Cal sent team invites as VerificationTokens instead. */
+export const teamInvitation = sqliteTable(
+  "TeamInvitation",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    teamId: integer("teamId")
+      .notNull()
+      .references((): AnySQLiteColumn => team.id, { onDelete: "cascade", onUpdate: "cascade" }),
+    email: text("email").notNull(),
+    role: text("role", { enum: membershipRoleValues }).notNull(),
+    status: text("status").notNull().default("pending"),
+    inviterId: integer("inviterId")
+      .notNull()
+      .references((): AnySQLiteColumn => user.id, { onDelete: "cascade", onUpdate: "cascade" }),
+    expiresAt: integer("expiresAt", { mode: "timestamp_ms" }).notNull(),
+    createdAt: integer("createdAt", { mode: "timestamp_ms" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (t) => [index("TeamInvitation_teamId_idx").on(t.teamId), index("TeamInvitation_email_idx").on(t.email)]
+);
+
 export const rateLimit = sqliteTable(
   "RateLimit",
   {
@@ -1364,6 +1389,13 @@ export const session = sqliteTable(
     expiresAt: integer("expiresAt", { mode: "timestamp_ms" }).notNull(),
     ipAddress: text("ipAddress"),
     userAgent: text("userAgent"),
+    /** Better Auth's organization plugin: the team the user last switched to. */
+    activeOrganizationId: integer("activeOrganizationId"),
+    /** The admin acting as this session's user (Better Auth's admin plugin). */
+    impersonatedBy: integer("impersonatedBy").references((): AnySQLiteColumn => user.id, {
+      onDelete: "cascade",
+      onUpdate: "cascade",
+    }),
     createdAt: integer("createdAt", { mode: "timestamp_ms" })
       .notNull()
       .$defaultFn(() => new Date()),

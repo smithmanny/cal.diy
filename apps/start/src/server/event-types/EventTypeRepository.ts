@@ -1,7 +1,7 @@
 import "@tanstack/react-start/server-only";
 import type { Database } from "@calcom/db/database";
 import { chunkRowsForInsert } from "@calcom/db/insert-chunks";
-import { eventType } from "@calcom/db/schema";
+import { eventType, host } from "@calcom/db/schema";
 import { and, asc, desc, eq, max, ne } from "drizzle-orm";
 
 const summaryColumns = {
@@ -17,6 +17,9 @@ const summaryColumns = {
 const detailColumns = {
   ...summaryColumns,
   userId: eventType.userId,
+  teamId: eventType.teamId,
+  schedulingType: eventType.schedulingType,
+  assignAllTeamMembers: eventType.assignAllTeamMembers,
   scheduleId: eventType.scheduleId,
   locations: eventType.locations,
   minimumBookingNotice: eventType.minimumBookingNotice,
@@ -141,6 +144,65 @@ export class EventTypeRepository {
       this.db.insert(eventType).values(chunk)
     );
     if (first) await this.db.batch([first, ...rest]);
+  }
+
+  findManyByTeamId(teamId: number, { visibleOnly = false } = {}) {
+    return this.db
+      .select({ ...summaryColumns, schedulingType: eventType.schedulingType })
+      .from(eventType)
+      .where(and(eq(eventType.teamId, teamId), visibleOnly ? eq(eventType.hidden, false) : undefined))
+      .orderBy(desc(eventType.position), asc(eventType.id));
+  }
+
+  async findByTeamIdAndSlug(teamId: number, slug: string) {
+    const [found] = await this.db
+      .select(detailColumns)
+      .from(eventType)
+      .where(and(eq(eventType.teamId, teamId), eq(eventType.slug, slug)))
+      .limit(1);
+    return found ?? null;
+  }
+
+  async slugExistsForTeam(teamId: number, slug: string, excludeId?: number): Promise<boolean> {
+    const [found] = await this.db
+      .select({ id: eventType.id })
+      .from(eventType)
+      .where(
+        and(
+          eq(eventType.teamId, teamId),
+          eq(eventType.slug, slug),
+          excludeId === undefined ? undefined : ne(eventType.id, excludeId)
+        )
+      )
+      .limit(1);
+    return Boolean(found);
+  }
+
+  async createForTeam(
+    teamId: number,
+    data: WritableColumns & { title: string; slug: string; length: number }
+  ) {
+    const [created] = await this.db
+      .insert(eventType)
+      .values({ ...data, teamId })
+      .returning({ id: eventType.id });
+    return created;
+  }
+
+  /** Cal's Host rows: who takes a team event's bookings, and who must always attend (fixed). */
+  findHosts(eventTypeId: number) {
+    return this.db
+      .select({ userId: host.userId, isFixed: host.isFixed, priority: host.priority })
+      .from(host)
+      .where(eq(host.eventTypeId, eventTypeId))
+      .orderBy(asc(host.priority), asc(host.userId));
+  }
+
+  async setHosts(eventTypeId: number, hosts: { userId: number; isFixed: boolean }[]) {
+    await this.db.batch([
+      this.db.delete(host).where(eq(host.eventTypeId, eventTypeId)),
+      ...hosts.map((entry, priority) => this.db.insert(host).values({ ...entry, eventTypeId, priority })),
+    ]);
   }
 
   async update(id: number, data: WritableColumns) {

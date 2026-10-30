@@ -238,7 +238,7 @@ export function renderBookingEmail(
   return { subject, html, text };
 }
 
-export type AuthEmailKind = "reset_password" | "verify_email";
+export type AuthEmailKind = "reset_password" | "verify_email" | "team_invite";
 
 export const AUTH_EMAIL_MESSAGE_KEYS = [
   "hi_user_name",
@@ -252,17 +252,45 @@ export const AUTH_EMAIL_MESSAGE_KEYS = [
   "verify_email_button",
   "verify_email_email_link_text",
   "happy_scheduling",
+  "user_invited_you",
+  "team",
+  "team_invite_received",
+  "email_no_user_invite_subheading",
+  "accept_invitation",
 ];
+
+type AuthEmailContent = {
+  subject: string;
+  heading: string;
+  lines: string[];
+  button: string;
+  after: string[];
+};
+
+/** Cal's team invite email: who invited you to which team. */
+function teamInviteContent(t: TFunction, values: Record<string, string>, appName: string): AuthEmailContent {
+  const inviter = values.inviter ?? "";
+  const team = values.team ?? "";
+  return {
+    subject: t("user_invited_you", { user: inviter, entity: t("team").toLowerCase(), team, appName }),
+    heading: t("team_invite_received", { teamName: team }),
+    lines: [t("email_no_user_invite_subheading", { invitedBy: inviter, appName })],
+    button: t("accept_invitation"),
+    after: [],
+  };
+}
 
 export function renderAuthEmail(
   kind: AuthEmailKind,
   recipient: { name: string | null },
   url: string,
-  messages: Messages
+  messages: Messages,
+  values: Record<string, string> = {}
 ): { subject: string; html: string; text: string } {
   const t = createT(messages);
   const greeting = t("hi_user_name", { name: recipient.name ?? "" }).trim();
   const appName = "Cal.diy";
+  if (kind === "team_invite") return authEmailHtml(teamInviteContent(t, values, appName), url);
   const content =
     kind === "reset_password"
       ? {
@@ -279,6 +307,10 @@ export function renderAuthEmail(
           button: t("verify_email_button"),
           after: [t("verify_email_email_link_text"), url, t("happy_scheduling")],
         };
+  return authEmailHtml(content, url);
+}
+
+function authEmailHtml(content: AuthEmailContent, url: string) {
   const html = emailLayout(
     content.heading,
     [

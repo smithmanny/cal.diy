@@ -3,6 +3,10 @@ import "@tanstack/react-start/server-only";
 import type { Database } from "@calcom/db/database";
 import { outOfOfficeEntry, outOfOfficeReason, user } from "@calcom/db/schema";
 import { and, asc, eq, gte, isNull, lte, ne, or } from "drizzle-orm";
+import { alias } from "drizzle-orm/sqlite-core";
+
+/** The teammate an entry forwards bookings to (Cal's OOO redirect). */
+const toUser = alias(user, "to_user");
 
 const entryColumns = {
   uuid: outOfOfficeEntry.uuid,
@@ -11,6 +15,7 @@ const entryColumns = {
   notes: outOfOfficeEntry.notes,
   showNotePublicly: outOfOfficeEntry.showNotePublicly,
   reasonId: outOfOfficeEntry.reasonId,
+  toUserId: outOfOfficeEntry.toUserId,
   reason: outOfOfficeReason.reason,
   emoji: outOfOfficeReason.emoji,
 };
@@ -51,11 +56,15 @@ export class OutOfOfficeRepository {
         showNotePublicly: outOfOfficeEntry.showNotePublicly,
         userId: outOfOfficeEntry.userId,
         userName: user.name,
+        toUserId: toUser.id,
+        toUserName: toUser.name,
+        toUsername: toUser.username,
         reason: outOfOfficeReason.reason,
         emoji: outOfOfficeReason.emoji,
       })
       .from(outOfOfficeEntry)
       .innerJoin(user, eq(user.id, outOfOfficeEntry.userId))
+      .leftJoin(toUser, eq(toUser.id, outOfOfficeEntry.toUserId))
       .leftJoin(outOfOfficeReason, eq(outOfOfficeReason.id, outOfOfficeEntry.reasonId))
       .where(
         and(
@@ -70,7 +79,7 @@ export class OutOfOfficeRepository {
       notes: row.notes,
       showNotePublicly: row.showNotePublicly,
       user: { id: row.userId, name: row.userName },
-      toUser: null,
+      toUser: row.toUserId ? { id: row.toUserId, name: row.toUserName, username: row.toUsername } : null,
       reason: row.reason && row.emoji ? { reason: row.reason, emoji: row.emoji } : null,
     }));
   }
@@ -113,6 +122,7 @@ export class OutOfOfficeRepository {
     reasonId: number;
     notes: string | null;
     showNotePublicly: boolean;
+    toUserId: number | null;
   }): Promise<void> {
     await this.db.insert(outOfOfficeEntry).values(data);
   }
@@ -121,7 +131,14 @@ export class OutOfOfficeRepository {
   async updateByUuidAndUserId(
     uuid: string,
     userId: number,
-    data: { start: Date; end: Date; reasonId: number; notes: string | null; showNotePublicly: boolean }
+    data: {
+      start: Date;
+      end: Date;
+      reasonId: number;
+      notes: string | null;
+      showNotePublicly: boolean;
+      toUserId: number | null;
+    }
   ): Promise<boolean> {
     const updated = await this.db
       .update(outOfOfficeEntry)

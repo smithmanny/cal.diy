@@ -2,6 +2,7 @@ import process from "node:process";
 import { defineConfig, devices } from "@playwright/test";
 import {
   APP_PORT,
+  E2E_VAPID_PUBLIC_KEY,
   FAKE_APPS_PORT,
   FAKE_GOOGLE_PORT,
   FAKE_RESEND_PORT,
@@ -80,6 +81,9 @@ export default defineConfig({
           EMAIL_FROM: "cal@example.com",
           RESEND_API_KEY: "fake-resend-key",
           RESEND_API_URL: `http://localhost:${FAKE_RESEND_PORT}/emails`,
+          // Throwaway keys for the fake push service; never use these anywhere real.
+          VAPID_PUBLIC_KEY: E2E_VAPID_PUBLIC_KEY,
+          VAPID_PRIVATE_KEY: "9Hybx7hZVQFwH-K7WA42hS3hLk2YK6Hr7X0_uF7bkLI",
           ...fakeAppsEnv,
         },
       },

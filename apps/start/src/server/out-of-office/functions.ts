@@ -9,12 +9,13 @@ const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 export const listOutOfOffice = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
-    const { oooRepo, service } = await getOutOfOffice();
-    const [entries, reasons] = await Promise.all([
+    const { oooRepo, teamRepo, service } = await getOutOfOffice();
+    const [entries, reasons, teammates] = await Promise.all([
       service.list(context.userId),
       oooRepo.findReasonsForUser(context.userId),
+      teamRepo.findTeammates(context.userId),
     ]);
-    return { entries, reasons };
+    return { entries, reasons, teammates };
   });
 
 export const saveOutOfOffice = createServerFn({ method: "POST" })
@@ -27,6 +28,7 @@ export const saveOutOfOffice = createServerFn({ method: "POST" })
       reasonId: z.number().int().positive(),
       notes: z.string().max(1000).nullable(),
       showNotePublicly: z.boolean(),
+      toUserId: z.number().int().positive().nullable().default(null),
     })
   )
   .handler(async ({ context, data }) => {

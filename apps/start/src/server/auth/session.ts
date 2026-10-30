@@ -21,6 +21,11 @@ export type SessionUser = {
   appTheme: ThemePreference;
   /** Unverified, and this instance can actually send the verification email. */
   needsEmailVerification: boolean;
+  isAdmin: boolean;
+  /** Set while an admin is signed in as this user. */
+  impersonatedBy: number | null;
+  /** New sign-ups go through /getting-started first, as in Cal. */
+  completedOnboarding: boolean;
 };
 
 export type RequestContext = {
@@ -47,6 +52,9 @@ export const getRequestContext = createServerFn({ method: "GET" }).handler(
           weekStartDay: weekStartIndex(session.user.weekStart),
           appTheme: toThemePreference(session.user.appTheme),
           needsEmailVerification: !session.user.emailVerified && isEmailEnabled(),
+          isAdmin: session.user.role === "ADMIN",
+          impersonatedBy: session.session.impersonatedBy ? Number(session.session.impersonatedBy) : null,
+          completedOnboarding: session.user.completedOnboarding !== false,
         }
       : null;
     const userLocale = session?.user.locale ? matchLocale(session.user.locale) : null;

@@ -10,6 +10,7 @@ import { type FormEvent, useState } from "react";
 import { PageHeader } from "~/components/AppShell";
 import { FormError } from "~/components/AuthCard";
 import { EventColorBar } from "~/components/EventColorBar";
+import { TEAM_EVENT_TYPES_MESSAGE_KEYS, TeamEventTypes } from "~/components/event-types/TeamEventTypes";
 import { HydratedFieldset } from "~/components/HydratedFieldset";
 import { errorMessageKey } from "~/lib/errors";
 import { useT } from "~/lib/i18n";
@@ -18,10 +19,12 @@ import {
   createEventType,
   deleteEventType,
   listEventTypes,
+  listTeamEventTypes,
   setEventTypeHidden,
 } from "~/server/event-types/functions";
 
 const MESSAGE_KEYS = [
+  ...TEAM_EVENT_TYPES_MESSAGE_KEYS,
   "event_types_page_title",
   "event_types_page_subtitle",
   "new_event_type_btn",
@@ -127,7 +130,7 @@ function NewEventTypeForm({ prefix, onCancel }: { prefix: string; onCancel: () =
 }
 
 function EventTypesPage() {
-  const { eventTypes } = Route.useLoaderData();
+  const { eventTypes, teamGroups } = Route.useLoaderData();
   const { user, origin } = Route.useRouteContext();
   const t = useT();
   const router = useRouter();
@@ -239,14 +242,19 @@ function EventTypesPage() {
           })}
         </ul>
       )}
+      <TeamEventTypes groups={teamGroups} />
     </HydratedFieldset>
   );
 }
 
 export const Route = createFileRoute("/_authed/event-types/")({
   loader: async ({ context }) => {
-    const [messages, eventTypes] = await Promise.all([loadMessages(context, MESSAGE_KEYS), listEventTypes()]);
-    return { messages, eventTypes };
+    const [messages, eventTypes, teamGroups] = await Promise.all([
+      loadMessages(context, MESSAGE_KEYS),
+      listEventTypes(),
+      listTeamEventTypes(),
+    ]);
+    return { messages, eventTypes, teamGroups };
   },
   component: EventTypesPage,
 });

@@ -23,6 +23,7 @@ import {
 } from "~/lib/booking-fields";
 import { getEventName } from "~/lib/event-name";
 import { LOCATION_LABEL_KEYS } from "~/lib/location-labels";
+import { teamSlugOf, teamTarget } from "~/lib/team-target";
 import { weekStartIndex } from "~/lib/time-format";
 import { pickMessages } from "../catalog";
 import { AppError } from "../errors";
@@ -45,6 +46,7 @@ import type { PaymentService } from "../payments/PaymentService";
 import { type EventPayment, parseEventPayment } from "../payments/paidEvent";
 import type { ScheduleRepository } from "../schedules/ScheduleRepository";
 import { isValidTimeZone } from "../schedules/scheduleMapper";
+import type { TeamRepository } from "../teams/TeamRepository";
 import type { TravelScheduleRepository } from "../users/TravelScheduleRepository";
 import type { UserRepository } from "../users/UserRepository";
 import type { BookerVerificationService } from "../verification/BookerVerificationService";
@@ -56,6 +58,7 @@ import type {
 } from "./BookingRepository";
 import { dynamicEventType, isDynamicGroup, parseUsernameList } from "./dynamicGroup";
 import type { BookingActor, BookingEvent, BookingListener, BookingSnapshot } from "./events";
+import type { TeamEvent, TeamEventLoader } from "./teamEvents";
 import type {
   AppearanceDto,
   BookingDetailsDto,
@@ -68,7 +71,11 @@ import type {
 
 type Deps = {
   userRepo: Pick<UserRepository, "findByUsername" | "findProfile">;
-  eventTypeRepo: Pick<EventTypeRepository, "findByUserIdAndSlug" | "findManyVisibleByUserId">;
+  eventTypeRepo: Pick<
+    EventTypeRepository,
+    "findByUserIdAndSlug" | "findManyVisibleByUserId" | "findManyByTeamId"
+  >;
+  teamRepo?: Pick<TeamRepository, "findBySlug">;
   scheduleRepo: Pick<
     ScheduleRepository,
     "findByIdIncludeAvailability" | "findManyByUserIdIncludeAvailability"
@@ -79,6 +86,7 @@ type Deps = {
   holidayService: Pick<HolidayService, "blockedDays">;
   bookerVerification?: Pick<BookerVerificationService, "send" | "verify">;
   hashedLinkRepo?: Pick<HashedLinkRepository, "findByLink" | "incrementUsage">;
+  teamEvents?: Pick<TeamEventLoader, "load">;
   busyTimesProviders?: BusyTimesProvider[];
   listeners?: BookingListener[];
   runInBackground?: (promise: Promise<unknown>) => void;
@@ -104,6 +112,15 @@ function bookingFieldsOf(eventType: {
 
 type Host = NonNullable<Awaited<ReturnType<UserRepository["findByUsername"]>>>;
 
+type LoadedEvent = {
+  host: Host;
+  eventType: EventTypeRow;
+  coHosts: Host[];
+  /** A round robin team event's candidates; `host` is then only the first of them. */
+  roundRobin?: Host[];
+  team?: TeamEvent["team"];
+};
+
 type CreatedBooking = {
   uid: string;
   title: string;
@@ -116,6 +133,16 @@ type CreatedBooking = {
 };
 
 type EventTypeRow = NonNullable<Awaited<ReturnType<EventTypeRepository["findByUserIdAndSlug"]>>>;
+
+function coHostAttendee(coHost: Host) {
+  return {
+    name: coHost.name ?? coHost.username ?? coHost.email,
+    email: coHost.email,
+    timeZone: coHost.timeZone,
+    locale: coHost.locale ?? "en",
+    phoneNumber: null,
+  };
+}
 
 function paidPrice(metadata: unknown): PublicEventDto["eventType"]["price"] {
   const payment = parseEventPayment(metadata);
@@ -234,6 +261,28 @@ function publicHost(
 }
 
 /** A group link's members shown as one host: everyone's names, the organizer's look. */
+/** Teams show their own name and logo, in the first host's appearance. */
+function teamHost(team: { name: string; logoUrl: string | null }, username: string): PublicHostDto {
+  return {
+    name: team.name,
+    username,
+    avatarUrl: team.logoUrl,
+    weekStartDay: 0,
+    allowSEOIndexing: true,
+    appearance: { theme: null, brandColor: null, darkBrandColor: null, hideBranding: false },
+  };
+}
+
+function eventHost(
+  host: Parameters<typeof groupHost>[0],
+  coHosts: Parameters<typeof groupHost>[1],
+  team: { name: string; logoUrl: string | null } | undefined,
+  username: string
+): PublicHostDto {
+  if (team) return { ...publicHost(host, username), name: team.name, avatarUrl: team.logoUrl };
+  return coHosts.length ? groupHost(host, coHosts, username) : publicHost(host, host.username ?? username);
+}
+
 function groupHost(
   host: Parameters<typeof publicHost>[0] & { username: string | null },
   coHosts: { name: string | null; username: string | null }[],
@@ -252,11 +301,14 @@ export class BookingService {
   constructor(private readonly deps: Deps) {}
 
   async getProfile(username: string) {
+    const teamSlug = teamSlugOf(username);
+    if (teamSlug) return this.getTeamProfile(teamSlug, username);
     if (isDynamicGroup(username)) {
       // A group's page offers the one group meeting, as in Cal.
       const { host, eventType, coHosts } = await this.loadDynamicGroup(username);
       return {
         host: groupHost(host, coHosts, username),
+        bio: null,
         eventTypes: [
           { title: eventType.title, slug: eventType.slug, length: eventType.length, description: null },
         ],
@@ -267,6 +319,24 @@ export class BookingService {
     const eventTypes = await this.deps.eventTypeRepo.findManyVisibleByUserId(host.id);
     return {
       host: publicHost(host, host.username),
+      bio: host.bio,
+      eventTypes: eventTypes.map(({ title, slug, length, description }) => ({
+        title,
+        slug,
+        length,
+        description,
+      })),
+    };
+  }
+
+  /** A team's page: its name and logo, and the event types it shows. */
+  private async getTeamProfile(teamSlug: string, username: string) {
+    const team = await this.deps.teamRepo?.findBySlug(teamSlug);
+    if (!team) throw new AppError("team_not_found", 404);
+    const eventTypes = await this.deps.eventTypeRepo.findManyByTeamId(team.id, { visibleOnly: true });
+    return {
+      host: teamHost(team, username),
+      bio: team.bio,
       eventTypes: eventTypes.map(({ title, slug, length, description }) => ({
         title,
         slug,
@@ -277,9 +347,9 @@ export class BookingService {
   }
 
   async getPublicEvent(username: string, slug: string): Promise<PublicEventDto> {
-    const { host, eventType, coHosts } = await this.loadEvent(username, slug);
+    const { host, eventType, coHosts, team } = await this.loadEvent(username, slug);
     return {
-      host: coHosts.length ? groupHost(host, coHosts, username) : publicHost(host, host.username ?? username),
+      host: eventHost(host, coHosts, team, username),
       eventType: {
         // Group links book no event type; 0 stands for that internally.
         id: eventType.id || null,
@@ -318,7 +388,7 @@ export class BookingService {
     if (!(from < to) || to.getTime() - from.getTime() > MAX_RANGE_MS)
       throw new AppError("something_went_wrong");
     if (!isValidTimeZone(query.timeZone)) throw new AppError("invalid_timezone");
-    const { host, eventType, coHosts } = await this.loadEvent(query.username, query.slug);
+    const { host, eventType, coHosts, roundRobin } = await this.loadEvent(query.username, query.slug);
     const { slots, outOfOffice, seatsTaken, seatBookingUids } = await this.computeSlots(
       host,
       eventType,
@@ -327,7 +397,8 @@ export class BookingService {
       query.timeZone,
       query.rescheduleUid,
       eventLength(eventType, query.duration),
-      coHosts
+      coHosts,
+      roundRobin
     );
     const seats = eventType.seatsPerTimeSlot;
     return {
@@ -369,12 +440,11 @@ export class BookingService {
   /** `actorUserId` is the signed-in user, if any; a host may move their own booking at any time. */
   async create(input: CreateBookingInput, actorUserId: number | null = null): Promise<CreatedBooking> {
     if (!isValidTimeZone(input.timeZone)) throw new AppError("invalid_timezone");
-    const { host, eventType, coHosts } = await this.loadEvent(input.username, input.slug);
+    const loaded = await this.loadEvent(input.username, input.slug);
+    const { eventType, coHosts } = loaded;
     const now = this.deps.now?.() ?? new Date();
-    // Cal charges paid events per seat; that isn't supported here, so such events can't be booked.
-    const price = input.rescheduleUid ? null : parseEventPayment(eventType.metadata);
-    if (price && (eventType.seatsPerTimeSlot || !this.deps.payments))
-      throw new AppError("payment_not_created_error", 400);
+    const price = this.priceToCharge(eventType, input.rescheduleUid);
+    const host = await this.bookingHost(loaded, input);
     if (eventType.seatsPerTimeSlot)
       return this.bookSeat(input, host, eventType, eventType.seatsPerTimeSlot, actorUserId === host.id, now);
     const start = new Date(input.start);
@@ -382,7 +452,13 @@ export class BookingService {
     const end = new Date(start.getTime() + length * 60_000);
 
     const original = input.rescheduleUid
-      ? await this.findReschedulable(input.rescheduleUid, host.id, actorUserId === host.id, now)
+      ? await this.findReschedulable(
+          input.rescheduleUid,
+          host.id,
+          actorUserId === host.id,
+          now,
+          loaded.team && eventType.id
+        )
       : null;
 
     await this.assertSlotOffered(host, eventType, start, input.timeZone, original?.uid, length, coHosts);
@@ -402,7 +478,6 @@ export class BookingService {
     const notes = typeof responses.notes === "string" ? responses.notes : null;
     const title = await this.bookingTitle({ host, eventType, responses, name, location, length });
     const statusOnceDecided = this.needsConfirmation(eventType, start, now) ? "PENDING" : "ACCEPTED";
-    // Like Cal, a paid booking waits for its payment; a moved booking keeps what was paid.
     const status = price ? "PENDING" : statusOnceDecided;
 
     // Cal drops guests that repeat the booker.
@@ -411,8 +486,7 @@ export class BookingService {
     );
     const attendeeBase = { timeZone: input.timeZone, locale: input.locale };
 
-    // A recurring event books its occurrences together; moving one occurrence moves only that one.
-    // Cal doesn't charge for recurring series either: a paid event books a single occurrence.
+    // A recurring event books its occurrences together; moving one moves only that one; paid ones book one.
     const rule = original || price ? null : parseRecurringEvent(eventType.recurringEvent);
     const starts = rule
       ? recurringDates(start, input.timeZone, {
@@ -441,13 +515,7 @@ export class BookingService {
           { ...attendeeBase, name, email, phoneNumber: attendeePhone },
           ...guests.map((guest) => ({ ...attendeeBase, name: "", email: guest, phoneNumber: null })),
           // Like Cal's collective events, a group link's other members attend the organizer's booking.
-          ...coHosts.map((coHost) => ({
-            name: coHost.name ?? coHost.username ?? coHost.email,
-            email: coHost.email,
-            timeZone: coHost.timeZone,
-            locale: coHost.locale ?? "en",
-            phoneNumber: null,
-          })),
+          ...coHosts.map(coHostAttendee),
         ],
       })
     );
@@ -458,17 +526,13 @@ export class BookingService {
     });
     if (!created) throw new AppError("booking_conflict_error", 409);
     const { uid } = firstBooking;
-
     const paymentUid = price
       ? await this.startPayment(uid, { host, eventType, email, price, statusAfterPayment: statusOnceDecided })
-      : undefined;
-    // A paid booking is announced once it is paid (markPaid).
-    if (!paymentUid)
-      await this.emitCreated(
-        bookings.map((occurrence) => occurrence.uid),
-        original?.uid ?? null,
-        actorUserId ? { userId: actorUserId } : { email, name }
-      );
+      : await this.emitCreated(
+          bookings.map((occurrence) => occurrence.uid),
+          original?.uid ?? null,
+          actorUserId ? { userId: actorUserId } : { email, name }
+        ).then(() => undefined);
     return {
       uid,
       title,
@@ -636,7 +700,21 @@ export class BookingService {
       });
   }
 
-  /** A paid booking is confirmed (or awaits the host, if it needs confirming) once its payment succeeds. */
+  /**
+   * What a new booking must pay, if anything; a moved booking keeps what was paid. Cal charges paid
+   * events per seat, which isn't supported here, so such events can't be booked.
+   */
+  private priceToCharge(eventType: EventTypeRow, rescheduleUid: string | undefined): EventPayment | null {
+    const price = rescheduleUid ? null : parseEventPayment(eventType.metadata);
+    if (price && (eventType.seatsPerTimeSlot || !this.deps.payments))
+      throw new AppError("payment_not_created_error", 400);
+    return price;
+  }
+
+  /**
+   * A paid booking is announced (emails, webhooks, calendars) only here, once its payment succeeds:
+   * confirmed, or awaiting the host if it needs confirming.
+   */
   async markPaid(uid: string, status: "ACCEPTED" | "PENDING"): Promise<void> {
     await this.deps.bookingRepo.updateStatus(uid, { status, paid: true });
     await this.emitCreated([uid], null);
@@ -881,6 +959,10 @@ export class BookingService {
       eventType: found.eventType
         ? { title: found.eventType.title, slug: found.eventType.slug, length: found.eventType.length }
         : null,
+      // The page to book a new time on: a team's for team event types, else the host's.
+      bookerUsername: found.eventType?.teamSlug
+        ? teamTarget(found.eventType.teamSlug)
+        : (found.host?.username ?? null),
       attendees: attendees.map(({ name, email, timeZone }) => ({ name, email, timeZone })),
     };
   }
@@ -1046,6 +1128,7 @@ export class BookingService {
             title: found.eventType.title,
             slug: found.eventType.slug,
             length: found.eventType.length,
+            teamSlug: found.eventType.teamSlug,
             hideCalendarNotes: found.eventType.hideCalendarNotes,
             hideCalendarEventDetails: found.eventType.hideCalendarEventDetails,
             hideOrganizerEmail: found.eventType.hideOrganizerEmail,
@@ -1105,16 +1188,80 @@ export class BookingService {
     if (this.deps.runInBackground) this.deps.runInBackground(work);
   }
 
-  private async loadEvent(
-    username: string,
-    slug: string
-  ): Promise<{ host: Host; eventType: EventTypeRow; coHosts: Host[] }> {
+  private async loadEvent(username: string, slug: string): Promise<LoadedEvent> {
+    const teamSlug = teamSlugOf(username);
+    if (teamSlug) return this.loadTeamEvent(teamSlug, slug);
     if (isDynamicGroup(username)) return this.loadDynamicGroup(username);
     const host = await this.deps.userRepo.findByUsername(username);
     if (!host) throw new AppError("user_not_found", 404);
     const eventType = await this.deps.eventTypeRepo.findByUserIdAndSlug(host.id, slug);
     if (!eventType) throw new AppError("event_type_not_found", 404);
     return { host, eventType, coHosts: [] };
+  }
+
+  /**
+   * A team event: a collective one books its hosts together (the first organizes), a round robin
+   * one the host chosen when booking, with any fixed hosts attending.
+   */
+  private async loadTeamEvent(teamSlug: string, slug: string): Promise<LoadedEvent> {
+    if (!this.deps.teamEvents) throw new AppError("team_not_found", 404);
+    const loaded = await this.deps.teamEvents.load(teamSlug, slug);
+    const [first, ...rest] = loaded.roundRobin.length ? loaded.roundRobin : loaded.fixed;
+    return {
+      host: first,
+      eventType: loaded.eventType,
+      coHosts: loaded.roundRobin.length ? loaded.fixed : rest,
+      roundRobin: loaded.roundRobin,
+      team: loaded.team,
+    };
+  }
+
+  /** Who the booking is with: the event's host, or for round robin, the one picked for the time. */
+  private bookingHost(loaded: LoadedEvent, input: CreateBookingInput): Promise<Host> {
+    if (!loaded.roundRobin?.length) return Promise.resolve(loaded.host);
+    return this.pickRoundRobinHost(
+      loaded.roundRobin,
+      loaded.eventType,
+      new Date(input.start),
+      input.timeZone,
+      eventLength(loaded.eventType, input.duration),
+      input.rescheduleUid
+    );
+  }
+
+  /**
+   * Cal's round robin: of the hosts free at that time, the one booked least recently for this
+   * event type takes the booking.
+   */
+  private async pickRoundRobinHost(
+    candidates: Host[],
+    eventType: EventTypeRow,
+    start: Date,
+    timeZone: string,
+    length: number,
+    excludeUid: string | undefined
+  ): Promise<Host> {
+    const lastBooked = await this.deps.bookingRepo.findLastBookedAt(
+      eventType.id,
+      candidates.map((candidate) => candidate.id)
+    );
+    const ordered = [...candidates].sort(
+      (a, b) => (lastBooked.get(a.id)?.getTime() ?? 0) - (lastBooked.get(b.id)?.getTime() ?? 0)
+    );
+    const dayAround = 24 * 60 * 60 * 1000;
+    for (const candidate of ordered) {
+      const { slots } = await this.computeHostSlots(
+        candidate,
+        eventType,
+        new Date(start.getTime() - dayAround),
+        new Date(start.getTime() + dayAround),
+        timeZone,
+        excludeUid,
+        length
+      );
+      if (slots.some((slot) => slot.getTime() === start.getTime())) return candidate;
+    }
+    throw new AppError("no_available_users_found_error", 409);
   }
 
   /**
@@ -1156,9 +1303,19 @@ export class BookingService {
     throw new AppError("booker_upcoming_limit_reached", 409, { count: max });
   }
 
-  private async findReschedulable(uid: string, hostId: number, byHost: boolean, now: Date) {
+  /** `teamEventTypeId`: a team booking may move to another host of the same event type. */
+  private async findReschedulable(
+    uid: string,
+    hostId: number,
+    byHost: boolean,
+    now: Date,
+    teamEventTypeId?: number
+  ) {
     const original = await this.deps.bookingRepo.findByUid(uid);
-    if (!original || original.userId !== hostId) throw new AppError("booking_not_found", 404);
+    const sameOwner =
+      original?.userId === hostId ||
+      (teamEventTypeId !== undefined && original?.eventTypeId === teamEventTypeId);
+    if (!original || !sameOwner) throw new AppError("booking_not_found", 404);
     // After the host requests a reschedule the booking is cancelled, but its attendees may still
     // book a new time for it, once.
     const awaitingNewTime =
@@ -1194,14 +1351,17 @@ export class BookingService {
     inviteeTimeZone: string,
     excludeUid: string | undefined,
     length: number,
-    coHosts: Host[] = []
+    coHosts: Host[] = [],
+    roundRobin: Host[] = []
   ): Promise<{
     slots: Date[];
     outOfOffice: OutOfOfficeData;
     seatsTaken: Map<number, number>;
     seatBookingUids: Map<number, string>;
   }> {
-    const own = await this.computeHostSlots(host, eventType, from, to, inviteeTimeZone, excludeUid, length);
+    const own = roundRobin.length
+      ? await this.computeAnyHostSlots(roundRobin, eventType, from, to, inviteeTimeZone, excludeUid, length)
+      : await this.computeHostSlots(host, eventType, from, to, inviteeTimeZone, excludeUid, length);
     if (!coHosts.length) return own;
     const others = await Promise.all(
       coHosts.map((coHost) =>
@@ -1213,6 +1373,25 @@ export class BookingService {
       ...own,
       slots: own.slots.filter((slot) => shared.every((times) => times.has(slot.getTime()))),
     };
+  }
+
+  /** Round robin times: those when at least one of the hosts is free. */
+  private async computeAnyHostSlots(
+    hosts: Host[],
+    eventType: EventTypeRow,
+    from: Date,
+    to: Date,
+    inviteeTimeZone: string,
+    excludeUid: string | undefined,
+    length: number
+  ) {
+    const each = await Promise.all(
+      hosts.map((candidate) =>
+        this.computeHostSlots(candidate, eventType, from, to, inviteeTimeZone, excludeUid, length)
+      )
+    );
+    const times = new Set(each.flatMap((result) => result.slots.map((slot) => slot.getTime())));
+    return { ...each[0], slots: [...times].sort((a, b) => a - b).map((time) => new Date(time)) };
   }
 
   private async computeHostSlots(

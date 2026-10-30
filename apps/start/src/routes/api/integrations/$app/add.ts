@@ -3,6 +3,7 @@ import { oauthStateSecret } from "~/server/apps/config";
 import { getOAuthApp } from "~/server/apps/oauthApps";
 import { signState } from "~/server/apps/oauthState";
 import { getAuth } from "~/server/auth/auth";
+import { redirectResponse, returnCookie } from "~/server/calendars/connectReturn";
 
 /** Starts an app's OAuth flow (Cal's /api/integrations/<app>/add, e.g. googlecalendar, zoomvideo). */
 export const Route = createFileRoute("/api/integrations/$app/add")({
@@ -17,13 +18,13 @@ export const Route = createFileRoute("/api/integrations/$app/add")({
             new URL(`/auth/login?callbackUrl=${encodeURIComponent(app.returnTo)}`, request.url),
             302
           );
-        return Response.redirect(
-          app.authorizeUrl(await signState(Number(session.user.id), oauthStateSecret()), {
-            email: session.user.email,
-            name: session.user.name || null,
-          }),
-          302
-        );
+        const authorizeUrl = app.authorizeUrl(await signState(Number(session.user.id), oauthStateSecret()), {
+          email: session.user.email,
+          name: session.user.name || null,
+        });
+        // Onboarding passes returnTo so the user comes back to its calendar step.
+        const returnTo = new URL(request.url).searchParams.get("returnTo");
+        return redirectResponse(authorizeUrl, returnCookie(returnTo));
       },
     },
   },

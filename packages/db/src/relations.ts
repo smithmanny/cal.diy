@@ -1255,3 +1255,8 @@ export const attributeSyncFieldMappingRelations = relations(t.attributeSyncField
     relationName: "AttributeSyncFieldMappingToIntegrationAttributeSync",
   }),
 }));
+
+export const teamInvitationRelations = relations(t.teamInvitation, ({ one }) => ({
+  team: one(t.team, { fields: [t.teamInvitation.teamId], references: [t.team.id] }),
+  inviter: one(t.user, { fields: [t.teamInvitation.inviterId], references: [t.user.id] }),
+}));

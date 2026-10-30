@@ -133,3 +133,32 @@ export function startFakeResend(port: number): Server {
     });
   }).listen(port);
 }
+
+export type ReceivedPush = { path: string; headers: Record<string, string>; body: string };
+
+/** Stands in for a browser's push service: records each delivery, listed at GET /received. */
+export function startFakePushService(port: number): Server {
+  const received: ReceivedPush[] = [];
+  return createServer((req, res) => {
+    if (req.method === "GET" && req.url === "/received") {
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify(received));
+      return;
+    }
+    const chunks: Buffer[] = [];
+    req.on("data", (chunk: Buffer) => chunks.push(chunk));
+    req.on("end", () => {
+      received.push({
+        path: req.url ?? "",
+        headers: {
+          authorization: String(req.headers.authorization ?? ""),
+          "content-encoding": String(req.headers["content-encoding"] ?? ""),
+          ttl: String(req.headers.ttl ?? ""),
+        },
+        body: Buffer.concat(chunks).toString("base64url"),
+      });
+      res.statusCode = 201;
+      res.end();
+    });
+  }).listen(port);
+}

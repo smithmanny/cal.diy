@@ -12,7 +12,7 @@ let authPromise: Promise<Auth> | undefined;
 
 function authEmailSender(): AuthEmailSender | null {
   const emails = createEmailService();
-  return emails ? (kind, recipient, url) => emails.sendAuthEmail(kind, recipient, url) : null;
+  return emails ? (kind, recipient, url, values) => emails.sendAuthEmail(kind, recipient, url, values) : null;
 }
 
 async function init(): Promise<Auth> {
@@ -24,6 +24,7 @@ async function init(): Promise<Auth> {
     clientIpHeaders: CLIENT_IP_HEADERS,
     rateLimit: IS_PRODUCTION_BUILD,
     sendAuthEmail: authEmailSender(),
+    requireAdminTwoFactor: IS_PRODUCTION_BUILD,
     google:
       GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET
         ? { clientId: GOOGLE_CLIENT_ID, clientSecret: GOOGLE_CLIENT_SECRET }

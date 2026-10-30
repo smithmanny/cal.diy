@@ -5,11 +5,30 @@ import type { JsonValue } from "@calcom/db/ids";
 import { account, user } from "@calcom/db/schema";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 
-export const appearanceColumns = {
+const appearanceColumns = {
   theme: user.theme,
   brandColor: user.brandColor,
   darkBrandColor: user.darkBrandColor,
   hideBranding: user.hideBranding,
+};
+
+/** What booking pages and slot calculations need to know about a host. */
+const hostColumns = {
+  id: user.id,
+  name: user.name,
+  username: user.username,
+  email: user.email,
+  timeZone: user.timeZone,
+  locale: user.locale,
+  defaultScheduleId: user.defaultScheduleId,
+  avatarUrl: user.avatarUrl,
+  bio: user.bio,
+  weekStart: user.weekStart,
+  allowSEOIndexing: user.allowSEOIndexing,
+  allowDynamicBooking: user.allowDynamicBooking,
+  requiresBookerEmailVerification: user.requiresBookerEmailVerification,
+  metadata: user.metadata,
+  ...appearanceColumns,
 };
 
 export class UserRepository {
@@ -23,6 +42,11 @@ export class UserRepository {
       .from(user)
       .where(and(inArray(user.username, usernames), isNull(user.organizationId)));
     return new Set(rows.flatMap((row) => (row.username ? [row.username] : [])));
+  }
+
+  async hasAny(): Promise<boolean> {
+    const [row] = await this.db.select({ id: user.id }).from(user).limit(1);
+    return Boolean(row);
   }
 
   /** Swaps one stored password hash for another; matching on the old hash makes a concurrent change win. */
@@ -49,26 +73,19 @@ export class UserRepository {
   /** Users outside an organization, which is every user until organizations are ported. */
   async findByUsername(username: string) {
     const [found] = await this.db
-      .select({
-        id: user.id,
-        name: user.name,
-        username: user.username,
-        email: user.email,
-        timeZone: user.timeZone,
-        locale: user.locale,
-        defaultScheduleId: user.defaultScheduleId,
-        avatarUrl: user.avatarUrl,
-        weekStart: user.weekStart,
-        allowSEOIndexing: user.allowSEOIndexing,
-        allowDynamicBooking: user.allowDynamicBooking,
-        requiresBookerEmailVerification: user.requiresBookerEmailVerification,
-        metadata: user.metadata,
-        ...appearanceColumns,
-      })
+      .select(hostColumns)
       .from(user)
       .where(and(eq(user.username, username.toLowerCase()), isNull(user.organizationId)))
       .limit(1);
     return found ?? null;
+  }
+
+  /** Hosts by id, in the order asked for; ids that don't exist are left out. */
+  async findHostsByIds(ids: number[]) {
+    if (!ids.length) return [];
+    const rows = await this.db.select(hostColumns).from(user).where(inArray(user.id, ids));
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    return ids.flatMap((id) => byId.get(id) ?? []);
   }
 
   async findProfile(userId: number) {
@@ -184,3 +201,5 @@ export class UserRepository {
     await this.db.update(user).set({ metadata }).where(eq(user.id, userId));
   }
 }
+
+export { appearanceColumns };

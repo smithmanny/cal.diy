@@ -10,19 +10,28 @@ const TABS = [
   { to: "/settings/my-account/calendars", labelKey: "calendars" },
   { to: "/settings/my-account/conferencing", labelKey: "conferencing" },
   { to: "/settings/my-account/out-of-office", labelKey: "out_of_office" },
+  { to: "/settings/my-account/push-notifications", labelKey: "push_notifications" },
   { to: "/settings/security/password", labelKey: "password" },
   { to: "/settings/security/two-factor-auth", labelKey: "two_factor_auth" },
   { to: "/settings/developer/webhooks", labelKey: "webhooks" },
   { to: "/settings/developer/api-keys", labelKey: "api_keys" },
 ] as const;
 
+// Only admins see these; the pages check the role themselves.
+const ADMIN_TABS = [
+  { to: "/settings/admin/users", labelKey: "users" },
+  { to: "/settings/admin/oauth", labelKey: "oauth_clients" },
+] as const;
+
 function SettingsLayout() {
   const t = useT();
+  const { user } = Route.useRouteContext();
+  const tabs = user.isAdmin ? [...TABS, ...ADMIN_TABS] : TABS;
   return (
     <>
       <PageHeader title={t("settings")} />
       <nav className="mb-6 flex gap-1 overflow-x-auto border-b">
-        {TABS.map((tab) => (
+        {tabs.map((tab) => (
           <Link
             key={tab.to}
             to={tab.to}
@@ -40,7 +49,10 @@ function SettingsLayout() {
 
 export const Route = createFileRoute("/_authed/settings")({
   loader: async ({ context }) => ({
-    messages: await loadMessages(context, ["settings", ...TABS.map((tab) => tab.labelKey)]),
+    messages: await loadMessages(context, [
+      "settings",
+      ...[...TABS, ...ADMIN_TABS].map((tab) => tab.labelKey),
+    ]),
   }),
   component: SettingsLayout,
 });

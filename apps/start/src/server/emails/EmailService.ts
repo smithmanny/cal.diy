@@ -1,6 +1,7 @@
 import "@tanstack/react-start/server-only";
 
 import type { Messages } from "~/lib/i18n";
+import { bookerPath, teamTarget } from "~/lib/team-target";
 import type { BookingEvent, BookingSnapshot } from "../bookings/events";
 import { buildIcs } from "./ics";
 import type { EmailSender } from "./sender";
@@ -149,18 +150,21 @@ export class EmailService {
   async sendAuthEmail(
     kind: AuthEmailKind,
     recipient: { email: string; name: string | null; locale: string | null },
-    url: string
+    url: string,
+    values: Record<string, string> = {}
   ): Promise<void> {
     const messages = await this.deps.loadMessages(recipient.locale ?? "en", AUTH_EMAIL_MESSAGE_KEYS);
-    const { subject, html, text } = renderAuthEmail(kind, recipient, url, messages);
+    const { subject, html, text } = renderAuthEmail(kind, recipient, url, messages, values);
     await this.deps.send({ from: this.deps.from, to: recipient.email, subject, html, text });
   }
 
   /** Where attendees book a new time after the host asked them to (Cal's `rescheduleUid` link). */
   private rebookUrl(booking: BookingSnapshot, fallback: string): string {
     const { username } = booking.organizer;
-    if (!username || !booking.eventType) return fallback;
-    return `${this.deps.publicUrl}/${username}/${booking.eventType.slug}?rescheduleUid=${booking.uid}`;
+    if (!booking.eventType) return fallback;
+    const target = booking.eventType.teamSlug ? teamTarget(booking.eventType.teamSlug) : username;
+    if (!target) return fallback;
+    return `${this.deps.publicUrl}${bookerPath(target, booking.eventType.slug)}?rescheduleUid=${booking.uid}`;
   }
 
   /** A booker's verification code; failures reach the caller so the booker can retry. */
