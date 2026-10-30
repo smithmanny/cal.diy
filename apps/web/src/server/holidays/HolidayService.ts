@@ -1,6 +1,5 @@
 import "@tanstack/react-start/server-only";
 
-import dayjs from "@calcom/dayjs";
 import {
   CONFLICT_CHECK_MONTHS,
   GOOGLE_HOLIDAY_CALENDARS,
@@ -8,6 +7,7 @@ import {
 } from "@calcom/lib/holidays/constants";
 import { getHolidayEmoji } from "@calcom/lib/holidays/getHolidayEmoji";
 import type { DateOverride, OutOfOfficeData, WorkingHours } from "@calcom/scheduling/types";
+import { addUtcMonths, daysBetween, utcDateKey, utcEndOfDay, utcStartOfDay } from "~/lib/date-utils";
 import { AppError } from "../errors";
 import type { FetchedHoliday } from "./googleHolidays";
 import type { CachedHoliday, HolidayRepository } from "./HolidayRepository";
@@ -18,8 +18,6 @@ type Deps = {
   fetchHolidays: ((calendarId: string, year: number) => Promise<FetchedHoliday[]>) | null;
   now?: () => Date;
 };
-
-const dayKey = (date: Date) => dayjs(date).utc().format("YYYY-MM-DD");
 
 // A year with no holidays leaves no cache rows to date the last fetch, so remember those fetches
 // here; otherwise every booking page view would call Google again.
@@ -81,17 +79,17 @@ export class HolidayService {
       settings.countryCode,
       settings.disabledIds,
       now,
-      dayjs(now).add(CONFLICT_CHECK_MONTHS, "month").toDate()
+      addUtcMonths(now, CONFLICT_CHECK_MONTHS)
     );
     const days = holidays.map((holiday) => ({
       holiday,
-      start: dayjs(holiday.date).utc().startOf("day").toDate(),
-      end: dayjs(holiday.date).utc().endOf("day").toDate(),
+      start: utcStartOfDay(holiday.date),
+      end: utcEndOfDay(holiday.date),
     }));
     const bookings = await this.deps.repo.findHostBookingsOverlapping(userId, days);
     return days.flatMap(({ holiday, start, end }) => {
       const count = bookings.filter((b) => b.startTime < end && b.endTime > start).length;
-      return count ? [{ holidayName: holiday.name, date: dayKey(holiday.date), bookings: count }] : [];
+      return count ? [{ holidayName: holiday.name, date: utcDateKey(holiday.date), bookings: count }] : [];
     });
   }
 
@@ -108,14 +106,14 @@ export class HolidayService {
     const holidays = await this.enabledInRange(
       settings.countryCode,
       settings.disabledIds,
-      dayjs(from).utc().startOf("day").toDate(),
-      dayjs(to).utc().endOf("day").toDate()
+      utcStartOfDay(from),
+      utcEndOfDay(to)
     );
     const workingDays = new Set(availability.flatMap((item) => ("days" in item ? item.days : [])));
     const result: OutOfOfficeData = {};
     for (const holiday of holidays) {
-      if (!workingDays.has(dayjs(holiday.date).utc().day())) continue;
-      result[dayKey(holiday.date)] = {
+      if (!workingDays.has(holiday.date.getUTCDay())) continue;
+      result[utcDateKey(holiday.date)] = {
         fromUser: null,
         toUser: null,
         reason: holiday.name,
@@ -130,18 +128,18 @@ export class HolidayService {
   }
 
   private async upcoming(countryCode: string, disabledIds: string[]): Promise<HolidayDto[]> {
-    const year = dayjs(this.now()).utc().year();
+    const year = this.now().getUTCFullYear();
     const [thisYear, nextYear] = await Promise.all([
       this.cached(countryCode, year),
       this.cached(countryCode, year + 1),
     ]);
-    const today = dayKey(this.now());
+    const today = utcDateKey(this.now());
     const disabled = new Set(disabledIds);
     return [...thisYear, ...nextYear]
       .map((holiday) => ({
         id: holiday.eventId,
         name: holiday.name,
-        date: dayKey(holiday.date),
+        date: utcDateKey(holiday.date),
         enabled: !disabled.has(holiday.eventId),
       }))
       .filter((holiday) => holiday.date >= today)
@@ -149,7 +147,7 @@ export class HolidayService {
   }
 
   private async enabledInRange(countryCode: string, disabledIds: string[], from: Date, to: Date) {
-    for (let year = dayjs(from).utc().year(); year <= dayjs(to).utc().year(); year++) {
+    for (let year = from.getUTCFullYear(); year <= to.getUTCFullYear(); year++) {
       await this.refreshIfStale(countryCode, year);
     }
     const disabled = new Set(disabledIds);
@@ -168,7 +166,7 @@ export class HolidayService {
     const updatedAt =
       (await this.deps.repo.findCacheUpdatedAt(countryCode, year)) ??
       emptyFetchedAt.get(`${countryCode}:${year}`);
-    if (updatedAt && dayjs(this.now()).diff(updatedAt, "day") < HOLIDAY_CACHE_DAYS) return;
+    if (updatedAt && daysBetween(updatedAt, this.now()) < HOLIDAY_CACHE_DAYS) return;
     try {
       const fetched = await this.deps.fetchHolidays(calendar.calendarId, year);
       if (fetched.length) emptyFetchedAt.delete(`${countryCode}:${year}`);

@@ -1,6 +1,6 @@
 import "@tanstack/react-start/server-only";
 
-import dayjs from "@calcom/dayjs";
+import { utcDateKey, utcEndOfDay, utcStartOfDay } from "~/lib/date-utils";
 import { AppError } from "../errors";
 import type { OutOfOfficeRepository } from "./OutOfOfficeRepository";
 
@@ -31,8 +31,8 @@ export class OutOfOfficeService {
    * the last, so it reads the same wherever the host or the booker is.
    */
   async createOrUpdate(userId: number, input: OutOfOfficeInput): Promise<void> {
-    const start = dayjs.utc(input.startDate).startOf("day").toDate();
-    const end = dayjs.utc(input.endDate).endOf("day").toDate();
+    const start = utcStartOfDay(input.startDate);
+    const end = utcEndOfDay(input.endDate);
     if (start > end) throw new AppError("start_date_must_be_before_end_date");
     if (!(await this.deps.oooRepo.reasonExists(input.reasonId, userId))) throw new AppError("not_found", 404);
     const toUserId = input.toUserId ?? null;
@@ -62,8 +62,8 @@ export class OutOfOfficeService {
     return entries.map((entry) => ({
       ...entry,
       // Dates the host picked, independent of where they view the list from.
-      startDate: dayjs(entry.start).utc().format("YYYY-MM-DD"),
-      endDate: dayjs(entry.end).utc().format("YYYY-MM-DD"),
+      startDate: utcDateKey(entry.start),
+      endDate: utcDateKey(entry.end),
     }));
   }
 }

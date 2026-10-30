@@ -11,6 +11,7 @@ import {
   toBookingFieldInput,
   withSystemFields,
 } from "~/lib/booking-fields";
+import { dateKeyInTimeZone } from "~/lib/date-utils";
 import { AppError } from "../errors";
 import { mergeMetadata, parseMetadata } from "../metadata";
 import { parseEventPayment, withEventPayment } from "../payments/paidEvent";
@@ -166,7 +167,7 @@ export class EventTypeService {
       ...dto,
       privateLinks: links.map((link) => ({
         link: link.link,
-        expiresAt: link.expiresAt ? dayjs(link.expiresAt).tz(timeZone).format("YYYY-MM-DD") : null,
+        expiresAt: link.expiresAt ? dateKeyInTimeZone(link.expiresAt, timeZone) : null,
         maxUsageCount: Math.max(1, link.maxUsageCount),
         usageCount: link.usageCount,
       })),

@@ -11,6 +11,39 @@ export function dateKeyInTimeZone(date: Date | string, timeZone: string): string
   }).format(new Date(date));
 }
 
+const DAY_MS = 86_400_000;
+
+/** "YYYY-MM-DD" of an instant in UTC. */
+export function utcDateKey(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+/** Midnight UTC of a "YYYY-MM-DD" key, or of the UTC day an instant falls on. */
+export function utcStartOfDay(day: string | Date): Date {
+  return new Date(`${typeof day === "string" ? day : utcDateKey(day)}T00:00:00.000Z`);
+}
+
+/** The last millisecond of that UTC day. */
+export function utcEndOfDay(day: string | Date): Date {
+  return new Date(utcStartOfDay(day).getTime() + DAY_MS - 1);
+}
+
+/** Whole days from `from` to `to`, rounded towards zero. */
+export function daysBetween(from: Date, to: Date): number {
+  return Math.trunc((to.getTime() - from.getTime()) / DAY_MS);
+}
+
+/** Calendar months later in UTC; the day is clamped to the month's length (Jan 31 + 1 → Feb 28/29). */
+export function addUtcMonths(date: Date, months: number): Date {
+  const result = new Date(date);
+  const day = result.getUTCDate();
+  result.setUTCDate(1);
+  result.setUTCMonth(result.getUTCMonth() + months);
+  const daysInMonth = new Date(Date.UTC(result.getUTCFullYear(), result.getUTCMonth() + 1, 0)).getUTCDate();
+  result.setUTCDate(Math.min(day, daysInMonth));
+  return result;
+}
+
 /** `hour12` undefined follows the locale (e.g. 12-hour in en-US, 24-hour in de). */
 export function formatTime(date: Date | string, timeZone: string, locale: string, hour12?: boolean): string {
   return new Intl.DateTimeFormat(locale, { timeZone, hour: "numeric", minute: "2-digit", hour12 }).format(

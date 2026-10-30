@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { dateKeyInTimeZone, monthGrid, monthRangeInTimeZone } from "./date-utils";
+import {
+  addUtcMonths,
+  dateKeyInTimeZone,
+  daysBetween,
+  monthGrid,
+  monthRangeInTimeZone,
+  utcDateKey,
+  utcEndOfDay,
+  utcStartOfDay,
+} from "./date-utils";
 
 describe("date-utils", () => {
   it("keys an instant by its local date", () => {
@@ -19,5 +28,16 @@ describe("date-utils", () => {
     expect(grid[0][0]).toBe("2030-09-01");
     expect(grid.flat().filter(Boolean)).toHaveLength(30);
     expect(grid.every((week) => week.length === 7)).toBe(true);
+  });
+
+  it("does UTC day arithmetic natively", () => {
+    const instant = new Date("2024-03-10T22:15:00.000Z");
+    expect(utcDateKey(instant)).toBe("2024-03-10");
+    expect(utcStartOfDay("2024-03-10").toISOString()).toBe("2024-03-10T00:00:00.000Z");
+    expect(utcStartOfDay(instant).toISOString()).toBe("2024-03-10T00:00:00.000Z");
+    expect(utcEndOfDay(instant).toISOString()).toBe("2024-03-10T23:59:59.999Z");
+    expect(daysBetween(new Date("2024-03-01T12:00:00Z"), instant)).toBe(9);
+    expect(addUtcMonths(new Date("2024-01-31T09:00:00Z"), 1).toISOString()).toBe("2024-02-29T09:00:00.000Z");
+    expect(addUtcMonths(new Date("2023-11-15T09:00:00Z"), 3).toISOString()).toBe("2024-02-15T09:00:00.000Z");
   });
 });

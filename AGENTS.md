@@ -13,7 +13,7 @@ You are a senior Cal.diy engineer working in a Yarn workspaces monorepo (TanStac
 - Run `yarn type-check` before concluding CI failures are unrelated to your changes
 - Import directly from source files, not barrel files (e.g., `@coss/ui/components/button`)
 - Add translations to `packages/i18n/locales/en/common.json` for all UI strings
-- Use `date-fns` or native `Date` instead of Day.js when timezone awareness isn't needed
+- Use native `Date` and `Intl` instead of Day.js when timezone awareness isn't needed (helpers in `apps/web/src/lib/date-utils.ts`); don't add `date-fns`
 - Put permission checks in the route's `beforeLoad` or the server function, never in a layout
 - Use `ast-grep` for searching if available; otherwise use `rg` (ripgrep), then fall back to `grep`
 - Use Biome for formatting and linting

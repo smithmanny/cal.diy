@@ -29,8 +29,10 @@ if (dayjs(booking.endTime).isBefore(dayjs())) { ... }
 // UTC mode when the time zone doesn't matter
 dates.map((date) => dayjs.utc(date).add(1, "day").format());
 
-// Native Date and millisecond comparisons
+// Native Date and millisecond comparisons, with the helpers in apps/web/src/lib/date-utils.ts
 dates.map((date) => new Date(date.getTime() + 24 * 60 * 60 * 1000));
+const day = { start: utcStartOfDay(holiday.date), end: utcEndOfDay(holiday.date) };
+const key = dateKeyInTimeZone(link.expiresAt, timeZone); // "YYYY-MM-DD" via Intl
 if (found.endTime <= new Date()) throw new AppError("booking_has_ended", 409);
 
 // Intl for display, with the locale from the route context
@@ -40,7 +42,10 @@ const dateFormat = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZo
 Dates from the database are already `Date` objects (columns are `timestamp_ms`), so compare them
 with `<`, `<=` or `.getTime()`.
 
-`date-fns` is not a dependency of this repo; ask before adding it (see `CLAUDE.md`, "Ask first").
+Don't add `date-fns`: native `Date` and `Intl` cover what Day.js isn't needed for. Add a helper to
+`date-utils.ts` (with a test) when the same arithmetic shows up twice. Remember that native `Date`
+methods without `UTC` in the name use the server's local time zone; use the `getUTC*`/`setUTC*`
+methods or `Intl.DateTimeFormat` with an explicit `timeZone`.
 
 **When to use Day.js:**
 - Strict time-zone awareness (slots, availability, the booker)
